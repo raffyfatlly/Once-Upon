@@ -75,7 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
           {/* Desktop Left Links */}
           <div className="hidden md:flex space-x-10 items-center flex-1">
              <Link to="/" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Shop</Link>
-             <a href="/#story" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Story</a>
+             <Link to="/story" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Story</Link>
              
              {/* Desktop Collections Dropdown */}
              <div className="relative group/collections">
@@ -231,13 +231,13 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
                 </div>
              </div>
 
-             <a 
-               href="/#story"
+             <Link 
+               to="/story"
                onClick={handleMobileLinkClick}
                className="font-serif text-3xl text-gray-900 hover:text-brand-flamingo hover:italic transition-all duration-300"
              >
                Our Story
-             </a>
+             </Link>
 
              <Link 
                to="/orders"

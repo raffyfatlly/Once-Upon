@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Star, Sparkles, Crown } from 'lucide-react';
+import { Star, Sparkles } from 'lucide-react';
 
 interface HeroProps {
   backgroundImage?: string;
@@ -33,6 +33,41 @@ const CloudSVG = ({ className }: { className?: string }) => (
       fillOpacity="0.95"
       filter="url(#elegant-shadow)"
     />
+  </svg>
+);
+
+const FairyTaleCastle = ({ size = 24, className, strokeWidth = 1.5 }: { size?: number, className?: string, strokeWidth?: number }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 64 64" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    stroke="currentColor"
+  >
+    <path d="M32 14V48" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M24 24L32 14L40 24" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="24" y="24" width="16" height="24" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+    
+    <path d="M12 28L20 20L28 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="12" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+    
+    <path d="M36 28L44 20L52 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="40" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+
+    <path d="M8 48H56" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    
+    <path d="M28 48V38C28 35.79 29.79 34 32 34C34.21 34 36 35.79 36 38V48" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M32 34V48" strokeWidth={Math.max(1, strokeWidth - 0.5)} strokeLinecap="round"/>
+
+    <path d="M32 14V8L38 10L32 12" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M20 20V16L24 17L20 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M44 20V16L48 17L44 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+
+    <path d="M32 28V30" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M18 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M46 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
   </svg>
 );
 
@@ -72,8 +107,8 @@ export const Hero: React.FC<HeroProps> = ({ backgroundImage, onEnterShop }) => {
           <div className="px-8 py-12 md:px-16 md:py-16 text-center relative">
             <div className="flex justify-center mb-6">
                <div className="p-4 bg-white/60 rounded-full border border-white/60 shadow-sm animate-breathe">
-                 {/* Standard minimal Crown icon */}
-                 <Crown size={32} strokeWidth={1} className="text-gray-900" />
+                 {/* Custom Disney-style Castle icon - Lighter gray for elegance */}
+                 <FairyTaleCastle size={36} strokeWidth={1.5} className="text-gray-600" />
                </div>
             </div>
 

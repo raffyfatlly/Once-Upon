@@ -24,6 +24,6 @@ export const PRODUCTS: Product[] = [
 
 export const NAVIGATION_LINKS = [
   { name: 'Shop', href: '#products' },
-  { name: 'Our Story', href: '#story' },
+  { name: 'Our Story', href: '/story' },
   { name: 'Collections', href: '#collections' },
 ];

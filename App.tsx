@@ -15,6 +15,7 @@ import { PaymentCallback } from './components/PaymentCallback';
 import { OrderLookup } from './components/OrderLookup';
 import { CollectionView } from './components/CollectionView';
 import { IntroOverlay } from './components/IntroOverlay';
+import { OurStory } from './components/OurStory';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
@@ -102,10 +103,6 @@ const StoreFront: React.FC<{
         </div>
       </section>
       
-      <div className="py-10">
-         <SectionDivider />
-      </div>
-
       <section className="py-24 md:py-32 relative overflow-hidden bg-brand-grey/10">
          <div className="absolute top-0 left-0 right-0 h-2 scallop-border opacity-20"></div>
 
@@ -247,6 +244,12 @@ const App: React.FC = () => {
           </Layout>
         } />
         
+        <Route path="/story" element={
+          <Layout cartCount={cartCount} products={products}>
+            <OurStory />
+          </Layout>
+        } />
+
         <Route path="/product/:id" element={
           <Layout cartCount={cartCount} products={products}>
             <ProductDetails products={products} onAddToCart={handleAddToCart} />

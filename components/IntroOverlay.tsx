@@ -1,11 +1,46 @@
 
-import React, { useState } from 'react';
-import { Crown, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Star } from 'lucide-react';
 
 interface IntroOverlayProps {
   onComplete: () => void;
   coverImage?: string; // Optional prop for the background image
 }
+
+const FairyTaleCastle = ({ size = 24, className, strokeWidth = 1.5 }: { size?: number, className?: string, strokeWidth?: number }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 64 64" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    stroke="currentColor"
+  >
+    <path d="M32 14V48" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M24 24L32 14L40 24" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="24" y="24" width="16" height="24" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+    
+    <path d="M12 28L20 20L28 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="12" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+    
+    <path d="M36 28L44 20L52 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="40" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
+
+    <path d="M8 48H56" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    
+    <path d="M28 48V38C28 35.79 29.79 34 32 34C34.21 34 36 35.79 36 38V48" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M32 34V48" strokeWidth={Math.max(1, strokeWidth - 0.5)} strokeLinecap="round"/>
+
+    <path d="M32 14V8L38 10L32 12" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M20 20V16L24 17L20 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M44 20V16L48 17L44 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+
+    <path d="M32 28V30" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M18 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <path d="M46 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
+  </svg>
+);
 
 export const IntroOverlay: React.FC<IntroOverlayProps> = ({ 
   onComplete,
@@ -13,6 +48,16 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({
   coverImage = "https://i.postimg.cc/25fThJhj/5na55d0nvnrmt0cw34fsyzg77c.png"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    // Lock body scroll when component mounts
+    document.body.style.overflow = 'hidden';
+    
+    // Re-enable scroll when component unmounts
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   const handleEnter = () => {
     setIsOpen(true);
@@ -88,7 +133,8 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({
              <div className="absolute inset-[-34px] md:inset-[-54px] border border-white/40 rounded-[2px] pointer-events-none mix-blend-overlay"></div>
 
              <div className="mb-8 p-4 bg-white/80 backdrop-blur-md rounded-full shadow-lg border border-white/50">
-                <Crown size={32} strokeWidth={1} className="text-gray-900" />
+                {/* Lighter color usage here */}
+                <FairyTaleCastle size={36} strokeWidth={1.5} className="text-gray-600" />
              </div>
 
              <h1 className="font-serif text-4xl md:text-7xl text-gray-900 mb-2 tracking-widest text-center drop-shadow-lg text-white mix-blend-hard-light">

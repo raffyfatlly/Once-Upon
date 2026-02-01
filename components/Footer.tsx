@@ -25,7 +25,7 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
         
         <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12 items-center">
            <Link to="/" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Shop</Link>
-           <a href="/#story" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Our Story</a>
+           <Link to="/story" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Our Story</Link>
            <Link to="/collections/Blankets" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Collections</Link>
            <Link to="/orders" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Track Order</Link>
         </div>
