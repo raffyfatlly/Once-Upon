@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Heart, Loader2, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProductDetailsProps {
@@ -122,9 +122,9 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
             <div className="flex items-center gap-4 mb-8">
               <span className="font-serif text-2xl text-gray-900">RM {product.price}</span>
               <div className="h-4 w-[1px] bg-gray-200"></div>
-              <div className="flex gap-0.5">
-                 {[1,2,3,4,5].map(i => <Heart key={i} size={12} className="fill-brand-pink text-brand-pink" />)}
-              </div>
+              <span className="font-script text-xl text-brand-gold">
+                {(!product.collection || product.collection === 'Blankets') ? 'Blanket Collection' : product.collection}
+              </span>
             </div>
 
             <p className="font-serif italic text-gray-600 text-base leading-relaxed mb-8 border-l-2 border-brand-flamingo pl-6">

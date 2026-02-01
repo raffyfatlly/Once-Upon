@@ -22,7 +22,7 @@ export const CartView: React.FC<CartViewProps> = ({
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center bg-white animate-fade-in px-6">
         <h2 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Your bag is empty</h2>
-        <p className="font-sans text-gray-500 mb-8 font-light">Discover our collection of modern heirlooms.</p>
+        <p className="font-sans text-gray-500 mb-8 font-light">Discover our collection of signature pieces.</p>
         <button 
           onClick={() => navigate('/')}
           className="bg-brand-flamingo text-white px-8 py-3.5 font-sans uppercase tracking-[0.2em] text-[10px] font-bold hover:bg-brand-gold transition-colors rounded-full"
@@ -54,7 +54,7 @@ export const CartView: React.FC<CartViewProps> = ({
                   <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <h3 className="font-serif text-xl text-gray-900 mb-1">{item.name}</h3>
-                      <p className="font-sans text-xs text-gray-500 mb-2">Blanket Collection</p>
+                      <p className="font-sans text-xs text-gray-500 mb-2">{item.collection || 'Blankets'}</p>
                       <p className="font-sans text-sm font-bold text-gray-900">RM {item.price}</p>
                     </div>
 

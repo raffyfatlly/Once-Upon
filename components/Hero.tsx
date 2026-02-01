@@ -111,7 +111,7 @@ export const Hero: React.FC<HeroProps> = ({ backgroundImage, onEnterShop }) => {
                 className="group relative px-12 py-5 bg-brand-flamingo text-white font-sans tracking-[0.2em] text-[11px] font-bold uppercase transition-all duration-500 hover:bg-brand-gold hover:scale-105 shadow-lg rounded-full"
               >
                  <span className="relative z-10 flex items-center justify-center gap-3">
-                  Enter The Shop
+                  View Collection
                 </span>
               </button>
               

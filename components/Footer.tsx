@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Instagram, Facebook, Twitter, Heart, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface FooterProps {
   onAdminClick?: () => void;
@@ -22,12 +23,11 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
           <div className="font-script text-xl text-brand-gold">Kuala Lumpur</div>
         </div>
         
-        <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12">
-          {['Shop', 'Our Story', 'Collections', 'Contact', 'Shipping'].map((item) => (
-             <a key={item} href="#" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">
-               {item}
-             </a>
-          ))}
+        <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12 items-center">
+           <Link to="/" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Shop</Link>
+           <a href="/#story" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Our Story</a>
+           <Link to="/collections/Blankets" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Collections</Link>
+           <Link to="/orders" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Track Order</Link>
         </div>
 
         <div className="flex space-x-8 mb-12">

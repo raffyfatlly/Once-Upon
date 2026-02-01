@@ -8,6 +8,7 @@ export interface Product {
   badge?: string;
   material?: string;
   care?: string;
+  collection?: string;
 }
 
 export interface CartItem extends Product {

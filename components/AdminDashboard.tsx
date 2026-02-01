@@ -41,6 +41,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Refs for file inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Derive unique collections from existing products for autocomplete
+  const existingCollections = Array.from(new Set(products.map(p => p.collection || 'Blankets'))).sort();
+
   // Form State
   const [formData, setFormData] = useState<Product>({
     id: '',
@@ -50,11 +53,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     image: '',
     badge: '',
     material: '',
-    care: ''
+    care: '',
+    collection: 'Blankets'
   });
 
   const handleEdit = (product: Product) => {
-    setFormData(product);
+    setFormData({
+        ...product,
+        collection: product.collection || 'Blankets'
+    });
     setEditingProduct(product);
     setIsEditing(true);
     setSaveStatus('idle');
@@ -70,7 +77,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       image: '',
       badge: '',
       material: '',
-      care: ''
+      care: '',
+      collection: 'Blankets'
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -143,7 +151,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         description: 'An intricate illustration of a whimsical palace in the clouds. Woven from the finest cashmere, this piece features subtle turret details and starry accents.',
         image: 'https://i.postimg.cc/9QVBP1b5/Gemini-Generated-Image-s2ybu4s2ybu4s2yb.png',
         material: '100% Grade-A Mongolian Cashmere',
-        care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.'
+        care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.',
+        collection: 'Blankets'
       },
       {
         name: 'The Parisian Flight',
@@ -151,7 +160,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         description: 'Vintage hot air balloons drifting over Parisian rooftops. A delicate blend of organic cotton and silk, finished with a refined latte border.',
         image: 'https://i.postimg.cc/cCSNXQ23/Gemini-Generated-Image-tit282tit282tit2.png',
         material: '80% Organic Cotton, 20% Mulberry Silk',
-        care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.'
+        care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.',
+        collection: 'Blankets'
       },
       {
         name: 'The Enchanted Forest',
@@ -159,7 +169,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         description: 'Deep forest greens and soft fawns create a magical woodland scene. Perfect for the adventurous little dreamer.',
         image: 'https://i.postimg.cc/vHk8yW1b/Gemini-Generated-Image-ux3s8aux3s8aux3s.png',
         material: '100% Organic Cotton Knit',
-        care: 'Machine wash cold. Tumble dry low.'
+        care: 'Machine wash cold. Tumble dry low.',
+        collection: 'Blankets'
       }
     ];
 
@@ -318,6 +329,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Product Name</label>
                       <input required className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                     </div>
+                    
+                    {/* Collection Input */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Collection</label>
+                      <input 
+                        list="collection-options"
+                        className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" 
+                        value={formData.collection || ''} 
+                        onChange={e => setFormData({...formData, collection: e.target.value})}
+                        placeholder="e.g. Blankets"
+                      />
+                      <datalist id="collection-options">
+                        {existingCollections.map(c => <option key={c} value={c} />)}
+                      </datalist>
+                      <p className="text-[10px] text-gray-400 mt-1">Select an existing collection or type a new one.</p>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Price (RM)</label>
@@ -469,7 +497,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <img src={product.image} alt={product.name} className="w-16 h-16 md:w-20 md:h-20 object-cover bg-gray-100 rounded-[2px]" />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-serif text-base md:text-lg text-gray-900 leading-tight mb-1 truncate">{product.name}</h4>
-                      <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
+                      <div className="flex flex-col">
+                        <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{product.collection || 'Blankets'}</p>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2">
                       <button onClick={() => handleEdit(product)} className="text-gray-400 hover:text-brand-flamingo p-1"><Edit2 size={16} /></button>
@@ -502,6 +533,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* SALES TAB */}
         {activeTab === 'sales' && (
            <div className="animate-fade-in">
+             {/* ... existing sales tab content ... */}
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                <div>
                  <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
@@ -665,7 +697,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                  <ShieldAlert className="text-brand-gold" size={20} />
                  Firebase Configuration
                </h3>
-               
+               {/* ... existing settings content ... */}
                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
                  To enable full functionality (adding/deleting products and images), you must configure your Firebase Security Rules in the Firebase Console.
                </p>
@@ -703,10 +735,6 @@ service firebase.storage {
                    Before launching to production, you must restrict these rules to authenticated users only.
                  </p>
                </div>
-             </div>
-
-             <div className="text-center">
-               <p className="text-gray-400 text-xs">Site Config (Hero Image etc.) is currently read-only in this demo.</p>
              </div>
           </div>
         )}

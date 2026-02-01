@@ -91,7 +91,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         </h3>
         <p className="font-script text-2xl text-brand-gold mb-4 -mt-1 flex items-center justify-center gap-2">
           <Sparkles size={12} className="opacity-50" />
-          Blanket Collection
+          {(!product.collection || product.collection === 'Blankets') ? 'Blanket Collection' : product.collection}
           <Sparkles size={12} className="opacity-50" />
         </p>
         

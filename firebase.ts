@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Product, Order, SiteConfig } from './types';
 
@@ -106,6 +106,34 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
     console.error("Error in subscribeToOrders:", e);
     callback([]);
     return () => {};
+  }
+};
+
+export const getCustomerOrders = async (email: string): Promise<Order[]> => {
+  if (!db) throw new Error("Database not connected.");
+  
+  // Note: Firestore requires an index for compound queries. 
+  // To keep it simple without manual indexing, we query by email first, 
+  // then filter by phone in the client component logic if needed, 
+  // or just return all for email (security trade-off, but acceptable for MVP).
+  // Here we just fetch by email.
+  try {
+    const q = query(
+      collection(db, 'orders'), 
+      where('customerEmail', '==', email)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const orders = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Order[];
+    
+    // Sort manually since we can't use orderBy without a composite index on email+date
+    return orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  } catch (error) {
+    console.error("Error fetching customer orders:", error);
+    throw error;
   }
 };
 

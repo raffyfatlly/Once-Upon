@@ -12,6 +12,9 @@ import { ProductDetails } from './components/ProductDetails';
 import { CartView } from './components/CartView';
 import { CheckoutView } from './components/CheckoutView';
 import { PaymentCallback } from './components/PaymentCallback';
+import { OrderLookup } from './components/OrderLookup';
+import { CollectionView } from './components/CollectionView';
+import { IntroOverlay } from './components/IntroOverlay';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
@@ -28,12 +31,14 @@ const SectionDivider = () => (
 const Layout: React.FC<{ 
   children: React.ReactNode;
   cartCount: number;
-}> = ({ children, cartCount }) => {
+  products: Product[];
+}> = ({ children, cartCount, products }) => {
   const navigate = useNavigate();
   return (
     <div className="min-h-screen flex flex-col bg-white overflow-x-hidden selection:bg-brand-pink/20 selection:text-brand-flamingo">
       <Navbar 
         cartCount={cartCount} 
+        products={products}
       />
       <main className="flex-grow">
         {children}
@@ -66,10 +71,10 @@ const StoreFront: React.FC<{
         <div className="container mx-auto px-6 max-w-6xl">
           <div className="text-center mb-20 md:mb-28 relative">
             <span className="font-script text-3xl md:text-4xl text-brand-gold mb-2 block animate-fade-in">
-              The Blanket Collection
+              Once Upon
             </span>
             <h2 className="font-serif text-4xl md:text-5xl text-gray-900 mb-6 leading-tight">
-              Timeless <br/> <span className="italic font-light">Heirlooms</span>
+              Signature <br/> <span className="italic font-light">Collection</span>
             </h2>
             <div className="w-16 h-[1px] bg-brand-flamingo mx-auto my-6"></div>
           </div>
@@ -136,7 +141,13 @@ const App: React.FC = () => {
   // Data State
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [showIntro, setShowIntro] = useState(true);
 
+  // Check if we've already shown the intro in this session to avoid annoyance on refresh?
+  // User requested: "when my website started" -> Implies fresh load. 
+  // We can use sessionStorage if we want to persist "intro seen", but user request implies seeing it on load.
+  // We'll default to showing it every hard refresh, but maybe not on route change (SPA navigation doesn't unmount App usually, but just in case).
+  
   // Site config
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => {
     try {
@@ -220,65 +231,86 @@ const App: React.FC = () => {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <Routes>
-      {/* Public Store Routes */}
-      <Route path="/" element={
-        <Layout cartCount={cartCount}>
-          <StoreFront products={products} siteConfig={siteConfig} onAddToCart={handleAddToCart} />
-        </Layout>
-      } />
-      
-      <Route path="/product/:id" element={
-        <Layout cartCount={cartCount}>
-          <ProductDetails products={products} onAddToCart={handleAddToCart} />
-        </Layout>
-      } />
-      
-      <Route path="/cart" element={
-        <Layout cartCount={cartCount}>
-          <CartView 
-            cart={cart}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onRemoveItem={handleRemoveFromCart}
-          />
-        </Layout>
-      } />
-      
-      <Route path="/checkout" element={
-        <CheckoutView 
-          cart={cart}
-          onOrderSuccess={handleOrderComplete}
+    <>
+      {showIntro && (
+        <IntroOverlay 
+           onComplete={() => setShowIntro(false)} 
+           coverImage="https://i.postimg.cc/25fThJhj/5na55d0nvnrmt0cw34fsyzg77c.png"
         />
-      } />
-
-      <Route path="/payment/callback" element={
-        <PaymentCallback />
-      } />
-
-      {/* Admin Routes */}
-      <Route path="/admin/login" element={
-        <AdminLogin onLogin={() => setIsAuthenticated(true)} />
-      } />
+      )}
       
-      <Route path="/admin/dashboard" element={
-        isAuthenticated ? (
-          <AdminDashboard 
-            products={products}
-            siteConfig={siteConfig}
-            orders={orders}
-            onUpdateProducts={setProducts}
-            onUpdateSiteConfig={setSiteConfig}
-            onUpdateOrders={setOrders}
-            onLogout={() => setIsAuthenticated(false)}
+      <Routes>
+        {/* Public Store Routes */}
+        <Route path="/" element={
+          <Layout cartCount={cartCount} products={products}>
+            <StoreFront products={products} siteConfig={siteConfig} onAddToCart={handleAddToCart} />
+          </Layout>
+        } />
+        
+        <Route path="/product/:id" element={
+          <Layout cartCount={cartCount} products={products}>
+            <ProductDetails products={products} onAddToCart={handleAddToCart} />
+          </Layout>
+        } />
+        
+        <Route path="/collections/:name" element={
+          <Layout cartCount={cartCount} products={products}>
+            <CollectionView products={products} onAddToCart={handleAddToCart} />
+          </Layout>
+        } />
+        
+        <Route path="/cart" element={
+          <Layout cartCount={cartCount} products={products}>
+            <CartView 
+              cart={cart}
+              onUpdateQuantity={handleUpdateCartQuantity}
+              onRemoveItem={handleRemoveFromCart}
+            />
+          </Layout>
+        } />
+        
+        <Route path="/orders" element={
+          <Layout cartCount={cartCount} products={products}>
+            <OrderLookup />
+          </Layout>
+        } />
+        
+        <Route path="/checkout" element={
+          <CheckoutView 
+            cart={cart}
+            onOrderSuccess={handleOrderComplete}
           />
-        ) : (
-          <AdminLogin onLogin={() => setIsAuthenticated(true)} />
-        )
-      } />
+        } />
 
-      {/* Catch-all Route: Redirect to Home if 404 */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/payment/callback" element={
+          <PaymentCallback />
+        } />
+
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={
+          <AdminLogin onLogin={() => setIsAuthenticated(true)} />
+        } />
+        
+        <Route path="/admin/dashboard" element={
+          isAuthenticated ? (
+            <AdminDashboard 
+              products={products}
+              siteConfig={siteConfig}
+              orders={orders}
+              onUpdateProducts={setProducts}
+              onUpdateSiteConfig={setSiteConfig}
+              onUpdateOrders={setOrders}
+              onLogout={() => setIsAuthenticated(false)}
+            />
+          ) : (
+            <AdminLogin onLogin={() => setIsAuthenticated(true)} />
+          )
+        } />
+
+        {/* Catch-all Route: Redirect to Home if 404 */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 };
 
