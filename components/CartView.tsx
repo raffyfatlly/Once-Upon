@@ -137,7 +137,7 @@ export const CartView: React.FC<CartViewProps> = ({
 
               <div className="mt-6 text-center">
                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                   Secure checkout powered by Stripe. Returns accepted within 30 days.
+                   Secure checkout powered by CHIP.
                  </p>
               </div>
             </div>

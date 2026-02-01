@@ -247,7 +247,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                 <div className="flex flex-col gap-4 items-center justify-center py-4 text-center">
                   <Lock size={24} className="text-brand-latte mb-2" />
                   <p className="text-sm text-gray-500 font-light">
-                    You will be redirected to <span className="font-bold text-gray-900">Chip</span> to securely complete your payment.
+                    You will be redirected to <span className="font-bold text-gray-900">CHIP</span> to securely complete your payment.
                   </p>
                   <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest mt-2">
                     <CreditCard size={12} /> Secure Gateway
@@ -278,7 +278,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Redirecting to Chip...
+                    <Loader2 size={16} className="animate-spin" /> Redirecting to CHIP...
                   </>
                 ) : (
                   `Pay RM ${total}`
