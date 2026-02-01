@@ -1,0 +1,61 @@
+
+import React from 'react';
+import { Instagram, Facebook, Twitter, Heart, Lock } from 'lucide-react';
+
+interface FooterProps {
+  onAdminClick?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
+  return (
+    <footer className="bg-white pt-20 pb-12 border-t border-brand-latte/20 relative">
+      
+      {/* Decorative Center Element */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+        <Heart size={16} className="text-brand-flamingo fill-brand-flamingo/20" />
+      </div>
+
+      <div className="container mx-auto px-6 max-w-6xl flex flex-col items-center">
+        
+        <div className="mb-10 text-center">
+          <div className="font-serif text-3xl font-bold text-gray-900 tracking-wider mb-1">ONCE UPON</div>
+          <div className="font-script text-xl text-brand-gold">Kuala Lumpur</div>
+        </div>
+        
+        <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12">
+          {['Shop', 'Our Story', 'Collections', 'Contact', 'Shipping'].map((item) => (
+             <a key={item} href="#" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">
+               {item}
+             </a>
+          ))}
+        </div>
+
+        <div className="flex space-x-8 mb-12">
+          <a href="#" className="text-brand-latte hover:text-brand-flamingo transition-colors hover:-translate-y-1 duration-300"><Instagram size={18} /></a>
+          <a href="#" className="text-brand-latte hover:text-brand-flamingo transition-colors hover:-translate-y-1 duration-300"><Facebook size={18} /></a>
+          <a href="#" className="text-brand-latte hover:text-brand-flamingo transition-colors hover:-translate-y-1 duration-300"><Twitter size={18} /></a>
+        </div>
+
+        <div className="text-center relative flex flex-col items-center w-full">
+          <p className="font-sans text-[10px] text-gray-400 font-light tracking-wide mb-2">
+            &copy; {new Date().getFullYear()} Once Upon. All rights reserved.
+          </p>
+          <p className="font-script text-lg text-brand-latte mb-8">
+            Designed with Love
+          </p>
+          
+          {/* Subtle Admin Icon */}
+          {onAdminClick && (
+            <button 
+              onClick={onAdminClick}
+              className="text-brand-latte/30 hover:text-brand-gold transition-colors p-2"
+              aria-label="Admin Access"
+            >
+              <Lock size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+    </footer>
+  );
+};
