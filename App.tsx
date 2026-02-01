@@ -56,14 +56,24 @@ const App: React.FC = () => {
 
   // Site config still local for now, can be moved to DB later
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => {
-    const saved = localStorage.getItem('ou_config');
-    return saved ? JSON.parse(saved) : { heroImage: '' };
+    try {
+      const saved = localStorage.getItem('ou_config');
+      return saved ? JSON.parse(saved) : { heroImage: '' };
+    } catch (e) {
+      console.error("Failed to parse site config from local storage", e);
+      return { heroImage: '' };
+    }
   });
 
   // Cart State (Array of Items) - LocalStorage is fine for Cart (it's temporary per user)
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('ou_cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('ou_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse cart from local storage", e);
+      return [];
+    }
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -95,7 +105,11 @@ const App: React.FC = () => {
   }, [siteConfig]);
 
   useEffect(() => {
-    localStorage.setItem('ou_cart', JSON.stringify(cart));
+    try {
+      localStorage.setItem('ou_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.error("Local Storage Error", e);
+    }
   }, [cart]);
 
   useEffect(() => {
