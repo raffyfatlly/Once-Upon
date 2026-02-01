@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,26 +35,27 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [postcode, setPostcode] = useState('');
   const [city, setCity] = useState('');
 
-  // Helper to safely get env vars
-  const getEnv = () => {
-    try {
-      return (import.meta as any)?.env || {};
-    } catch {
-      return {};
-    }
+  // Access Environment Variables Directly
+  // Note: We access them directly on import.meta.env so Vite can statically replace them at build time.
+  const getPaymentConfig = () => {
+    const env = (import.meta as any).env;
+    return {
+      // Try VITE_ prefix first (Standard), then CHIP_ prefix
+      brandId: env.VITE_CHIP_ID || env.CHIP_ID,
+      apiKey: env.VITE_CHIP_API || env.CHIP_API
+    };
   };
 
-  // Debugging: Check if keys are loaded (only runs once on mount)
+  // Debugging: Check if keys are loaded
   useEffect(() => {
-    const env = getEnv();
-    // Allow both CHIP_ and VITE_CHIP_ prefixes just in case
-    const hasBrandId = !!(env.CHIP_ID || env.VITE_CHIP_ID);
-    const hasApiKey = !!(env.CHIP_API || env.VITE_CHIP_API);
+    const { brandId, apiKey } = getPaymentConfig();
+    const isConfigured = !!brandId && !!apiKey;
     
-    console.log(`[Payment Config] Brand ID Loaded: ${hasBrandId}, API Key Loaded: ${hasApiKey}`);
+    console.log(`[Payment Config] Loaded: ${isConfigured}`);
+    if (brandId) console.log(`[Payment Config] Brand ID found: ${brandId.substring(0, 4)}...`);
     
-    if (!hasBrandId || !hasApiKey) {
-      console.warn("[Payment Config] Missing keys. Ensure CHIP_ID and CHIP_API are set in Vercel.");
+    if (!isConfigured) {
+      console.warn("[Payment Config] Missing keys. Ensure VITE_CHIP_ID and VITE_CHIP_API are set in Vercel and you have REDEPLOYED.");
     }
   }, []);
 
@@ -63,12 +64,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     setIsProcessing(true);
     setError('');
 
-    const env = getEnv();
-    const brandId = env.CHIP_ID || env.VITE_CHIP_ID;
-    const apiKey = env.CHIP_API || env.VITE_CHIP_API;
+    const { brandId, apiKey } = getPaymentConfig();
 
     if (!brandId || !apiKey) {
-      setError("Payment configuration missing. Please ensure CHIP_ID and CHIP_API are set in your Vercel environment variables.");
+      setError("Configuration Error: Payment Gateway ID or API Key is missing.");
       setIsProcessing(false);
       return;
     }
@@ -86,6 +85,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       });
 
       // 2. Prepare Chip Payload
+      // Note: Amounts must be in cents (integer)
       const payload = {
         brand_id: brandId,
         client: {
@@ -135,12 +135,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       try {
         data = await response.json();
       } catch (jsonError) {
-        throw new Error(`Failed to parse response: ${response.statusText}`);
+        throw new Error(`Invalid response from payment provider: ${response.statusText}`);
       }
 
       if (!response.ok) {
         console.error("Chip API Error Response:", data);
-        throw new Error(data.message || (data.errors ? JSON.stringify(data.errors) : "Payment initialization failed"));
+        // Extract helpful error message from Chip response if available
+        const msg = data.message || (data.errors ? Object.values(data.errors).join(', ') : "Payment initialization failed");
+        throw new Error(msg);
       }
 
       onOrderSuccess(); 
@@ -153,7 +155,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
     } catch (err: any) {
       console.error("Payment Error:", err);
-      setError(err.message || "Failed to initiate payment. Check console for details.");
+      setError(err.message || "Failed to initiate payment. Please try again.");
       setIsProcessing(false);
     }
   };
@@ -244,7 +246,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
             </section>
             
             {error && (
-              <p className="text-red-500 text-sm text-center bg-red-50 p-3 rounded border border-red-100">{error}</p>
+              <div className="bg-red-50 p-4 rounded border border-red-100 flex items-start gap-3">
+                <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
+                <div className="flex-1">
+                  <p className="text-red-600 text-sm font-bold mb-1">Payment Initialization Failed</p>
+                  <p className="text-red-500 text-xs">{error}</p>
+                  {(error.includes("Configuration") || error.includes("missing")) && (
+                     <p className="text-red-500 text-[10px] mt-2 italic">
+                       Developer Note: Ensure VITE_CHIP_ID and VITE_CHIP_API are set in Vercel and the app has been redeployed.
+                     </p>
+                  )}
+                </div>
+              </div>
             )}
 
             <button 
