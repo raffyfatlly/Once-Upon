@@ -10,7 +10,9 @@ interface CheckoutViewProps {
   onOrderSuccess: () => void;
 }
 
-const API_URL = 'https://gate.chip-in.asia/api/v1/purchases/';
+// We use the local proxy path now (configured in vite.config.ts and vercel.json)
+// This avoids CORS errors by letting the server handle the cross-origin request
+const API_URL = '/api/chip/purchases/';
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess }) => {
   const navigate = useNavigate();
@@ -33,11 +35,22 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [postcode, setPostcode] = useState('');
   const [city, setCity] = useState('');
 
+  // Helper to safely get env vars
+  const getEnv = () => {
+    try {
+      return (import.meta as any)?.env || {};
+    } catch {
+      return {};
+    }
+  };
+
   // Debugging: Check if keys are loaded (only runs once on mount)
   useEffect(() => {
-    const env = (import.meta as any).env;
-    const hasBrandId = !!env.CHIP_ID;
-    const hasApiKey = !!env.CHIP_API;
+    const env = getEnv();
+    // Allow both CHIP_ and VITE_CHIP_ prefixes just in case
+    const hasBrandId = !!(env.CHIP_ID || env.VITE_CHIP_ID);
+    const hasApiKey = !!(env.CHIP_API || env.VITE_CHIP_API);
+    
     console.log(`[Payment Config] Brand ID Loaded: ${hasBrandId}, API Key Loaded: ${hasApiKey}`);
     
     if (!hasBrandId || !hasApiKey) {
@@ -50,9 +63,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     setIsProcessing(true);
     setError('');
 
-    // Retrieve keys from Environment Variables
-    const brandId = (import.meta as any).env.CHIP_ID;
-    const apiKey = (import.meta as any).env.CHIP_API;
+    const env = getEnv();
+    const brandId = env.CHIP_ID || env.VITE_CHIP_ID;
+    const apiKey = env.CHIP_API || env.VITE_CHIP_API;
 
     if (!brandId || !apiKey) {
       setError("Payment configuration missing. Please ensure CHIP_ID and CHIP_API are set in your Vercel environment variables.");
@@ -108,7 +121,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         cancel_redirect: `${window.location.origin}/#/checkout`,
       };
 
-      // 3. Call Chip API
+      // 3. Call Chip API via Proxy
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -118,10 +131,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error(`Failed to parse response: ${response.statusText}`);
+      }
 
       if (!response.ok) {
-        // Detailed error logging
         console.error("Chip API Error Response:", data);
         throw new Error(data.message || (data.errors ? JSON.stringify(data.errors) : "Payment initialization failed"));
       }
@@ -136,7 +153,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
     } catch (err: any) {
       console.error("Payment Error:", err);
-      setError(err.message || "Failed to initiate payment. Check API Keys and console.");
+      setError(err.message || "Failed to initiate payment. Check console for details.");
       setIsProcessing(false);
     }
   };
