@@ -363,7 +363,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
           <div className="mt-12 flex items-center gap-3 justify-center text-brand-gold opacity-60">
              <CheckCircle size={14} />
-             <span className="text-[10px] uppercase tracking-widest font-bold">Money Back Guarantee</span>
+             <span className="text-[10px] uppercase tracking-widest font-bold">Secure Payment Processing</span>
           </div>
 
         </div>
