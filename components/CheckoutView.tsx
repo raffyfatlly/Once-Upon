@@ -18,9 +18,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // Shipping Logic: RM 10 for more than 2 items (3+), otherwise RM 8
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const shipping = totalItems > 2 ? 10 : 8;
+  // Shipping Logic: Free for testing
+  const shipping = 0;
   
   const total = subtotal + shipping;
 
