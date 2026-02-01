@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
@@ -11,6 +11,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { ProductDetails } from './components/ProductDetails';
 import { CartView } from './components/CartView';
 import { CheckoutView } from './components/CheckoutView';
+import { PaymentCallback } from './components/PaymentCallback';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
@@ -214,7 +215,6 @@ const App: React.FC = () => {
 
   const handleOrderComplete = () => {
     setCart([]);
-    alert("Thank you! Your order has been placed.");
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -251,6 +251,10 @@ const App: React.FC = () => {
         />
       } />
 
+      <Route path="/payment/callback" element={
+        <PaymentCallback />
+      } />
+
       {/* Admin Routes */}
       <Route path="/admin/login" element={
         <AdminLogin onLogin={() => setIsAuthenticated(true)} />
@@ -271,6 +275,9 @@ const App: React.FC = () => {
           <AdminLogin onLogin={() => setIsAuthenticated(true)} />
         )
       } />
+
+      {/* Catch-all Route: Redirect to Home if 404 */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

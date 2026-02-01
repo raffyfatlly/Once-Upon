@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,8 @@ interface CheckoutViewProps {
   cart: CartItem[];
   onOrderSuccess: () => void;
 }
+
+const API_URL = 'https://gate.chip-in.asia/api/v1/purchases/';
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess }) => {
   const navigate = useNavigate();
@@ -31,14 +33,36 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [postcode, setPostcode] = useState('');
   const [city, setCity] = useState('');
 
+  // Debugging: Check if keys are loaded (only runs once on mount)
+  useEffect(() => {
+    const env = (import.meta as any).env;
+    const hasBrandId = !!env.CHIP_ID;
+    const hasApiKey = !!env.CHIP_API;
+    console.log(`[Payment Config] Brand ID Loaded: ${hasBrandId}, API Key Loaded: ${hasApiKey}`);
+    
+    if (!hasBrandId || !hasApiKey) {
+      console.warn("[Payment Config] Missing keys. Ensure CHIP_ID and CHIP_API are set in Vercel.");
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
     setError('');
+
+    // Retrieve keys from Environment Variables
+    const brandId = (import.meta as any).env.CHIP_ID;
+    const apiKey = (import.meta as any).env.CHIP_API;
+
+    if (!brandId || !apiKey) {
+      setError("Payment configuration missing. Please ensure CHIP_ID and CHIP_API are set in your Vercel environment variables.");
+      setIsProcessing(false);
+      return;
+    }
     
     try {
-      // 1. Create Order in Database
-      await createOrderInDb({
+      // 1. Create Order in Database first (status pending)
+      const orderRef = await createOrderInDb({
         customerName: `${firstName} ${lastName}`,
         customerEmail: email,
         items: cart,
@@ -48,16 +72,71 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         shippingAddress: `${address}, ${postcode} ${city}, Malaysia`
       });
 
-      // 2. Simulate Payment Delay (In real app, Stripe/PayPal here)
-      setTimeout(() => {
-        setIsProcessing(false);
-        onOrderSuccess();
-        navigate('/');
-      }, 1500);
+      // 2. Prepare Chip Payload
+      const payload = {
+        brand_id: brandId,
+        client: {
+          email: email,
+          phone: "0123456789", // Ideally collect phone number in form
+          full_name: `${firstName} ${lastName}`.substring(0, 30) // Chip limit
+        },
+        purchase: {
+          currency: 'MYR',
+          products: cart.map(item => ({
+            name: item.name.substring(0, 256),
+            quantity: item.quantity,
+            price: Math.round(item.price * 100) // Chip expects cents
+          })),
+          ...(shipping > 0 ? {
+             products: [
+               ...cart.map(item => ({
+                 name: item.name.substring(0, 256),
+                 quantity: item.quantity,
+                 price: Math.round(item.price * 100)
+               })),
+               {
+                 name: "Shipping",
+                 quantity: 1,
+                 price: Math.round(shipping * 100)
+               }
+             ]
+          } : {})
+        },
+        reference: orderRef.id,
+        success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
+        failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,
+        cancel_redirect: `${window.location.origin}/#/checkout`,
+      };
 
-    } catch (err) {
-      console.error(err);
-      setError("Failed to place order. Please try again.");
+      // 3. Call Chip API
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Detailed error logging
+        console.error("Chip API Error Response:", data);
+        throw new Error(data.message || (data.errors ? JSON.stringify(data.errors) : "Payment initialization failed"));
+      }
+
+      onOrderSuccess(); 
+
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error("No checkout URL returned from payment provider");
+      }
+
+    } catch (err: any) {
+      console.error("Payment Error:", err);
+      setError(err.message || "Failed to initiate payment. Check API Keys and console.");
       setIsProcessing(false);
     }
   };
@@ -131,23 +210,24 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               </div>
             </section>
 
-            {/* Payment */}
+            {/* Payment Info */}
             <section>
-              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Payment</h2>
+              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Payment Method</h2>
               <div className="bg-brand-grey/5 p-6 rounded-[2px] border border-brand-latte/10">
-                <div className="flex flex-col gap-4 items-center justify-center py-8 text-center">
+                <div className="flex flex-col gap-4 items-center justify-center py-4 text-center">
                   <Lock size={24} className="text-brand-latte mb-2" />
                   <p className="text-sm text-gray-500 font-light">
-                    This is a secure 256-bit SSL encrypted payment.
-                    <br/>
-                    <span className="text-xs italic text-gray-400">(Payment integration pending - Order will be saved)</span>
+                    You will be redirected to <span className="font-bold text-gray-900">Chip</span> to securely complete your payment.
                   </p>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest mt-2">
+                    <CreditCard size={12} /> Secure Gateway
+                  </div>
                 </div>
               </div>
             </section>
             
             {error && (
-              <p className="text-red-500 text-sm text-center bg-red-50 p-3 rounded">{error}</p>
+              <p className="text-red-500 text-sm text-center bg-red-50 p-3 rounded border border-red-100">{error}</p>
             )}
 
             <button 
@@ -157,7 +237,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Processing...
+                    <Loader2 size={16} className="animate-spin" /> Redirecting to Chip...
                   </>
                 ) : (
                   `Pay RM ${total}`
