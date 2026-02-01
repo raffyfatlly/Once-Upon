@@ -11,34 +11,42 @@ const FairyTaleCastle = ({ size = 24, className, strokeWidth = 1.5 }: { size?: n
   <svg 
     width={size} 
     height={size} 
-    viewBox="0 0 64 64" 
+    viewBox="0 0 800 500" 
     fill="none" 
     xmlns="http://www.w3.org/2000/svg"
     className={className}
     stroke="currentColor"
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    strokeMiterlimit="10"
   >
-    <path d="M32 14V48" strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M24 24L32 14L40 24" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <rect x="24" y="24" width="16" height="24" strokeWidth={strokeWidth} strokeLinejoin="round"/>
-    
-    <path d="M12 28L20 20L28 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <rect x="12" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
-    
-    <path d="M36 28L44 20L52 28" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <rect x="40" y="28" width="12" height="20" strokeWidth={strokeWidth} strokeLinejoin="round"/>
-
-    <path d="M8 48H56" strokeWidth={strokeWidth} strokeLinecap="round"/>
-    
-    <path d="M28 48V38C28 35.79 29.79 34 32 34C34.21 34 36 35.79 36 38V48" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M32 34V48" strokeWidth={Math.max(1, strokeWidth - 0.5)} strokeLinecap="round"/>
-
-    <path d="M32 14V8L38 10L32 12" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M20 20V16L24 17L20 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M44 20V16L48 17L44 18" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
-
-    <path d="M32 28V30" strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M18 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
-    <path d="M46 34V36" strokeWidth={strokeWidth} strokeLinecap="round"/>
+    <g strokeWidth={strokeWidth * 12}>
+        <line x1="50" y1="450" x2="750" y2="450"/>
+        <rect x="80" y="200" width="640" height="250"/>
+        <polygon points="80,200 120,120 680,120 720,200 "/>
+        <line x1="120" y1="120" x2="680" y2="120"/>
+        <rect x="150" y="80" width="30" height="40"/>
+        <rect x="145" y="75" width="40" height="5"/> 
+        <rect x="620" y="80" width="30" height="40"/>
+        <rect x="200" y="90" width="20" height="30"/>
+        <rect x="580" y="90" width="20" height="30"/>
+        <path d="M390,60 c5-5,15-5,20,0 c-5-10-15-10-20,0z"/>
+        <rect x="70" y="180" width="660" height="20"/>
+        <rect x="350" y="200" width="100" height="250"/>
+        <rect x="360" y="260" width="80" height="190"/>
+        <line x1="400" y1="260" x2="400" y2="450"/>
+        <path d="M360,260c0-20,10-40,40-40s40,20,40,40"/>
+        <path d="M100,450V250c0-30,20-50,110-50s110,20,110,50v200H100z"/>
+        <line x1="210" y1="200" x2="210" y2="450"/>
+        <line x1="100" y1="350" x2="320" y2="350"/>
+        <path d="M480,450V250c0-30,20-50,110-50s110,20,110,50v200H480z"/>
+        <line x1="590" y1="200" x2="590" y2="450"/>
+        <line x1="480" y1="350" x2="700" y2="350"/>
+        <rect x="20" y="220" width="40" height="60"/>
+        <line x1="60" y1="230" x2="80" y2="230"/>
+        <rect x="740" y="220" width="40" height="60"/>
+        <line x1="740" y1="230" x2="720" y2="230"/>
+    </g>
   </svg>
 );
 

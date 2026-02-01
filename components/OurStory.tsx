@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Star, Sparkles, Feather, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
 
 const PARAGRAPHS = [
@@ -13,10 +13,48 @@ const PARAGRAPHS = [
 export const OurStory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
+  
+  // Typewriter state
+  const [displayedText, setDisplayedText] = useState('');
+  const typingTimeoutRef = useRef<number | null>(null);
 
   const totalPages = PARAGRAPHS.length;
   const isFirstPage = currentPage === 0;
   const isLastPage = currentPage === totalPages - 1;
+
+  // Determine full text for current page (handling drop cap separately for page 0)
+  const fullText = isFirstPage ? PARAGRAPHS[currentPage].slice(1) : PARAGRAPHS[currentPage];
+
+  useEffect(() => {
+    // If exiting, do not update text (let it fade out with current content)
+    if (isExiting) return;
+
+    // Reset displayed text
+    setDisplayedText('');
+    
+    // Clear any pending timeouts
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+    }
+
+    let charIndex = 0;
+    
+    const type = () => {
+        if (charIndex <= fullText.length) {
+            setDisplayedText(fullText.slice(0, charIndex));
+            charIndex++;
+            // Typing speed: 15ms
+            typingTimeoutRef.current = setTimeout(type, 15) as unknown as number;
+        }
+    };
+
+    // Start typing
+    type();
+
+    return () => {
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [currentPage, isExiting, fullText]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 0 || newPage >= totalPages) return;
@@ -69,17 +107,19 @@ export const OurStory: React.FC = () => {
                        </h2>
                     )}
 
-                    <p className="font-serif text-base md:text-lg lg:text-xl leading-loose md:leading-loose text-gray-700 text-justify">
+                    <div className="font-serif text-base md:text-lg lg:text-xl leading-loose md:leading-loose text-gray-700 text-justify relative min-h-[200px]">
                        {/* Drop Cap */}
                        {isFirstPage && (
-                         <span className="float-left text-4xl md:text-6xl font-script text-brand-flamingo pr-2 md:pr-3 pt-2 leading-[0.8]">F</span>
+                         <span className="float-left text-4xl md:text-6xl font-script text-brand-flamingo pr-2 md:pr-3 pt-2 leading-[0.8] animate-fade-in">F</span>
                        )}
-                       {isFirstPage ? PARAGRAPHS[currentPage].slice(1) : PARAGRAPHS[currentPage]}
-                    </p>
+                       
+                       {/* Typed Text */}
+                       {displayedText}
+                    </div>
 
                     {/* Signature on Last Page */}
-                    {isLastPage && (
-                       <div className="mt-8 md:mt-12 text-center">
+                    {isLastPage && displayedText.length >= fullText.length && (
+                       <div className="mt-8 md:mt-12 text-center animate-fade-in">
                           <div className="w-16 h-[1px] bg-brand-latte/40 mx-auto mb-6"></div>
                           <p className="font-script text-3xl md:text-4xl text-gray-900 relative inline-block">
                             Syahirah Kasim
