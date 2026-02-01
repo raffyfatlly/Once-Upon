@@ -26,8 +26,8 @@
               'brand-cream': '#F2DDD0',
               'brand-pink': '#F2B2AC',
               'brand-flamingo': '#F2A0A0',
-              'brand-gold': '#C5A992', // A darker, richer latte for borders
-              'brand-green': '#4A5D4F', // Luxury dark sage green
+              'brand-gold': '#C5A992',
+              'brand-green': '#4A5D4F',
             },
             fontFamily: {
               serif: ['"Playfair Display"', 'serif'],
@@ -83,16 +83,12 @@
       }
     </script>
     <style>
-      /* Smooth scrolling */
-      html {
-        scroll-behavior: smooth;
-      }
+      html { scroll-behavior: smooth; }
       body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         background-color: #fff;
       }
-      /* Custom Scalloped Border Class */
       .scallop-border {
          background-image: radial-gradient(circle at 50% 100%, white 70%, transparent 71%);
          background-size: 20px 10px;
@@ -101,17 +97,30 @@
          height: 10px;
          width: 100%;
       }
-      .hide-scrollbar::-webkit-scrollbar {
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      
+      /* Global Error Display for debugging White Screens in Prod */
+      #global-error {
         display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: white;
+        z-index: 9999;
+        padding: 40px;
+        font-family: monospace;
+        color: red;
+        white-space: pre-wrap;
+        overflow: auto;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js",
     "firebase/storage": "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js",
@@ -122,6 +131,23 @@
 </script>
 </head>
   <body class="bg-paper text-gray-800">
-    <div id="root"></div>
+    <div id="root">
+       <!-- Loading State -->
+       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #D9C4B8;">
+         <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg>
+       </div>
+    </div>
+    
+    <div id="global-error"></div>
+    
+    <script>
+      window.addEventListener('error', function(e) {
+        const errorDiv = document.getElementById('global-error');
+        if (errorDiv) {
+          errorDiv.style.display = 'block';
+          errorDiv.textContent = 'Application Error:\n' + (e.error ? e.error.stack : e.message);
+        }
+      });
+    </script>
   </body>
 </html>
