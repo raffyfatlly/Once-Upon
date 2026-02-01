@@ -17,10 +17,23 @@ const API_URL = '/api/chip/purchases/';
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess }) => {
   const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
-  // Shipping Logic: Free for testing
-  const shipping = 0;
-  
+  // Shipping State
+  const [region, setRegion] = useState<'west' | 'east'>('west');
+
+  // Shipping Logic
+  // West Malaysia: RM 8 flat, or RM 10 if 3+ items
+  // East Malaysia: RM 12 flat
+  const calculateShipping = () => {
+    if (region === 'east') {
+      return 12;
+    } else {
+      return totalItems >= 3 ? 10 : 8;
+    }
+  };
+
+  const shipping = calculateShipping();
   const total = subtotal + shipping;
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -81,7 +94,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         total: total,
         status: 'pending',
         date: new Date().toISOString(),
-        shippingAddress: `${address}, ${postcode} ${city}, Malaysia`
+        shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`
       });
 
       // 2. Prepare Chip Payload
@@ -95,25 +108,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         },
         purchase: {
           currency: 'MYR',
-          products: cart.map(item => ({
-            name: item.name.substring(0, 256),
-            quantity: item.quantity,
-            price: Math.round(item.price * 100) // Chip expects cents
-          })),
-          ...(shipping > 0 ? {
-             products: [
-               ...cart.map(item => ({
-                 name: item.name.substring(0, 256),
-                 quantity: item.quantity,
-                 price: Math.round(item.price * 100)
-               })),
-               {
-                 name: "Shipping",
-                 quantity: 1,
-                 price: Math.round(shipping * 100)
-               }
-             ]
-          } : {})
+          products: [
+            ...cart.map(item => ({
+              name: item.name.substring(0, 256),
+              quantity: item.quantity,
+              price: Math.round(item.price * 100) // Chip expects cents
+            })),
+            {
+              name: "Shipping Fee",
+              quantity: 1,
+              price: Math.round(shipping * 100)
+            }
+          ]
         },
         reference: orderRef.id,
         // We pass the order ID in the redirect URL so we can update it later
@@ -236,6 +242,24 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                     className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
                    />
                 </div>
+                
+                {/* Region Selection for Shipping Calc */}
+                <div className="relative">
+                  <select 
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value as 'west' | 'east')}
+                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 transition-colors appearance-none cursor-pointer"
+                  >
+                    <option value="west">West Malaysia (Peninsular)</option>
+                    <option value="east">East Malaysia (Sabah & Sarawak)</option>
+                  </select>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
+                       <path d="M5 6L0 0H10L5 6Z" />
+                    </svg>
+                  </div>
+                </div>
+
                 <input type="text" placeholder="Country" defaultValue="Malaysia" disabled className="w-full py-3 bg-transparent border-b border-brand-latte/40 text-gray-400 cursor-not-allowed font-sans" />
               </div>
             </section>
@@ -322,6 +346,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
              <div className="flex justify-between text-sm font-sans text-gray-600">
                 <span>Shipping</span>
                 <span>RM {shipping}</span>
+             </div>
+             <div className="text-[10px] text-gray-400 italic text-right">
+               {region === 'west' 
+                 ? (totalItems >= 3 ? '(West Malaysia Bulk Rate)' : '(West Malaysia Standard Rate)') 
+                 : '(East Malaysia Rate)'}
              </div>
           </div>
           

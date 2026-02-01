@@ -18,9 +18,6 @@ export const CartView: React.FC<CartViewProps> = ({
   const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // Shipping Logic: Free for testing
-  const shipping = 0; 
-
   if (cart.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center bg-white animate-fade-in px-6">
@@ -115,14 +112,17 @@ export const CartView: React.FC<CartViewProps> = ({
                 </div>
                 <div className="flex justify-between text-sm font-sans text-gray-600">
                   <span>Shipping</span>
-                  <span>RM {shipping}</span>
+                  <span className="text-xs italic text-gray-400">Calculated at checkout</span>
                 </div>
               </div>
 
               <div className="border-t border-brand-latte/20 pt-6 mb-8">
                 <div className="flex justify-between items-end">
                   <span className="font-serif text-lg text-gray-900">Total</span>
-                  <span className="font-serif text-2xl text-gray-900">RM {subtotal + shipping}</span>
+                  <div className="text-right">
+                    <span className="font-serif text-2xl text-gray-900">RM {subtotal}</span>
+                    <span className="text-[10px] text-gray-400 block font-sans">+ Shipping</span>
+                  </div>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-2 font-sans text-right">Including taxes & duties</p>
               </div>
