@@ -22,9 +22,10 @@ export interface Order {
   id: string;
   customerName: string;
   customerEmail: string;
+  customerPhone: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'shipped' | 'delivered';
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled';
   date: string;
   shippingAddress: string;
 }

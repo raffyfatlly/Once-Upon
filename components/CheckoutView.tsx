@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,6 +28,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   
   // Form State
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [address, setAddress] = useState('');
@@ -51,7 +52,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     const isConfigured = !!brandId && !!apiKey;
     
     console.log(`[Payment Config] Loaded: ${isConfigured}`);
-    if (brandId) console.log(`[Payment Config] Brand ID found: ${brandId.substring(0, 4)}...`);
     
     if (!isConfigured) {
       console.warn("[Payment Config] Missing keys. Ensure VITE_CHIP_ID and VITE_CHIP_API are set in Vercel and you have REDEPLOYED.");
@@ -76,6 +76,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       const orderRef = await createOrderInDb({
         customerName: `${firstName} ${lastName}`,
         customerEmail: email,
+        customerPhone: phone,
         items: cart,
         total: total,
         status: 'pending',
@@ -89,7 +90,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         brand_id: brandId,
         client: {
           email: email,
-          phone: "0123456789", // Ideally collect phone number in form
+          phone: phone, 
           full_name: `${firstName} ${lastName}`.substring(0, 30) // Chip limit
         },
         purchase: {
@@ -115,9 +116,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
           } : {})
         },
         reference: orderRef.id,
+        // We pass the order ID in the redirect URL so we can update it later
         success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
         failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,
-        cancel_redirect: `${window.location.origin}/#/checkout`,
+        // Redirect cancel to callback too, so we can mark it as 'cancelled' in DB
+        cancel_redirect: `${window.location.origin}/#/payment/callback?result=cancelled&order=${orderRef.id}`,
       };
 
       // 3. Call Chip API via Proxy
@@ -139,7 +142,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
       if (!response.ok) {
         console.error("Chip API Error Response:", data);
-        // Extract helpful error message from Chip response if available
         const msg = data.message || (data.errors ? Object.values(data.errors).join(', ') : "Payment initialization failed");
         throw new Error(msg);
       }
@@ -180,14 +182,24 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
             {/* Contact */}
             <section>
               <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Contact Information</h2>
-              <input 
-                type="email" 
-                placeholder="Email Address" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors"
-              />
+              <div className="flex flex-col gap-6">
+                <input 
+                  type="email" 
+                  placeholder="Email Address" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors"
+                />
+                <input 
+                  type="tel" 
+                  placeholder="Phone Number (e.g. +60123456789)" 
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors"
+                />
+              </div>
             </section>
 
             {/* Shipping */}

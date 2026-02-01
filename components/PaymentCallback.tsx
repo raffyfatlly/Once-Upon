@@ -1,27 +1,49 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { updateOrderStatusInDb } from '../firebase';
 
 export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
-  
-  // Chip usually returns ?status=success or ?status=failed (or similar params depending on config)
-  // For this implementation, we will assume the redirect URL contained a query param we set, e.g. ?result=success
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'cancelled'>('loading');
   
   useEffect(() => {
     const result = searchParams.get('result');
+    const orderId = searchParams.get('order');
     
-    // Simulate verification delay
-    const timer = setTimeout(() => {
-      if (result === 'success') {
-        setStatus('success');
-        // Here you would typically update the order status in Firebase to 'paid'
-      } else {
+    const handleCallback = async () => {
+      if (!orderId) {
         setStatus('failed');
+        return;
       }
+
+      try {
+        if (result === 'success') {
+          await updateOrderStatusInDb(orderId, 'paid');
+          setStatus('success');
+        } else if (result === 'failed') {
+          await updateOrderStatusInDb(orderId, 'failed');
+          setStatus('failed');
+        } else if (result === 'cancelled') {
+          await updateOrderStatusInDb(orderId, 'cancelled');
+          setStatus('cancelled');
+        } else {
+          setStatus('failed');
+        }
+      } catch (error) {
+        console.error("Failed to update order status:", error);
+        // Fallback UI based on result parameter if DB update fails
+        if (result === 'success') setStatus('success');
+        else if (result === 'cancelled') setStatus('cancelled');
+        else setStatus('failed');
+      }
+    };
+
+    // Small delay to ensure smooth transition
+    const timer = setTimeout(() => {
+      handleCallback();
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -34,7 +56,8 @@ export const PaymentCallback: React.FC = () => {
         {status === 'loading' && (
           <div className="flex flex-col items-center">
              <Loader2 size={48} className="text-brand-gold animate-spin mb-6" />
-             <h2 className="font-serif text-2xl text-gray-900">Verifying Payment...</h2>
+             <h2 className="font-serif text-2xl text-gray-900">Processing...</h2>
+             <p className="text-gray-400 text-xs mt-2">Updating your order status</p>
           </div>
         )}
 
@@ -45,7 +68,7 @@ export const PaymentCallback: React.FC = () => {
             </div>
             <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Payment Successful</h1>
             <p className="font-sans text-gray-500 mb-8 leading-relaxed">
-              Thank you for your purchase. Your heirloom is being prepared with care. A confirmation email has been sent.
+              Thank you for your purchase. Your order has been confirmed. A receipt has been sent to your email.
             </p>
             <button 
               onClick={() => navigate('/')}
@@ -77,6 +100,26 @@ export const PaymentCallback: React.FC = () => {
                 className="text-gray-500 px-6 py-3.5 font-sans uppercase tracking-[0.2em] text-[10px] font-bold hover:text-gray-900 transition-colors"
               >
                 Return Home
+              </button>
+            </div>
+          </div>
+        )}
+
+        {status === 'cancelled' && (
+          <div className="flex flex-col items-center animate-slide-up">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+              <AlertCircle size={40} className="text-gray-400" />
+            </div>
+            <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Payment Cancelled</h1>
+            <p className="font-sans text-gray-500 mb-8 leading-relaxed">
+              You have cancelled the payment process. Your items are still in your bag.
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => navigate('/checkout')}
+                className="bg-brand-gold text-white px-8 py-3.5 font-sans uppercase tracking-[0.2em] text-[10px] font-bold hover:bg-brand-flamingo transition-colors rounded-full"
+              >
+                Return to Checkout
               </button>
             </div>
           </div>

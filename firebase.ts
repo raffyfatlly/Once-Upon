@@ -115,6 +115,11 @@ export const updateOrderStatusInDb = async (id: string, status: Order['status'])
   await updateDoc(docRef, { status });
 };
 
+export const deleteOrderFromDb = async (id: string) => {
+  if (!db) throw new Error("Database not connected.");
+  await deleteDoc(doc(db, 'orders', id));
+};
+
 // Storage
 export const uploadImage = async (file: File): Promise<string> => {
   if (!storage) throw new Error("Storage not initialized.");

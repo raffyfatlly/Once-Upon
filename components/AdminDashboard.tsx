@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { Product, SiteConfig, Order } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert } from 'lucide-react';
-import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, uploadImage } from '../firebase';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter } from 'lucide-react';
+import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage } from '../firebase';
 
 interface AdminDashboardProps {
   products: Product[];
@@ -26,16 +26,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'settings'>('products');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'uploading' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   
+  // Sales Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
+
   // Refs for file inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
-  const heroFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [formData, setFormData] = useState<Product>({
@@ -79,7 +83,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       handleDelete(id);
     } else {
       setDeleteConfirmation(id);
-      // Auto-clear confirmation after 3 seconds
       setTimeout(() => {
         setDeleteConfirmation(prev => prev === id ? null : prev);
       }, 3000);
@@ -106,11 +109,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleOrderDeleteClick = (id: string) => {
+    if (deleteOrderConfirmation === id) {
+      handleOrderDelete(id);
+    } else {
+      setDeleteOrderConfirmation(id);
+      setTimeout(() => {
+        setDeleteOrderConfirmation(prev => prev === id ? null : prev);
+      }, 3000);
+    }
+  };
+
+  const handleOrderDelete = async (id: string) => {
+    setDeletingOrderId(id);
+    setDeleteOrderConfirmation(null);
+    try {
+      await deleteOrderFromDb(id);
+    } catch (error: any) {
+      console.error("Delete Order Error:", error);
+      alert("Failed to delete order. Permission denied or error.");
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
+
   const handleSeedData = async () => {
-    console.log("Seed button clicked. Initializing seed process...");
     setIsSeeding(true);
     
-    // Define seed data locally to ensure it exists and avoid import issues
     const SEED_DATA = [
       {
         name: 'The Dream Castle',
@@ -139,26 +164,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ];
 
     try {
-      console.log(`Attempting to upload ${SEED_DATA.length} products...`);
-      
-      // Sequential upload to avoid race conditions and better error tracking
       for (const data of SEED_DATA) {
-        console.log(`Uploading: ${data.name}`);
-        // We cast to any to satisfy the Omit<Product, 'id'> requirement
         await addProductToDb(data as any);
       }
-      
-      console.log("Seed complete.");
       alert("Sample data uploaded successfully! The products should appear shortly.");
-      
     } catch (error: any) {
       console.error("Seed Error:", error);
       const msg = error.message || "Unknown error";
-      
       if (msg.includes("Database not connected")) {
-        alert("Error: Database not connected. Please check your firebase.ts configuration and ensure your API keys are correct.");
-      } else if (msg.includes("permission-denied")) {
-        alert("Error: Permission denied. Please check your Firebase Firestore Security Rules.");
+        alert("Error: Database not connected. Please check your firebase.ts configuration.");
       } else {
         alert(`Error uploading data: ${msg}`);
       }
@@ -174,46 +188,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     
     try {
       if (editingProduct && editingProduct.id) {
-        // Update existing
         const { id, ...data } = formData;
         await updateProductInDb(id, data);
       } else {
-        // Create new
         const { id, ...data } = formData;
         await addProductToDb(data);
       }
-      
       setSaveStatus('saved');
-      
-      // Close form after success
       setTimeout(() => {
         setIsEditing(false);
         setSaveStatus('idle');
       }, 1000);
-
     } catch (error: any) {
       console.error(error);
       setSaveStatus('error');
-      const msg = error.message || "Unknown error";
-      
-      if (msg.includes("permission-denied")) {
-        setErrorMessage("Permission Denied. Please check Firebase Rules.");
-      } else {
-        setErrorMessage(msg);
-      }
+      setErrorMessage(error.message || "Unknown error");
     }
   };
 
-  const handleStatusToggle = async (orderId: string, currentStatus: Order['status']) => {
-    const nextStatus = currentStatus === 'pending' ? 'shipped' : currentStatus === 'shipped' ? 'delivered' : 'pending';
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
-      await updateOrderStatusInDb(orderId, nextStatus);
+      await updateOrderStatusInDb(orderId, newStatus as Order['status']);
     } catch (error) {
       alert("Failed to update status");
     }
   };
 
-  // Image Upload Handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'hero') => {
     const file = e.target.files?.[0];
     if (file) {
@@ -221,12 +221,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         alert("File too large. Please select an image under 5MB.");
         return;
       }
-
       setSaveStatus('uploading');
-      
       try {
         const downloadURL = await uploadImage(file);
-        
         if (type === 'product') {
           setFormData(prev => ({ ...prev, image: downloadURL }));
         } else {
@@ -242,16 +239,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Filter Orders
-  const filteredOrders = orders.filter(order => 
-    order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.id.includes(searchQuery)
-  );
+  // Filter Orders Logic
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = 
+      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.id.includes(searchQuery) ||
+      (order.customerPhone && order.customerPhone.includes(searchQuery));
+      
+    const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
 
   return (
     <div className="min-h-screen bg-brand-grey/10 font-sans pb-20">
-      {/* Admin Nav - Scrollable on mobile */}
+      {/* Admin Nav */}
       <nav className="bg-white border-b border-brand-latte/20 sticky top-0 z-40">
         <div className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center justify-between">
@@ -500,18 +505,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                <div>
                  <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
-                 <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Find customer info and manage orders</p>
+                 <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Manage orders and check status</p>
                </div>
                
-               <div className="relative w-full md:w-64">
-                 <input 
-                   type="text" 
-                   placeholder="Search orders..."
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                   className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-full shadow-sm"
-                 />
-                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+               <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                 {/* Status Filter */}
+                 <div className="relative">
+                   <select 
+                     value={filterStatus}
+                     onChange={(e) => setFilterStatus(e.target.value)}
+                     className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-full text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-40"
+                   >
+                     <option value="all">All Status</option>
+                     {ORDER_STATUSES.map(status => (
+                       <option key={status} value={status}>{status}</option>
+                     ))}
+                   </select>
+                   <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                 </div>
+
+                 {/* Search */}
+                 <div className="relative flex-1 md:w-64">
+                   <input 
+                     type="text" 
+                     placeholder="Search order #, email..."
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-full shadow-sm"
+                   />
+                   <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                 </div>
                </div>
              </div>
 
@@ -519,6 +542,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
                  <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
                  <p className="text-gray-400 text-sm">No orders found.</p>
+                 {(searchQuery || filterStatus !== 'all') && (
+                   <button 
+                    onClick={() => {setSearchQuery(''); setFilterStatus('all');}} 
+                    className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline"
+                   >
+                     Clear Filters
+                   </button>
+                 )}
                </div>
              ) : (
                <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
@@ -531,6 +562,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Items</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Total</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Status</th>
+                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-16">Actions</th>
                        </tr>
                      </thead>
                      <tbody>
@@ -550,6 +582,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                <div>
                                  <div className="font-serif text-gray-900">{order.customerName}</div>
                                  <div className="text-xs text-gray-400">{order.customerEmail}</div>
+                                 {order.customerPhone && (
+                                   <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                     <Phone size={10} /> {order.customerPhone}
+                                   </div>
+                                 )}
                                  <div className="text-[10px] text-gray-400 mt-1 max-w-[150px] leading-tight text-gray-500">{order.shippingAddress}</div>
                                </div>
                              </div>
@@ -567,15 +604,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                              RM {order.total}
                            </td>
                            <td className="p-4">
+                             <div className="relative inline-block">
+                               <select 
+                                 value={order.status}
+                                 onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
+                                 className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${
+                                   order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' :
+                                   order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                                   order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
+                                   order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' :
+                                   order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' :
+                                   'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                 }`}
+                               >
+                                 {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                               </select>
+                               {/* Custom Arrow for select */}
+                               <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                                 <svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current">
+                                   <path d="M4 6L0 0H8L4 6Z" />
+                                 </svg>
+                               </div>
+                             </div>
+                           </td>
+                           <td className="p-4 text-center">
                              <button 
-                               onClick={() => handleStatusToggle(order.id, order.status)}
-                               className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors ${
-                                 order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' :
-                                 order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' :
-                                 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                               }`}
+                                onClick={() => handleOrderDeleteClick(order.id)}
+                                disabled={deletingOrderId === order.id}
+                                className={`p-2 rounded-full transition-all ${
+                                  deleteOrderConfirmation === order.id 
+                                  ? 'bg-red-50 text-red-500 ring-1 ring-red-200 w-full text-[10px] font-bold' 
+                                  : 'text-gray-300 hover:text-red-400 hover:bg-red-50'
+                                }`}
+                                title="Delete Order"
                              >
-                               {order.status}
+                               {deletingOrderId === order.id ? (
+                                 <Loader2 size={14} className="animate-spin mx-auto" />
+                               ) : deleteOrderConfirmation === order.id ? (
+                                 "Confirm?"
+                               ) : (
+                                 <Trash2 size={16} />
+                               )}
                              </button>
                            </td>
                          </tr>
