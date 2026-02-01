@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, Menu, X, Star } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { NAVIGATION_LINKS } from '../constants';
 
 interface NavbarProps {
   cartCount: number;
-  onCartClick: () => void;
-  onNavigate: (view: any) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ cartCount }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [animateCart, setAnimateCart] = useState(false);
   const prevCartCount = useRef(cartCount);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,10 +24,9 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
   }, []);
 
   useEffect(() => {
-    // Only animate if items increased
     if (cartCount > prevCartCount.current) {
       setAnimateCart(true);
-      const timer = setTimeout(() => setAnimateCart(false), 800); // 800ms matches CSS animation
+      const timer = setTimeout(() => setAnimateCart(false), 800);
       return () => clearTimeout(timer);
     }
     prevCartCount.current = cartCount;
@@ -60,12 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
 
           {/* Desktop Left Links */}
           <div className="hidden md:flex space-x-10 items-center flex-1">
-             <button onClick={() => onNavigate('store')} className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Shop</button>
+             <Link to="/" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Shop</Link>
              <a href="#story" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Story</a>
           </div>
 
           {/* Logo */}
-          <div className="flex-none text-center group cursor-pointer" onClick={() => onNavigate('store')}>
+          <div className="flex-none text-center group cursor-pointer" onClick={() => navigate('/')}>
             <div className="flex flex-col items-center">
               <span className="font-serif text-2xl md:text-3xl tracking-[0.1em] text-gray-900 font-bold group-hover:text-brand-flamingo transition-colors duration-500">
                 ONCE UPON
@@ -79,9 +78,9 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
           {/* Desktop Right Links / Cart */}
           <div className="hidden md:flex space-x-10 items-center flex-1 justify-end">
              <a href="#collections" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Collections</a>
-             <button 
+             <Link 
+                to="/cart"
                 className={`relative cursor-pointer group/cart transition-colors duration-300 ${animateCart ? 'text-brand-flamingo animate-cart-alert' : 'text-gray-800 hover:text-brand-flamingo'}`}
-                onClick={onCartClick}
              >
                 <ShoppingBag size={18} strokeWidth={1.5} className="group-hover/cart:fill-brand-flamingo/10 transition-colors" />
                 {cartCount > 0 && (
@@ -89,13 +88,13 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
                     {cartCount}
                   </span>
                 )}
-             </button>
+             </Link>
           </div>
 
           {/* Mobile Cart */}
-          <button 
+          <Link 
+            to="/cart"
             className={`md:hidden relative cursor-pointer p-2 -mr-2 transition-colors duration-300 ${animateCart ? 'text-brand-flamingo animate-cart-alert' : 'text-gray-800'}`}
-            onClick={onCartClick}
           >
             <ShoppingBag size={22} strokeWidth={1.5} />
             {cartCount > 0 && (
@@ -103,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
                 {cartCount}
               </span>
             )}
-          </button>
+          </Link>
         </div>
       </nav>
 
@@ -113,7 +112,6 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
           isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
         }`}
       >
-        {/* Background Texture for Mobile Menu */}
         <div className="absolute inset-0 bg-paper opacity-50 pointer-events-none"></div>
         <div className="absolute inset-0 border-[12px] border-double border-brand-grey pointer-events-none"></div>
 
@@ -130,12 +128,13 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, onCartClick, onNaviga
         <div className="flex-1 flex flex-col justify-center items-center space-y-10 relative">
           <Star className="text-brand-latte/30 w-12 h-12 absolute top-10 right-10 animate-spin-slow" />
           
-          <button 
-            onClick={() => { onNavigate('store'); setIsMobileMenuOpen(false); }}
+          <Link 
+            to="/"
+            onClick={() => setIsMobileMenuOpen(false)}
             className="font-serif text-3xl text-gray-900 hover:text-brand-flamingo hover:italic transition-all duration-300"
           >
             Shop
-          </button>
+          </Link>
           
           {NAVIGATION_LINKS.filter(l => l.name !== 'Shop').map((link, idx) => (
             <a 

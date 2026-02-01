@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface AdminLoginProps {
   onLogin: (email: string) => void;
-  onCancel: () => void;
 }
 
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onCancel }) => {
+export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +17,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onCancel }) => 
     // Simple mock authentication
     if (email === 'user@admin.com') {
       onLogin(email);
+      navigate('/admin/dashboard');
     } else {
       setError('Invalid credentials. Please use user@admin.com');
     }
@@ -24,7 +26,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onCancel }) => 
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-grey/10 relative animate-fade-in">
       <div className="absolute top-8 left-8">
-        <button onClick={onCancel} className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-gray-900">
+        <button onClick={() => navigate('/')} className="text-xs uppercase tracking-widest font-bold text-gray-500 hover:text-gray-900">
           ← Back to Store
         </button>
       </div>

@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 import { CartItem } from '../types';
 import { Lock, CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
 interface CheckoutViewProps {
   cart: CartItem[];
-  onBackToCart: () => void;
   onOrderSuccess: () => void;
 }
 
-export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onBackToCart, onOrderSuccess }) => {
+export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess }) => {
+  const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
   // Shipping Logic: RM 10 for more than 2 items (3+), otherwise RM 8
@@ -51,6 +52,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onBackToCart, 
       setTimeout(() => {
         setIsProcessing(false);
         onOrderSuccess();
+        navigate('/');
       }, 1500);
 
     } catch (err) {
@@ -67,7 +69,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onBackToCart, 
       <div className="w-full lg:w-[58%] px-6 lg:px-24 pt-12 lg:pt-24 pb-12 border-r border-brand-latte/10">
         <div className="max-w-xl mx-auto lg:mx-0">
           
-          <button onClick={onBackToCart} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo mb-10 transition-colors text-xs font-bold uppercase tracking-widest">
+          <button onClick={() => navigate('/cart')} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo mb-10 transition-colors text-xs font-bold uppercase tracking-widest">
             <ArrowLeft size={14} /> Back to Bag
           </button>
 

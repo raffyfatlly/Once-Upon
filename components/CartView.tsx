@@ -2,22 +2,20 @@
 import React from 'react';
 import { CartItem } from '../types';
 import { Minus, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CartViewProps {
   cart: CartItem[];
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
-  onCheckout: () => void;
-  onContinueShopping: () => void;
 }
 
 export const CartView: React.FC<CartViewProps> = ({ 
   cart, 
   onUpdateQuantity, 
-  onRemoveItem, 
-  onCheckout,
-  onContinueShopping 
+  onRemoveItem 
 }) => {
+  const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
   // Shipping Logic: RM 10 for more than 2 items (3+), otherwise RM 8
@@ -30,7 +28,7 @@ export const CartView: React.FC<CartViewProps> = ({
         <h2 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Your bag is empty</h2>
         <p className="font-sans text-gray-500 mb-8 font-light">Discover our collection of modern heirlooms.</p>
         <button 
-          onClick={onContinueShopping}
+          onClick={() => navigate('/')}
           className="bg-brand-flamingo text-white px-8 py-3.5 font-sans uppercase tracking-[0.2em] text-[10px] font-bold hover:bg-brand-gold transition-colors rounded-full"
         >
           Start Shopping
@@ -98,7 +96,7 @@ export const CartView: React.FC<CartViewProps> = ({
             </div>
             
             <button 
-              onClick={onContinueShopping}
+              onClick={() => navigate('/')}
               className="mt-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-brand-flamingo transition-colors group"
             >
               <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
@@ -131,7 +129,7 @@ export const CartView: React.FC<CartViewProps> = ({
               </div>
 
               <button 
-                onClick={onCheckout}
+                onClick={() => navigate('/checkout')}
                 className="w-full bg-brand-flamingo text-white h-14 rounded-full flex items-center justify-center gap-3 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 group"
               >
                 Proceed to Checkout

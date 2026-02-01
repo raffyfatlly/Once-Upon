@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Heart, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Heart, Loader2, Check, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProductDetailsProps {
-  product: Product;
+  products: Product[];
   onAddToCart: (product: Product, quantity: number) => void;
-  onBack: () => void;
 }
 
 const AccordionItem: React.FC<{ title: string; children: React.ReactNode; isOpen: boolean; toggle: () => void }> = ({ title, children, isOpen, toggle }) => (
@@ -23,37 +23,73 @@ const AccordionItem: React.FC<{ title: string; children: React.ReactNode; isOpen
   </div>
 );
 
-export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onAddToCart, onBack }) => {
+export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddToCart }) => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [product, setProduct] = useState<Product | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
   const [openSection, setOpenSection] = useState<string>('material');
   const [quantity, setQuantity] = useState(1);
   const [addState, setAddState] = useState<'idle' | 'loading' | 'success'>('idle');
+
+  useEffect(() => {
+    // In a real app we might fetch from DB here if not in list
+    if (products.length > 0) {
+      const found = products.find(p => p.id === id);
+      setProduct(found);
+      setLoading(false);
+    } else {
+      // Allow time for products to load from Firebase
+      const timer = setTimeout(() => setLoading(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [id, products]);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? '' : section);
   };
 
   const handleAddToCart = () => {
-    if (addState !== 'idle') return;
+    if (addState !== 'idle' || !product) return;
     setAddState('loading');
     
-    // Simulate network delay for better UX
     setTimeout(() => {
       onAddToCart(product, quantity);
       setAddState('success');
-      
-      // Reset after showing success
       setTimeout(() => {
         setAddState('idle');
       }, 2000);
     }, 600);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-24">
+        <Loader2 className="animate-spin text-brand-latte" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-24 pb-12">
+        <AlertCircle size={48} className="text-brand-latte mb-4 opacity-50" />
+        <h2 className="font-serif text-2xl text-gray-900 mb-2">Product Not Found</h2>
+        <p className="text-gray-500 mb-6">The item you are looking for does not exist.</p>
+        <button onClick={() => navigate('/')} className="text-xs font-bold uppercase tracking-widest text-brand-flamingo hover:text-brand-gold">
+          Return to Shop
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white animate-fade-in pt-24 pb-12">
       <div className="container mx-auto px-6 max-w-6xl">
         
         {/* Breadcrumb / Back */}
-        <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo mb-8 transition-colors group">
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo mb-8 transition-colors group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           <span className="font-sans text-[10px] uppercase tracking-widest font-bold">Back to Shop</span>
         </button>
