@@ -40,6 +40,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Refs for file inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
+  const additionalFileInputRef = useRef<HTMLInputElement>(null);
+  const [newAdditionalUrl, setNewAdditionalUrl] = useState('');
 
   // Derive unique collections from existing products for autocomplete
   const existingCollections = Array.from(new Set(products.map(p => p.collection || 'Blankets'))).sort();
@@ -51,6 +53,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     price: 0,
     description: '',
     image: '',
+    additionalImages: [],
     badge: '',
     material: '',
     care: '',
@@ -60,12 +63,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleEdit = (product: Product) => {
     setFormData({
         ...product,
-        collection: product.collection || 'Blankets'
+        collection: product.collection || 'Blankets',
+        additionalImages: product.additionalImages || []
     });
     setEditingProduct(product);
     setIsEditing(true);
     setSaveStatus('idle');
     setErrorMessage('');
+    setNewAdditionalUrl('');
   };
 
   const handleCreate = () => {
@@ -75,6 +80,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       price: 0,
       description: '',
       image: '',
+      additionalImages: [],
       badge: '',
       material: '',
       care: '',
@@ -84,6 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
     setSaveStatus('idle');
     setErrorMessage('');
+    setNewAdditionalUrl('');
   };
 
   const handleDeleteClick = (id: string) => {
@@ -152,7 +159,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         image: 'https://i.postimg.cc/9QVBP1b5/Gemini-Generated-Image-s2ybu4s2ybu4s2yb.png',
         material: '100% Grade-A Mongolian Cashmere',
         care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.',
-        collection: 'Blankets'
+        collection: 'Blankets',
+        additionalImages: []
       },
       {
         name: 'The Parisian Flight',
@@ -161,7 +169,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         image: 'https://i.postimg.cc/cCSNXQ23/Gemini-Generated-Image-tit282tit282tit2.png',
         material: '80% Organic Cotton, 20% Mulberry Silk',
         care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.',
-        collection: 'Blankets'
+        collection: 'Blankets',
+        additionalImages: []
       },
       {
         name: 'The Enchanted Forest',
@@ -170,7 +179,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         image: 'https://i.postimg.cc/vHk8yW1b/Gemini-Generated-Image-ux3s8aux3s8aux3s.png',
         material: '100% Organic Cotton Knit',
         care: 'Machine wash cold. Tumble dry low.',
-        collection: 'Blankets'
+        collection: 'Blankets',
+        additionalImages: []
       }
     ];
 
@@ -225,7 +235,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'hero') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'hero' | 'additional') => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -237,6 +247,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const downloadURL = await uploadImage(file);
         if (type === 'product') {
           setFormData(prev => ({ ...prev, image: downloadURL }));
+        } else if (type === 'additional') {
+          setFormData(prev => ({ 
+            ...prev, 
+            additionalImages: [...(prev.additionalImages || []), downloadURL] 
+          }));
         } else {
           onUpdateSiteConfig({ ...siteConfig, heroImage: downloadURL });
         }
@@ -248,6 +263,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         alert("Upload Failed. Did you enable Firebase Storage in the console?");
       }
     }
+  };
+
+  const addUrlToAdditional = () => {
+    if (!newAdditionalUrl) return;
+    setFormData(prev => ({
+      ...prev,
+      additionalImages: [...(prev.additionalImages || []), newAdditionalUrl]
+    }));
+    setNewAdditionalUrl('');
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      additionalImages: prev.additionalImages?.filter((_, i) => i !== index) || []
+    }));
   };
 
   // Filter Orders Logic
@@ -369,9 +400,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                        <textarea rows={2} className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.care || ''} onChange={e => setFormData({...formData, care: e.target.value})} />
                     </div>
                     
-                    {/* Image Upload/URL Section */}
+                    {/* Main Image Upload/URL Section */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Product Image</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Main Product Image</label>
                       
                       <div className="flex flex-col gap-4">
                         <div className="flex gap-2 items-center">
@@ -435,13 +466,83 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                     </div>
 
+                    {/* Additional Images Section */}
+                    <div className="border-t border-brand-latte/20 pt-6 mt-2">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">Gallery Images (Optional)</label>
+                      
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4">
+                         {/* Existing Additional Images */}
+                         {formData.additionalImages?.map((img, index) => (
+                           <div key={index} className="relative aspect-[3/4] group bg-gray-50 border border-brand-latte/20">
+                              <img src={img} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => removeAdditionalImage(index)}
+                                className="absolute top-1 right-1 bg-white rounded-full p-1 text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                              >
+                                <X size={12} />
+                              </button>
+                           </div>
+                         ))}
+                         
+                         {/* Upload Button Box */}
+                         <div className="aspect-[3/4] border border-dashed border-brand-latte/40 bg-brand-grey/5 flex flex-col items-center justify-center gap-2 p-2 text-center hover:bg-brand-grey/10 transition-colors">
+                            <button 
+                               type="button" 
+                               onClick={() => additionalFileInputRef.current?.click()}
+                               disabled={saveStatus === 'uploading'}
+                               className="text-gray-500 hover:text-brand-flamingo flex flex-col items-center"
+                            >
+                               {saveStatus === 'uploading' ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />} 
+                               <span className="text-[9px] font-bold uppercase mt-1">Upload File</span>
+                            </button>
+                            <input 
+                               type="file" 
+                               accept="image/*" 
+                               ref={additionalFileInputRef}
+                               className="hidden"
+                               onChange={(e) => handleFileUpload(e, 'additional')}
+                            />
+                         </div>
+                      </div>
+
+                      {/* URL Add for Additional */}
+                      <div className="flex gap-2 items-center mt-2">
+                         <div className="relative flex-1">
+                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                               <Link size={14} />
+                             </div>
+                             <input 
+                               className="w-full border p-2 pl-9 pr-4 text-xs focus:border-brand-flamingo outline-none bg-brand-grey/5 font-mono" 
+                               placeholder="Or paste URL for additional image..."
+                               value={newAdditionalUrl} 
+                               onChange={e => setNewAdditionalUrl(e.target.value)}
+                               onKeyDown={e => {
+                                 if (e.key === 'Enter') {
+                                   e.preventDefault();
+                                   addUrlToAdditional();
+                                 }
+                               }}
+                             />
+                         </div>
+                         <button 
+                            type="button" 
+                            onClick={addUrlToAdditional}
+                            disabled={!newAdditionalUrl}
+                            className="bg-brand-latte text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed rounded-[2px]"
+                         >
+                            Add
+                         </button>
+                      </div>
+                    </div>
+
                     {errorMessage && (
                       <div className="bg-red-50 text-red-500 text-xs p-3 rounded flex items-center gap-2">
                         <AlertTriangle size={14} /> {errorMessage}
                       </div>
                     )}
 
-                    <div className="flex flex-col-reverse md:flex-row justify-end gap-3 mt-4">
+                    <div className="flex flex-col-reverse md:flex-row justify-end gap-3 mt-4 border-t border-brand-latte/20 pt-6">
                       <button 
                         type="button" 
                         onClick={() => setIsEditing(false)} 
@@ -499,7 +600,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <h4 className="font-serif text-base md:text-lg text-gray-900 leading-tight mb-1 truncate">{product.name}</h4>
                       <div className="flex flex-col">
                         <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{product.collection || 'Blankets'}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                           <p className="text-[10px] text-gray-400 uppercase tracking-widest">{product.collection || 'Blankets'}</p>
+                           {product.additionalImages && product.additionalImages.length > 0 && (
+                             <span className="text-[10px] text-brand-flamingo bg-brand-pink/10 px-1.5 py-0.5 rounded" title={`${product.additionalImages.length} extra images`}>
+                               +{product.additionalImages.length} img
+                             </span>
+                           )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">

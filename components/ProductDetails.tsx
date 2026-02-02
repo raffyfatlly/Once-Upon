@@ -28,6 +28,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState<string>('');
 
   const [openSection, setOpenSection] = useState<string>('material');
   const [quantity, setQuantity] = useState(1);
@@ -38,6 +39,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
     if (products.length > 0) {
       const found = products.find(p => p.id === id);
       setProduct(found);
+      if (found) setActiveImage(found.image);
       setLoading(false);
     } else {
       // Allow time for products to load from Firebase
@@ -84,6 +86,8 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
     );
   }
 
+  const galleryImages = [product.image, ...(product.additionalImages || [])];
+
   return (
     <div className="min-h-screen bg-white animate-fade-in pt-24 pb-12">
       <div className="container mx-auto px-6 max-w-6xl">
@@ -98,21 +102,33 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
           
           {/* Left: Imagery */}
           <div className="flex flex-col gap-6">
-            <div className="relative aspect-[3/4] bg-brand-grey/5 rounded-[2px] overflow-hidden">
+            <div className="relative aspect-[3/4] bg-brand-grey/5 rounded-[2px] overflow-hidden group border border-brand-latte/10">
                <img 
-                 src={product.image} 
+                 src={activeImage || product.image} 
                  alt={product.name} 
-                 className="w-full h-full object-cover"
+                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                />
             </div>
-            {/* Mock Thumbnails */}
-            <div className="grid grid-cols-4 gap-4">
-               {[1,2,3].map((_, i) => (
-                 <div key={i} className={`aspect-square bg-brand-grey/10 cursor-pointer border ${i === 0 ? 'border-brand-flamingo' : 'border-transparent'} hover:border-brand-latte transition-colors`}>
-                   <img src={product.image} className="w-full h-full object-cover opacity-80 hover:opacity-100" />
-                 </div>
-               ))}
-            </div>
+            {/* Gallery Thumbnails */}
+            {galleryImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-4">
+                 {galleryImages.map((img, i) => (
+                   <div 
+                     key={i} 
+                     onClick={() => setActiveImage(img)}
+                     className={`aspect-square bg-brand-grey/10 cursor-pointer overflow-hidden rounded-[2px] border transition-all duration-300 ${
+                       activeImage === img ? 'border-brand-flamingo ring-1 ring-brand-flamingo/50' : 'border-transparent hover:border-brand-latte'
+                     }`}
+                   >
+                     <img 
+                       src={img} 
+                       className={`w-full h-full object-cover transition-opacity duration-300 ${activeImage === img ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                       alt={`${product.name} view ${i + 1}`}
+                     />
+                   </div>
+                 ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Details */}

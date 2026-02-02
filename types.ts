@@ -5,6 +5,7 @@ export interface Product {
   price: number;
   description: string;
   image: string;
+  additionalImages?: string[];
   badge?: string;
   material?: string;
   care?: string;
