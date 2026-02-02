@@ -19,7 +19,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
       onLogin(email);
       navigate('/admin/dashboard');
     } else {
-      setError('Invalid credentials. Please use user@admin.com');
+      setError('Invalid email or password.');
     }
   };
 
@@ -45,7 +45,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-brand-grey/5 border-b border-brand-latte/50 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo transition-colors"
-              placeholder="user@admin.com"
+              placeholder="Enter your email"
             />
           </div>
           <div>
@@ -55,18 +55,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-brand-grey/5 border-b border-brand-latte/50 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo transition-colors"
-              placeholder="••••••••"
+              placeholder="Enter your password"
             />
           </div>
 
           {error && <p className="text-red-500 text-xs text-center">{error}</p>}
-
-          {/* Helper for Demo */}
-          <div className="bg-brand-latte/10 p-4 rounded text-center">
-             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Demo Credentials</p>
-             <p className="font-mono text-xs text-gray-800">user@admin.com</p>
-             <p className="text-[10px] text-gray-400 mt-1">(Any password works)</p>
-          </div>
 
           <button 
             type="submit"

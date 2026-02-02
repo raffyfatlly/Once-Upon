@@ -31,3 +31,9 @@ export interface Order {
   date: string;
   shippingAddress: string;
 }
+
+export interface Subscriber {
+  id: string;
+  email: string;
+  date: string;
+}

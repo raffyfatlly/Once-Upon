@@ -1,8 +1,7 @@
-
-import React, { useState, useRef } from 'react';
-import { Product, SiteConfig, Order } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, Globe, RefreshCw } from 'lucide-react';
-import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage } from '../firebase';
+import React, { useState, useRef, useEffect } from 'react';
+import { Product, SiteConfig, Order, Subscriber } from '../types';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail } from 'lucide-react';
+import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage, subscribeToSubscribers } from '../firebase';
 
 interface AdminDashboardProps {
   products: Product[];
@@ -23,7 +22,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateOrders,
   onLogout 
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'settings'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'club' | 'settings'>('products');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'uploading' | 'saving' | 'saved' | 'error'>('idle');
@@ -32,21 +31,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   
-  // Sales Filters
+  // Sales Filters & Selection
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
+
+  // Subscribers State
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
 
   // Diagnostic State
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'none' | 'success' | 'fail'>('none');
   const [testMessage, setTestMessage] = useState('');
 
-  // Refs for file inputs
+  // Refs for inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
   const additionalFileInputRef = useRef<HTMLInputElement>(null);
+  const startDateInputRef = useRef<HTMLInputElement>(null);
+  const endDateInputRef = useRef<HTMLInputElement>(null);
   const [newAdditionalUrl, setNewAdditionalUrl] = useState('');
+
+  // Fetch Subscribers
+  useEffect(() => {
+    const unsubscribe = subscribeToSubscribers((subs) => {
+      setSubscribers(subs);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Derive unique collections from existing products for autocomplete
   const existingCollections = Array.from(new Set(products.map(p => p.collection || 'Blankets'))).sort();
@@ -280,13 +296,278 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setTestMessage("Success! Storage is connected and writable.");
     } catch (error: any) {
       setTestResult('fail');
-      setTestMessage(`Failed: ${error.message}`);
+      setTestMessage(error.message || "Unknown error occurred");
     } finally {
       setIsTesting(false);
     }
   };
 
-  // Filter Orders Logic
+  const openDatePicker = (ref: React.RefObject<HTMLInputElement>) => {
+    const element = ref.current;
+    if (element) {
+      try {
+        // Use any cast for check to prevent TS narrowing 'element' to never in else block
+        if (typeof (element as any).showPicker === 'function') {
+          (element as any).showPicker();
+        } else {
+          element.focus();
+          element.click();
+        }
+      } catch (e) {
+        console.error("Date picker error:", e);
+        element.focus();
+      }
+    }
+  };
+
+  // --- Date Range Helper ---
+  const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
+    if (range === 'clear') {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+
+    const end = new Date();
+    const start = new Date();
+
+    if (range === 'today') {
+      // Start is today 00:00, end is today now
+    } else if (range === 'week') {
+      start.setDate(end.getDate() - 7);
+    } else if (range === 'month') {
+      start.setDate(end.getDate() - 30);
+    }
+
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  };
+
+  // --- Printing Functionality ---
+  const handlePrintOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=800');
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Packing Slip #${order.id}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+        <style>
+          body { 
+            font-family: 'Playfair Display', serif; 
+            padding: 40px; 
+            color: #1a1a1a; 
+            max-width: 800px; 
+            margin: 0 auto;
+          }
+          .header { text-align: center; margin-bottom: 60px; }
+          .brand { 
+            font-size: 32px; 
+            letter-spacing: 0.1em; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            margin-bottom: 5px;
+          }
+          .location {
+            font-family: 'Pinyon Script', cursive;
+            font-size: 24px;
+            color: #C5A992; /* brand-goldish */
+            margin-bottom: 20px;
+          }
+          .doc-type {
+            font-family: 'Lato', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+            margin-top: 20px;
+            color: #666;
+          }
+          
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+          .box h4 {
+            font-family: 'Lato', sans-serif;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #999;
+            margin: 0 0 10px 0;
+          }
+          .box p {
+            font-family: 'Lato', sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+            color: #333;
+          }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 60px; }
+          th { 
+            text-align: left; 
+            border-bottom: 1px solid #1a1a1a; 
+            padding: 15px 0; 
+            font-family: 'Lato', sans-serif;
+            font-size: 10px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.15em; 
+            color: #666;
+          }
+          td { 
+            padding: 20px 0; 
+            border-bottom: 1px solid #f5f5f5; 
+            vertical-align: top;
+          }
+          .qty-col { text-align: center; width: 60px; }
+          
+          .item-name { 
+            font-family: 'Playfair Display', serif;
+            font-weight: 600; /* reduced from 700 to 600 */
+            font-size: 14px; /* reduced from 18px */
+            margin-bottom: 4px; 
+            color: #1a1a1a;
+          }
+          .item-detail { 
+            font-family: 'Lato', sans-serif; 
+            font-size: 10px; 
+            color: #888; 
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+          }
+          .qty-value {
+            font-family: 'Lato', sans-serif;
+            font-size: 14px; /* reduced from 16px */
+            font-weight: 400; /* removed bold */
+            color: #333;
+          }
+          
+          .footer { 
+            text-align: center; 
+            margin-top: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .signature {
+            font-family: 'Pinyon Script', cursive;
+            font-size: 28px;
+            color: #C5A992;
+            margin-bottom: 10px;
+          }
+          .ig-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Lato', sans-serif;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #999;
+            text-decoration: none;
+          }
+          .ig-link svg {
+            margin-right: 8px;
+            color: #D9C4B8; /* brand-latte color */
+          }
+          
+          @media print {
+             body { -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="brand">Once Upon</div>
+          <div class="location">Kuala Lumpur</div>
+          <div class="doc-type">Packing Slip</div>
+        </div>
+
+        <div class="grid">
+           <div class="box">
+             <h4>Recipient</h4>
+             <p>
+               <strong>${order.customerName}</strong><br>
+               ${order.shippingAddress}<br>
+               ${order.customerPhone || ''}
+             </p>
+           </div>
+           <div class="box" style="text-align: right;">
+             <h4>Order Details</h4>
+             <p>
+               Order #${order.id}<br>
+               ${new Date(order.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+             </p>
+           </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="qty-col">Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(item => {
+              // Smart Collection Name Logic
+              const collectionName = (!item.collection || item.collection === 'Blankets') 
+                ? 'Blanket Collection' 
+                : item.collection;
+
+              return `
+                <tr>
+                  <td>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-detail">${collectionName}</div>
+                  </td>
+                  <td class="qty-col">
+                    <span class="qty-value">${item.quantity}</span>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div class="signature">Designed with Love</div>
+          <div class="ig-link">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+               <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+               <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+             </svg>
+             @onceuponbysyahirahkasim
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  // --- Bulk Selection & Filter Logic ---
+  
+  // Toggle individual order selection
+  const toggleOrderSelection = (id: string) => {
+    const newSet = new Set(selectedOrders);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedOrders(newSet);
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -296,8 +577,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     
-    return matchesSearch && matchesStatus;
+    // Date Filtering
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const orderDate = new Date(order.date);
+      if (startDate) {
+        matchesDate = matchesDate && orderDate >= new Date(startDate);
+      }
+      if (endDate) {
+        // Set end date to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && orderDate <= end;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
+
+  // Toggle Select All Visible
+  const toggleSelectAll = () => {
+    if (selectedOrders.size === filteredOrders.length && filteredOrders.length > 0) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(filteredOrders.map(o => o.id)));
+    }
+  };
+
+  // --- Bulk Copy Functionality ---
+  const handleBulkCopy = () => {
+    const ordersToExport = orders.filter(o => selectedOrders.has(o.id));
+    if (ordersToExport.length === 0) return;
+
+    const exportText = ordersToExport.map(o => {
+      return `ORDER #${o.id}
+Date: ${new Date(o.date).toLocaleDateString()}
+Customer: ${o.customerName}
+Phone: ${o.customerPhone}
+Address: ${o.shippingAddress}
+Items:
+${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
+--------------------------------`;
+    }).join('\n\n');
+
+    navigator.clipboard.writeText(exportText)
+      .then(() => alert(`${ordersToExport.length} orders copied to clipboard!`))
+      .catch(err => alert("Failed to copy to clipboard"));
+  };
+
+  const handleCopyEmails = () => {
+    if (subscribers.length === 0) return;
+    const emails = subscribers.map(s => s.email).join(', ');
+    navigator.clipboard.writeText(emails)
+      .then(() => alert(`${subscribers.length} emails copied!`))
+      .catch(() => alert("Failed to copy emails."));
+  };
 
   const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
 
@@ -329,11 +663,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               Sales & Customers
             </button>
+             <button 
+              onClick={() => setActiveTab('club')}
+              className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'club' ? 'text-brand-flamingo' : 'text-gray-400'}`}
+            >
+              Mum's Club
+            </button>
             <button 
               onClick={() => setActiveTab('settings')}
               className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'settings' ? 'text-brand-flamingo' : 'text-gray-400'}`}
             >
-              Settings
+              Settings & Fixes
             </button>
             <button onClick={onLogout} className="hidden md:block text-gray-400 hover:text-gray-900 ml-4 border-l border-brand-latte/20 pl-6">
               <LogOut size={18} />
@@ -451,7 +791,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            />
                         </div>
                         
-                        {/* Error Message Display Area - NOW WITH RULES FIX */}
+                        {/* Error Message Display Area */}
                         {saveStatus === 'error' && (
                            <div className="bg-red-50 p-4 rounded border border-red-100 flex flex-col gap-3 mt-2 animate-fade-in">
                              <div className="flex items-center gap-2 text-red-600 font-bold">
@@ -467,11 +807,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                <div className="bg-white p-3 rounded border border-red-100 mt-2">
                                  <h5 className="font-bold text-brand-flamingo mb-2 flex items-center gap-2">
                                    <ShieldAlert size={14} />
-                                   Action Required: Fix Firebase Rules
+                                   Quick Fix Checklist
                                  </h5>
-                                 <p className="mb-3 text-[11px] text-gray-500 leading-relaxed">
-                                   Your Firebase Storage is rejecting the upload. This is because your "Rules" are likely set to require authentication, but this Admin panel is using a mock login (not Firebase Auth).
-                                 </p>
+                                 <ul className="list-disc pl-4 space-y-1 mb-2">
+                                    <li>Check if you created the bucket in Firebase Console.</li>
+                                    <li>If you created a <strong>NEW</strong> bucket, update <code>firebase.ts</code>.</li>
+                                    <li>Check the rules below.</li>
+                                 </ul>
                                  
                                  <div className="relative group">
                                     <div className="bg-gray-900 text-gray-100 p-3 rounded font-mono text-[10px] overflow-x-auto whitespace-pre">
@@ -492,17 +834,6 @@ service firebase.storage {
                                     >
                                       <Copy size={12} />
                                     </button>
-                                 </div>
-                                 <div className="mt-2 text-[10px] text-gray-400 flex items-center gap-1">
-                                    <ExternalLink size={10} />
-                                    <a 
-                                      href="https://console.firebase.google.com/project/once-upon-24709/storage/rules" 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="underline hover:text-brand-flamingo"
-                                    >
-                                      Go to Firebase Console &gt; Storage &gt; Rules
-                                    </a>
                                  </div>
                                </div>
                              </div>
@@ -686,48 +1017,133 @@ service firebase.storage {
         {/* SALES TAB */}
         {activeTab === 'sales' && (
            <div className="animate-fade-in">
-             {/* ... existing sales tab content ... */}
-             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                <div>
                  <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
                  <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Manage orders and check status</p>
                </div>
-               {/* ... (Search and Filter controls same as before) ... */}
-               <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                 <div className="relative">
-                   <select 
-                     value={filterStatus}
-                     onChange={(e) => setFilterStatus(e.target.value)}
-                     className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-full text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-40"
-                   >
-                     <option value="all">All Status</option>
-                     {ORDER_STATUSES.map(status => (
-                       <option key={status} value={status}>{status}</option>
-                     ))}
-                   </select>
-                   <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+               
+               {/* Search, Filter, Date Toolbar */}
+               <div className="flex flex-col w-full md:w-auto gap-4">
+                 
+                 {/* Top Row: Date Selection */}
+                 <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px]">
+                    <div className="flex gap-2 items-center px-2 text-gray-400">
+                      <Clock size={14} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Date Range</span>
+                    </div>
+                    
+                    {/* Quick Select Buttons */}
+                    <div className="flex gap-1">
+                      <button onClick={() => setQuickDate('today')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">Today</button>
+                      <button onClick={() => setQuickDate('week')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">7 Days</button>
+                      <button onClick={() => setQuickDate('month')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">30 Days</button>
+                      {(startDate || endDate) && (
+                        <button onClick={() => setQuickDate('clear')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:bg-red-50 rounded-[2px] transition-colors">Clear</button>
+                      )}
+                    </div>
+
+                    <div className="h-6 w-[1px] bg-brand-latte/20 hidden sm:block"></div>
+
+                    {/* Manual Inputs */}
+                    <div className="flex gap-2 items-center flex-1 w-full sm:w-auto">
+                      <div className="relative w-full sm:w-auto group">
+                        <button 
+                           type="button"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             openDatePicker(startDateInputRef);
+                           }}
+                           className="absolute left-0 top-0 bottom-0 pl-2.5 pr-2 flex items-center justify-center text-brand-latte group-hover:text-brand-flamingo transition-colors z-20 focus:outline-none"
+                        >
+                           <Calendar size={14} />
+                        </button>
+                        <input 
+                           ref={startDateInputRef}
+                           type="date"
+                           value={startDate}
+                           onChange={(e) => setStartDate(e.target.value)}
+                           onClick={() => openDatePicker(startDateInputRef)}
+                           className="relative z-10 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 pl-9 pr-2 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
+                        />
+                      </div>
+                      
+                      <span className="text-gray-300">-</span>
+                      
+                      <div className="relative w-full sm:w-auto group">
+                         <button 
+                           type="button"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             openDatePicker(endDateInputRef);
+                           }}
+                           className="absolute left-0 top-0 bottom-0 pl-2.5 pr-2 flex items-center justify-center text-brand-latte group-hover:text-brand-flamingo transition-colors z-20 focus:outline-none"
+                        >
+                           <Calendar size={14} />
+                        </button>
+                        <input 
+                           ref={endDateInputRef}
+                           type="date"
+                           value={endDate}
+                           onChange={(e) => setEndDate(e.target.value)}
+                           onClick={() => openDatePicker(endDateInputRef)}
+                           className="relative z-10 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 pl-9 pr-2 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
+                        />
+                      </div>
+                    </div>
                  </div>
-                 <div className="relative flex-1 md:w-64">
-                   <input 
-                     type="text" 
-                     placeholder="Search order #, email..."
-                     value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
-                     className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-full shadow-sm"
-                   />
-                   <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                 </div>
+
+                 {/* Bottom Row: Status & Search */}
+                 <div className="flex flex-col md:flex-row gap-3">
+                      <div className="relative">
+                        <select 
+                          value={filterStatus}
+                          onChange={(e) => setFilterStatus(e.target.value)}
+                          className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-32"
+                        >
+                          <option value="all">All Status</option>
+                          {ORDER_STATUSES.map(status => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
+                        </select>
+                        <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                      <div className="relative flex-1">
+                        <input 
+                          type="text" 
+                          placeholder="Search order #, name..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-[2px] shadow-sm"
+                        />
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                      </div>
+                  </div>
                </div>
              </div>
+
+             {/* Bulk Actions Bar */}
+             {selectedOrders.size > 0 && (
+               <div className="bg-brand-flamingo/5 border border-brand-flamingo/20 p-3 rounded-[2px] mb-4 flex items-center justify-between animate-fade-in">
+                  <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">
+                    {selectedOrders.size} Selected
+                  </span>
+                  <button 
+                    onClick={handleBulkCopy}
+                    className="bg-white border border-brand-flamingo/20 text-brand-flamingo px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    <ClipboardCopy size={14} /> Copy Details
+                  </button>
+               </div>
+             )}
              
-             {/* ... (Sales Table same as before) ... */}
              {filteredOrders.length === 0 ? (
                <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
                  <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
-                 <p className="text-gray-400 text-sm">No orders found.</p>
-                 {(searchQuery || filterStatus !== 'all') && (
+                 <p className="text-gray-400 text-sm">No orders found matching filters.</p>
+                 {(searchQuery || filterStatus !== 'all' || startDate || endDate) && (
                    <button 
-                    onClick={() => {setSearchQuery(''); setFilterStatus('all');}} 
+                    onClick={() => {setSearchQuery(''); setFilterStatus('all'); setStartDate(''); setEndDate('');}} 
                     className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline"
                    >
                      Clear Filters
@@ -737,22 +1153,40 @@ service firebase.storage {
              ) : (
                <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
                  <div className="overflow-x-auto">
-                   <table className="w-full text-left border-collapse min-w-[800px]">
+                   <table className="w-full text-left border-collapse min-w-[900px]">
                      <thead>
                        <tr className="bg-brand-grey/10 border-b border-brand-latte/20">
+                         <th className="p-4 w-12">
+                            <button onClick={toggleSelectAll} className="text-gray-400 hover:text-brand-flamingo">
+                              {selectedOrders.size > 0 && selectedOrders.size === filteredOrders.length ? (
+                                <CheckSquare size={16} className="text-brand-flamingo" />
+                              ) : (
+                                <Square size={16} />
+                              )}
+                            </button>
+                         </th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Order ID / Date</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Customer</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Items</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Total</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Status</th>
-                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-16">Actions</th>
+                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-24 text-center">Actions</th>
                        </tr>
                      </thead>
                      <tbody>
                        {filteredOrders.map(order => (
-                         <tr key={order.id} className="border-b border-brand-latte/10 hover:bg-brand-grey/5 transition-colors">
+                         <tr key={order.id} className={`border-b border-brand-latte/10 transition-colors ${selectedOrders.has(order.id) ? 'bg-brand-flamingo/5' : 'hover:bg-brand-grey/5'}`}>
                            <td className="p-4">
-                             <div className="font-mono text-xs text-gray-400">#{order.id.slice(-6)}</div>
+                             <button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">
+                               {selectedOrders.has(order.id) ? (
+                                 <CheckSquare size={16} className="text-brand-flamingo" />
+                               ) : (
+                                 <Square size={16} />
+                               )}
+                             </button>
+                           </td>
+                           <td className="p-4">
+                             <div className="font-mono text-xs text-gray-400">#{order.id}</div>
                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                                <Calendar size={10} /> {new Date(order.date).toLocaleDateString()}
                              </div>
@@ -810,24 +1244,33 @@ service firebase.storage {
                              </div>
                            </td>
                            <td className="p-4 text-center">
-                             <button 
-                                onClick={() => handleOrderDeleteClick(order.id)}
-                                disabled={deletingOrderId === order.id}
-                                className={`p-2 rounded-full transition-all ${
-                                  deleteOrderConfirmation === order.id 
-                                  ? 'bg-red-50 text-red-500 ring-1 ring-red-200 w-full text-[10px] font-bold' 
-                                  : 'text-gray-300 hover:text-red-400 hover:bg-red-50'
-                                }`}
-                                title="Delete Order"
-                             >
-                               {deletingOrderId === order.id ? (
-                                 <Loader2 size={14} className="animate-spin mx-auto" />
-                               ) : deleteOrderConfirmation === order.id ? (
-                                 "Confirm?"
-                               ) : (
-                                 <Trash2 size={16} />
-                               )}
-                             </button>
+                             <div className="flex items-center justify-center gap-2">
+                               <button 
+                                 onClick={() => handlePrintOrder(order)}
+                                 className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors"
+                                 title="Print Packing Slip"
+                               >
+                                 <Printer size={16} />
+                               </button>
+                               <button 
+                                  onClick={() => handleOrderDeleteClick(order.id)}
+                                  disabled={deletingOrderId === order.id}
+                                  className={`p-1.5 rounded transition-all ${
+                                    deleteOrderConfirmation === order.id 
+                                    ? 'bg-red-50 text-red-500 ring-1 ring-red-200' 
+                                    : 'text-gray-300 hover:text-red-400 hover:bg-red-50'
+                                  }`}
+                                  title="Delete Order"
+                               >
+                                 {deletingOrderId === order.id ? (
+                                   <Loader2 size={16} className="animate-spin" />
+                                 ) : deleteOrderConfirmation === order.id ? (
+                                   <Check size={16} />
+                                 ) : (
+                                   <Trash2 size={16} />
+                                 )}
+                               </button>
+                             </div>
                            </td>
                          </tr>
                        ))}
@@ -839,6 +1282,65 @@ service firebase.storage {
            </div>
         )}
 
+        {/* MUM'S CLUB TAB */}
+        {activeTab === 'club' && (
+          <div className="animate-fade-in">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+               <div>
+                 <h2 className="font-serif text-2xl md:text-3xl text-gray-900 flex items-center gap-2">
+                    Mum's Club <Heart size={18} className="text-brand-flamingo fill-brand-flamingo/20" />
+                 </h2>
+                 <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Newsletter Subscribers</p>
+               </div>
+               
+               {subscribers.length > 0 && (
+                 <button 
+                   onClick={handleCopyEmails}
+                   className="flex items-center gap-2 bg-white border border-brand-latte/30 px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:border-brand-flamingo hover:text-brand-flamingo transition-colors shadow-sm"
+                 >
+                   <Copy size={14} /> Copy All Emails
+                 </button>
+               )}
+             </div>
+
+             {subscribers.length === 0 ? (
+               <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
+                 <Mail size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
+                 <p className="text-gray-400 text-sm">No members yet.</p>
+               </div>
+             ) : (
+               <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-left border-collapse">
+                     <thead>
+                       <tr className="bg-brand-grey/10 border-b border-brand-latte/20">
+                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-16">#</th>
+                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Email Address</th>
+                         <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-right">Date Joined</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {subscribers.map((sub, index) => (
+                         <tr key={sub.id} className="border-b border-brand-latte/10 hover:bg-brand-grey/5 transition-colors">
+                           <td className="p-4 text-xs text-gray-400 font-mono">
+                             {index + 1}
+                           </td>
+                           <td className="p-4 font-sans text-sm text-gray-800">
+                             {sub.email}
+                           </td>
+                           <td className="p-4 text-right text-xs text-gray-500">
+                             {new Date(sub.date).toLocaleDateString()}
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             )}
+          </div>
+        )}
+
         {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto animate-fade-in">
@@ -847,7 +1349,7 @@ service firebase.storage {
              <div className="bg-white border border-brand-latte/30 p-8 rounded-[2px] shadow-sm mb-8">
                <h3 className="font-serif text-xl text-gray-900 mb-6 flex items-center gap-3">
                  <Settings className="text-brand-gold" size={20} />
-                 Storage Setup Checklist
+                 New Bucket Setup Guide
                </h3>
                
                <div className="space-y-6">
@@ -856,10 +1358,11 @@ service firebase.storage {
                  <div className="flex gap-4">
                    <div className="w-8 h-8 rounded-full bg-brand-latte/20 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">1</div>
                    <div>
-                     <h4 className="font-bold text-gray-900 text-sm mb-1">Enable Storage in Console</h4>
+                     <h4 className="font-bold text-gray-900 text-sm mb-1">Create Bucket in Console</h4>
                      <p className="text-xs text-gray-500 leading-relaxed">
-                       If you haven't clicked <strong>"Get Started"</strong> in the Storage tab of your Firebase Console, uploads will fail.
+                       If you deleted your old bucket, go to Firebase Console {'>'} Storage. Click <strong>"Get Started"</strong>.
                      </p>
+                     <p className="text-xs text-brand-flamingo font-bold mt-1">Choose "Start in Test Mode" if asked.</p>
                      <a href="https://console.firebase.google.com/project/once-upon-24709/storage" target="_blank" className="text-[10px] font-bold uppercase tracking-widest text-brand-flamingo hover:underline mt-2 inline-flex items-center gap-1">
                        Open Console <ExternalLink size={10} />
                      </a>
@@ -870,9 +1373,9 @@ service firebase.storage {
                  <div className="flex gap-4">
                    <div className="w-8 h-8 rounded-full bg-brand-latte/20 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">2</div>
                    <div>
-                     <h4 className="font-bold text-gray-900 text-sm mb-1">Update Config</h4>
+                     <h4 className="font-bold text-gray-900 text-sm mb-1">Get New URL</h4>
                      <p className="text-xs text-gray-500 leading-relaxed">
-                       The file <code>firebase.ts</code> has been updated with your config.
+                       Copy the URL from the console (usually looks like <code>project-id.firebasestorage.app</code>).
                      </p>
                    </div>
                  </div>
@@ -881,9 +1384,20 @@ service firebase.storage {
                  <div className="flex gap-4">
                    <div className="w-8 h-8 rounded-full bg-brand-latte/20 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">3</div>
                    <div>
-                     <h4 className="font-bold text-gray-900 text-sm mb-1">Set Rules</h4>
+                     <h4 className="font-bold text-gray-900 text-sm mb-1">Update Code</h4>
                      <p className="text-xs text-gray-500 leading-relaxed">
-                       Ensure your Storage Rules allow reads and writes for development.
+                       Open <code>firebase.ts</code> and update the <code>storageBucket</code> property with the new name.
+                     </p>
+                   </div>
+                 </div>
+
+                 {/* Step 4 */}
+                 <div className="flex gap-4">
+                   <div className="w-8 h-8 rounded-full bg-brand-latte/20 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">4</div>
+                   <div>
+                     <h4 className="font-bold text-gray-900 text-sm mb-1">Fix Rules</h4>
+                     <p className="text-xs text-gray-500 leading-relaxed">
+                       Ensure your Storage Rules allow reads and writes.
                      </p>
                      <div className="mt-2 bg-brand-grey/10 p-3 rounded font-mono text-[10px] text-gray-600">
                         allow read, write: if true;

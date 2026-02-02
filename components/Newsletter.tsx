@@ -1,34 +1,43 @@
 
 import React, { useState } from 'react';
-import { Loader2, Check, Mail } from 'lucide-react';
+import { Loader2, Check, Mail, Heart } from 'lucide-react';
+import { addSubscriberToDb } from '../firebase';
 
 export const Newsletter: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setStatus('loading');
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await addSubscriberToDb(email);
       setStatus('success');
       setEmail('');
-    }, 1500);
+    } catch (error) {
+      console.error(error);
+      setStatus('error');
+    }
   };
 
   return (
     <section className="py-24 bg-white relative">
       <div className="container mx-auto px-6 max-w-2xl">
         {/* Invitation Card Look */}
-        <div className="relative p-8 md:p-12 border border-brand-latte/30 bg-brand-grey/5 text-center overflow-hidden transition-all duration-500">
+        <div className="relative p-8 md:p-12 border border-brand-latte/30 bg-brand-grey/5 text-center overflow-hidden transition-all duration-500 rounded-[2px]">
            {/* Inner Border */}
            <div className="absolute inset-2 border border-dashed border-brand-latte/30 pointer-events-none"></div>
            
            <div className="relative z-10 flex flex-col items-center">
-              <h3 className="font-script text-4xl text-brand-gold mb-2">Le Club</h3>
+              <div className="flex items-center gap-2 mb-2">
+                 <Heart size={14} className="text-brand-flamingo fill-brand-flamingo/30" />
+                 <h3 className="font-script text-4xl text-brand-gold">Mum's Club</h3>
+                 <Heart size={14} className="text-brand-flamingo fill-brand-flamingo/30" />
+              </div>
+              
               <h4 className="font-serif text-2xl md:text-3xl text-gray-900 mb-6">Join Our World</h4>
               
               {status === 'success' ? (
@@ -36,7 +45,7 @@ export const Newsletter: React.FC = () => {
                   <div className="w-16 h-16 bg-brand-green/10 rounded-full flex items-center justify-center mb-4 text-brand-green">
                     <Check size={32} />
                   </div>
-                  <p className="font-serif text-xl text-gray-900 mb-2">Thank you</p>
+                  <p className="font-serif text-xl text-gray-900 mb-2">Welcome to the club!</p>
                   <p className="font-sans text-gray-500 font-light text-sm max-w-xs mx-auto text-center leading-relaxed">
                     You have been added to our guest list. Keep an eye on your inbox for something special.
                   </p>
@@ -67,6 +76,10 @@ export const Newsletter: React.FC = () => {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 w-4 h-4 pointer-events-none" />
                     </div>
                     
+                    {status === 'error' && (
+                      <p className="text-xs text-red-500">Something went wrong. Please try again.</p>
+                    )}
+
                     <button 
                       type="submit"
                       disabled={status === 'loading'}
