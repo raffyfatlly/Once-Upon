@@ -105,8 +105,26 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
       id: newOrderId // Store ID inside document as well for easier fetching
     });
 
+    console.log(`Created Order #${newOrderId}`);
     return newOrderRef; // Return the reference so frontend can use .id
   });
+};
+
+// ⚠️ DANGER: Resets the entire order system
+export const resetOrderSystem = async () => {
+  if (!db) throw new Error("Database not connected");
+  
+  // 1. Reset Counter to 999 (so next is 1000)
+  await setDoc(doc(db, 'counters', 'orderCounter'), { current: 999 });
+
+  // 2. Delete ALL existing orders
+  const q = query(collection(db, 'orders'));
+  const snapshot = await getDocs(q);
+  
+  const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(deletePromises);
+  
+  console.log("Order system reset complete.");
 };
 
 export const subscribeToOrders = (callback: (orders: Order[]) => void) => {

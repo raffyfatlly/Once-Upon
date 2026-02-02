@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Product, SiteConfig, Order, Subscriber } from '../types';
 import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail } from 'lucide-react';
-import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage, subscribeToSubscribers } from '../firebase';
+import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage, subscribeToSubscribers, resetOrderSystem } from '../firebase';
 
 interface AdminDashboardProps {
   products: Product[];
@@ -48,12 +49,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'none' | 'success' | 'fail'>('none');
   const [testMessage, setTestMessage] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   // Refs for inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
   const additionalFileInputRef = useRef<HTMLInputElement>(null);
-  const startDateInputRef = useRef<HTMLInputElement>(null);
-  const endDateInputRef = useRef<HTMLInputElement>(null);
   const [newAdditionalUrl, setNewAdditionalUrl] = useState('');
 
   // Fetch Subscribers
@@ -302,21 +302,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const openDatePicker = (ref: React.RefObject<HTMLInputElement>) => {
-    const element = ref.current;
-    if (element) {
-      try {
-        // Use any cast for check to prevent TS narrowing 'element' to never in else block
-        if (typeof (element as any).showPicker === 'function') {
-          (element as any).showPicker();
-        } else {
-          element.focus();
-          element.click();
-        }
-      } catch (e) {
-        console.error("Date picker error:", e);
-        element.focus();
-      }
+  const handleResetOrders = async () => {
+    if (!window.confirm("Are you sure? This will DELETE ALL EXISTING ORDERS and reset the order ID counter to 1000. This cannot be undone.")) return;
+    
+    setIsResetting(true);
+    try {
+      await resetOrderSystem();
+      alert("System Reset! Order counter is now 1000. All old orders are gone.");
+    } catch (error: any) {
+      alert("Reset failed: " + error.message);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -706,6 +702,7 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Product Name</label>
                       <input required className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                     </div>
+                    {/* ... fields ... */}
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Collection</label>
                       <input 
@@ -803,39 +800,6 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
                                <p className="leading-relaxed">
                                   <strong>Reason:</strong> {errorMessage}
                                </p>
-                               
-                               <div className="bg-white p-3 rounded border border-red-100 mt-2">
-                                 <h5 className="font-bold text-brand-flamingo mb-2 flex items-center gap-2">
-                                   <ShieldAlert size={14} />
-                                   Quick Fix Checklist
-                                 </h5>
-                                 <ul className="list-disc pl-4 space-y-1 mb-2">
-                                    <li>Check if you created the bucket in Firebase Console.</li>
-                                    <li>If you created a <strong>NEW</strong> bucket, update <code>firebase.ts</code>.</li>
-                                    <li>Check the rules below.</li>
-                                 </ul>
-                                 
-                                 <div className="relative group">
-                                    <div className="bg-gray-900 text-gray-100 p-3 rounded font-mono text-[10px] overflow-x-auto whitespace-pre">
-{`rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if true;
-    }
-  }
-}`}
-                                    </div>
-                                    <button 
-                                      type="button"
-                                      onClick={() => navigator.clipboard.writeText(`rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      allow read, write: if true;\n    }\n  }\n}`)}
-                                      className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
-                                      title="Copy Rules"
-                                    >
-                                      <Copy size={12} />
-                                    </button>
-                                 </div>
-                               </div>
                              </div>
                            </div>
                         )}
@@ -861,7 +825,6 @@ service firebase.storage {
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">Gallery Images (Optional)</label>
                       
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4">
-                         {/* Existing Additional Images */}
                          {formData.additionalImages?.map((img, index) => (
                            <div key={index} className="relative aspect-[3/4] group bg-gray-50 border border-brand-latte/20">
                               <img src={img} className="w-full h-full object-cover" />
@@ -955,7 +918,7 @@ service firebase.storage {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                 {/* Product List Content (No changes here for brevity, same as previous) */}
+                 {/* Product List Content */}
                  {products.length === 0 && (
                    <div className="col-span-full text-center p-12 text-gray-400 italic flex flex-col items-center">
                      <p className="mb-4">No products found in database.</p>
@@ -1045,49 +1008,33 @@ service firebase.storage {
 
                     <div className="h-6 w-[1px] bg-brand-latte/20 hidden sm:block"></div>
 
-                    {/* Manual Inputs */}
+                    {/* Manual Inputs - Optimized Layout */}
                     <div className="flex gap-2 items-center flex-1 w-full sm:w-auto">
                       <div className="relative w-full sm:w-auto group">
-                        <button 
-                           type="button"
-                           onClick={(e) => {
-                             e.preventDefault();
-                             openDatePicker(startDateInputRef);
-                           }}
-                           className="absolute left-0 top-0 bottom-0 pl-2.5 pr-2 flex items-center justify-center text-brand-latte group-hover:text-brand-flamingo transition-colors z-20 focus:outline-none"
-                        >
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors">
                            <Calendar size={14} />
-                        </button>
+                        </div>
                         <input 
-                           ref={startDateInputRef}
                            type="date"
                            value={startDate}
                            onChange={(e) => setStartDate(e.target.value)}
-                           onClick={() => openDatePicker(startDateInputRef)}
-                           className="relative z-10 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 pl-9 pr-2 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
+                           onClick={(e) => (e.currentTarget as any).showPicker()}
+                           className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
                         />
                       </div>
                       
                       <span className="text-gray-300">-</span>
                       
                       <div className="relative w-full sm:w-auto group">
-                         <button 
-                           type="button"
-                           onClick={(e) => {
-                             e.preventDefault();
-                             openDatePicker(endDateInputRef);
-                           }}
-                           className="absolute left-0 top-0 bottom-0 pl-2.5 pr-2 flex items-center justify-center text-brand-latte group-hover:text-brand-flamingo transition-colors z-20 focus:outline-none"
-                        >
+                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors">
                            <Calendar size={14} />
-                        </button>
+                        </div>
                         <input 
-                           ref={endDateInputRef}
                            type="date"
                            value={endDate}
                            onChange={(e) => setEndDate(e.target.value)}
-                           onClick={() => openDatePicker(endDateInputRef)}
-                           className="relative z-10 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 pl-9 pr-2 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
+                           onClick={(e) => (e.currentTarget as any).showPicker()}
+                           className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
                         />
                       </div>
                     </div>
@@ -1186,7 +1133,7 @@ service firebase.storage {
                              </button>
                            </td>
                            <td className="p-4">
-                             <div className="font-mono text-xs text-gray-400">#{order.id}</div>
+                             <div className="font-mono text-xs text-gray-400 truncate max-w-[80px]" title={order.id}>#{order.id}</div>
                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                                <Calendar size={10} /> {new Date(order.date).toLocaleDateString()}
                              </div>
@@ -1437,6 +1384,32 @@ service firebase.storage {
                    )}
                  </div>
                </div>
+
+               {/* Danger Zone: Reset Order System */}
+               <div className="mt-8 border-t border-brand-latte/20 pt-6">
+                 <h4 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2 text-red-500"><AlertTriangle size={16}/> Danger Zone</h4>
+                 
+                 <div className="bg-red-50 p-4 rounded border border-red-100">
+                   <div className="flex items-center justify-between mb-3">
+                     <span className="text-xs font-bold uppercase tracking-widest text-red-700">Reset Order IDs</span>
+                   </div>
+                   
+                   <p className="text-[10px] text-red-600 mb-4 leading-relaxed">
+                     Your current order IDs might be messy strings because they were created before the sequential logic (1000, 1001) was active. 
+                     Use this to <strong>delete all current orders</strong> and reset the counter to start from 1000 again.
+                   </p>
+                   
+                   <button 
+                     onClick={handleResetOrders}
+                     disabled={isResetting}
+                     className="bg-red-600 text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-[2px] hover:bg-red-700 transition-colors flex items-center gap-2"
+                   >
+                     {isResetting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                     Delete All Orders & Reset Counter
+                   </button>
+                 </div>
+               </div>
+
              </div>
           </div>
         )}
