@@ -271,7 +271,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const msg = error.message || "Upload Failed";
         const isPermissionError = error.code === 'storage/unknown' || 
                                   error.code === 'storage/unauthorized' || 
-                                  msg.includes("Permission Denied");
+                                  msg.includes("Permission Denied") ||
+                                  msg.includes("412");
                                   
         setErrorMessage(isPermissionError ? "Storage Error: Permissions or Config" : msg);
         setErrorDetails(error.code || error.message);
@@ -506,7 +507,14 @@ service firebase.storage {
                                  </div>
                                  <div className="mt-2 text-[10px] text-gray-400 flex items-center gap-1">
                                     <ExternalLink size={10} />
-                                    <span>Go to Firebase Console &gt; Storage &gt; Rules</span>
+                                    <a 
+                                      href="https://console.firebase.google.com/project/once-upon-24709/storage/rules" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="underline hover:text-brand-flamingo"
+                                    >
+                                      Open Rules in Firebase Console
+                                    </a>
                                  </div>
                                </div>
                              </div>

@@ -158,14 +158,26 @@ export const uploadImage = async (file: File): Promise<string> => {
   
   const storageRef = ref(storage, uniqueName);
   
+  // Explicitly set content type to avoid "Precondition Failed" (412) if server expects specific types
+  const metadata = {
+    contentType: file.type,
+  };
+  
   try {
-    const snapshot = await uploadBytes(storageRef, file);
+    const snapshot = await uploadBytes(storageRef, file, metadata);
     return await getDownloadURL(snapshot.ref);
   } catch (error: any) {
     console.error("Firebase Upload Error:", error);
+    
     // Rethrow with a hint if it's the common permission issue
-    if (error.code === 'storage/unknown' || error.code === 'storage/unauthorized') {
-       throw new Error("Permission Denied: Please check your Firebase Storage Rules in the Console.");
+    // Code 412 (Precondition Failed) often means Rules rejected the request header/metadata
+    if (
+      error.code === 'storage/unknown' || 
+      error.code === 'storage/unauthorized' || 
+      error.code === 'storage/retry-limit-exceeded' ||
+      error.message.includes('412')
+    ) {
+       throw new Error("Permission Denied (412): Please check your Firebase Storage Rules in the Console.");
     }
     throw error;
   }
