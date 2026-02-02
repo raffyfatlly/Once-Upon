@@ -104,7 +104,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         client: {
           email: email,
           phone: phone, 
-          full_name: `${firstName} ${lastName}`.substring(0, 30) // Chip limit
+          full_name: `${firstName} ${lastName}`.substring(0, 30), // Chip limit
         },
         purchase: {
           currency: 'MYR',

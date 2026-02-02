@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Product, SiteConfig, Order } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy } from 'lucide-react';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink } from 'lucide-react';
 import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage } from '../firebase';
 
 interface AdminDashboardProps {
@@ -457,21 +457,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         
                         {/* Error Message Display Area */}
                         {saveStatus === 'error' && (
-                           <div className="bg-red-50 p-4 rounded border border-red-100 flex flex-col gap-3 mt-2">
+                           <div className="bg-red-50 p-4 rounded border border-red-100 flex flex-col gap-3 mt-2 animate-fade-in">
                              <div className="flex items-center gap-2 text-red-600 font-bold">
                                <AlertTriangle size={18} />
-                               <span className="text-xs">Upload Failed: {errorMessage}</span>
+                               <span className="text-xs">Upload Failed</span>
                              </div>
                              
-                             <div className="bg-white p-3 rounded border border-red-100 text-xs text-gray-600">
-                               <p className="font-bold mb-2">How to Fix This:</p>
-                               <ol className="list-decimal pl-4 space-y-2 mb-3">
-                                 <li>Ensure <strong>firebase.ts</strong> has your correct Project ID.</li>
-                                 <li>Go to <strong>Firebase Console &gt; Storage &gt; Rules</strong>.</li>
-                                 <li>Paste the rules below to allow public uploads (since this app uses a demo admin):</li>
-                               </ol>
-                               <div className="relative group">
-                                 <div className="bg-gray-900 text-gray-100 p-3 rounded font-mono text-[10px] overflow-x-auto whitespace-pre">
+                             <div className="text-xs text-gray-700 space-y-2">
+                               <p className="leading-relaxed">
+                                  <strong>Reason:</strong> {errorMessage === "Storage Error: Permissions or Config" ? "Permission Denied (Precondition Failed)" : errorMessage}
+                               </p>
+                               <div className="bg-white p-3 rounded border border-red-100">
+                                 <h5 className="font-bold text-brand-flamingo mb-2 flex items-center gap-2">
+                                   <ShieldAlert size={14} />
+                                   Action Required: Update Rules
+                                 </h5>
+                                 <p className="mb-3 text-[11px] text-gray-500 leading-relaxed">
+                                   By default, Firebase blocks uploads from users who aren't signed in with Firebase Auth. 
+                                   Since this app uses a demo admin login, you must allow public read/write access.
+                                 </p>
+                                 
+                                 <div className="relative group">
+                                    <div className="bg-gray-900 text-gray-100 p-3 rounded font-mono text-[10px] overflow-x-auto whitespace-pre">
 {`rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
@@ -480,15 +487,20 @@ service firebase.storage {
     }
   }
 }`}
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={() => navigator.clipboard.writeText(`rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      allow read, write: if true;\n    }\n  }\n}`)}
+                                      className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
+                                      title="Copy to clipboard"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
                                  </div>
-                                 <button 
-                                   type="button"
-                                   onClick={() => navigator.clipboard.writeText(`rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      allow read, write: if true;\n    }\n  }\n}`)}
-                                   className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
-                                   title="Copy to clipboard"
-                                 >
-                                   <Copy size={12} />
-                                 </button>
+                                 <div className="mt-2 text-[10px] text-gray-400 flex items-center gap-1">
+                                    <ExternalLink size={10} />
+                                    <span>Go to Firebase Console &gt; Storage &gt; Rules</span>
+                                 </div>
                                </div>
                              </div>
                            </div>
