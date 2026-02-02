@@ -1,22 +1,26 @@
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, uploadString, StringFormat } from 'firebase/storage';
 import { Product, Order, SiteConfig } from './types';
 
-// Your web app's Firebase configuration
+// ------------------------------------------------------------------
+// CONFIGURATION
+// ------------------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyBAPSOOVmpyt562qKGrM-Vec7szm-vxhEE",
   authDomain: "once-upon-24709.firebaseapp.com",
   projectId: "once-upon-24709",
+  // ------------------------------------------------------------------
+  // YOUR BUCKET URL GOES HERE (Without gs://)
+  // ------------------------------------------------------------------
   storageBucket: "once-upon-24709.firebasestorage.app",
   messagingSenderId: "826735245456",
   appId: "1:826735245456:web:bbde016d660736b6d2c015",
   measurementId: "G-7S9RM4C1NK"
 };
 
-// Initialize Firebase with Error Handling
-// This prevents the "White Screen" if the API key is invalid or network blocks connection
+// Initialize Firebase
 let app;
 let db: any;
 let storage: any;
@@ -25,10 +29,9 @@ try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   storage = getStorage(app);
-  console.log("Firebase initialized successfully for Project ID:", firebaseConfig.projectId);
+  console.log("Firebase initialized.");
 } catch (error) {
   console.error("CRITICAL FIREBASE ERROR:", error);
-  // We leave db undefined. The helpers below must handle this.
 }
 
 export { db, storage };
@@ -37,34 +40,27 @@ export { db, storage };
 
 // Products
 export const subscribeToProducts = (callback: (products: Product[]) => void) => {
-  // Graceful fallback if DB failed to load
   if (!db) {
-    console.warn("Database not initialized. Returning empty product list.");
     callback([]);
     return () => {};
   }
-  
   try {
     const q = query(collection(db, 'products'), orderBy('name'));
     return onSnapshot(q, (snapshot) => {
-      const products = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Product[];
+      const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
       callback(products);
     }, (error) => {
       console.error("Error fetching products:", error);
       callback([]); 
     });
   } catch (e) {
-    console.error("Error setting up product subscription:", e);
     callback([]);
     return () => {};
   }
 };
 
 export const addProductToDb = async (product: Omit<Product, 'id'>) => {
-  if (!db) throw new Error("Database not connected. Check console for initialization errors.");
+  if (!db) throw new Error("Database not connected.");
   return await addDoc(collection(db, 'products'), product);
 };
 
@@ -90,20 +86,13 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
     callback([]);
     return () => {};
   }
-
   try {
     const q = query(collection(db, 'orders'), orderBy('date', 'desc'));
     return onSnapshot(q, (snapshot) => {
-      const orders = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Order[];
+      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
       callback(orders);
-    }, (error) => {
-      console.error("Order subscription error:", error);
     });
   } catch (e) {
-    console.error("Error in subscribeToOrders:", e);
     callback([]);
     return () => {};
   }
@@ -111,25 +100,10 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
 
 export const getCustomerOrders = async (email: string): Promise<Order[]> => {
   if (!db) throw new Error("Database not connected.");
-  
-  // Note: Firestore requires an index for compound queries. 
-  // To keep it simple without manual indexing, we query by email first, 
-  // then filter by phone in the client component logic if needed, 
-  // or just return all for email (security trade-off, but acceptable for MVP).
-  // Here we just fetch by email.
   try {
-    const q = query(
-      collection(db, 'orders'), 
-      where('customerEmail', '==', email)
-    );
-    
+    const q = query(collection(db, 'orders'), where('customerEmail', '==', email));
     const querySnapshot = await getDocs(q);
-    const orders = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Order[];
-    
-    // Sort manually since we can't use orderBy without a composite index on email+date
+    const orders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
     return orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   } catch (error) {
     console.error("Error fetching customer orders:", error);
@@ -152,38 +126,39 @@ export const deleteOrderFromDb = async (id: string) => {
 export const uploadImage = async (file: File): Promise<string> => {
   if (!storage) throw new Error("Storage not initialized.");
   
-  // Sanitize filename to avoid issues with special characters
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
   const uniqueName = `images/${Date.now()}_${sanitizedName}`;
-  
   const storageRef = ref(storage, uniqueName);
   
-  // Explicitly set content type to avoid "Precondition Failed" (412) if server expects specific types
-  const metadata = {
-    contentType: file.type,
-  };
+  // ⚠️ CRITICAL FIX: metadata removed. 
+  // Adding contentType metadata often causes 412 Precondition Failed errors 
+  // on new buckets if rules aren't perfect.
   
   try {
-    const snapshot = await uploadBytes(storageRef, file, metadata);
+    // Attempt 1: Standard UploadBytes
+    const snapshot = await uploadBytes(storageRef, file);
     return await getDownloadURL(snapshot.ref);
   } catch (error: any) {
-    console.error("Firebase Upload Error:", error);
+    console.warn("Standard upload failed, attempting fallback...", error.code);
     
-    // Rethrow with a hint if it's the common permission issue
-    // Code 412 (Precondition Failed) often means Rules rejected the request header/metadata
-    if (
-      error.code === 'storage/unknown' || 
-      error.code === 'storage/unauthorized' || 
-      error.code === 'storage/retry-limit-exceeded' ||
-      error.message.includes('412')
-    ) {
-       throw new Error("Permission Denied (412): Please check your Firebase Storage Rules in the Console.");
+    // Attempt 2: Base64 String Upload (Bypasses some CORS/Header issues)
+    try {
+      const base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      
+      const snapshot = await uploadString(storageRef, base64String, StringFormat.DATA_URL);
+      return await getDownloadURL(snapshot.ref);
+    } catch (fallbackError: any) {
+      console.error("Fallback upload failed:", fallbackError);
+      throw new Error("Upload Failed. Check the 'Fix Rules' box below.");
     }
-    throw error;
   }
 };
 
-// Site Config
 export const updateSiteConfigInDb = async (config: SiteConfig) => {
   console.log("Saving config to DB:", config);
 };
