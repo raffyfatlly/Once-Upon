@@ -143,7 +143,7 @@ const StoreFront: React.FC<{
                </h2>
                
                <div className="relative -mt-2 md:-mt-4">
-                  <span className="font-serif italic text-5xl md:text-7xl text-brand-flamingo block drop-shadow-sm">
+                  <span className="font-script text-6xl md:text-8xl text-brand-flamingo block drop-shadow-sm">
                     Collection
                   </span>
                   <Star size={16} className="absolute top-2 -right-4 md:top-4 md:-right-6 text-brand-gold animate-pulse" fill="currentColor" />
