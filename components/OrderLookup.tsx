@@ -145,7 +145,9 @@ export const OrderLookup: React.FC = () => {
                     <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6 border-b border-brand-latte/10 pb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <span className="font-mono text-sm text-gray-400">#{order.id}</span>
+                          <span className="font-mono text-sm text-gray-400">
+                            {order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}
+                          </span>
                           <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-full ${getStatusColor(order.status)}`}>
                             {order.status}
                           </span>

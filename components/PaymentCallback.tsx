@@ -8,10 +8,13 @@ export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'cancelled'>('loading');
+  const [displayOrderId, setDisplayOrderId] = useState<string>('');
   
   useEffect(() => {
     const result = searchParams.get('result');
     const orderId = searchParams.get('order');
+    
+    if (orderId) setDisplayOrderId(orderId);
     
     const handleCallback = async () => {
       if (!orderId) {
@@ -66,7 +69,12 @@ export const PaymentCallback: React.FC = () => {
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
               <CheckCircle size={40} className="text-brand-green" />
             </div>
-            <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Payment Successful</h1>
+            <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-2">Payment Successful</h1>
+            {displayOrderId && (
+              <div className="mb-4 bg-brand-grey/10 px-4 py-1 rounded-full text-xs font-mono text-gray-500">
+                Order #{displayOrderId}
+              </div>
+            )}
             <p className="font-sans text-gray-500 mb-8 leading-relaxed">
               Thank you for your purchase. Your order has been confirmed. A receipt has been sent to your email.
             </p>

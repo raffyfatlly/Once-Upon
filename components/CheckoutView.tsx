@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone, Tag, X } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,11 +21,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   
   // Shipping State
   const [region, setRegion] = useState<'west' | 'east'>('west');
+  
+  // Voucher State
+  const [voucherCode, setVoucherCode] = useState('');
+  const [isFreeShipping, setIsFreeShipping] = useState(false);
+  const [voucherMessage, setVoucherMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   // Shipping Logic
   // West Malaysia: RM 8 flat, or RM 10 if 3+ items
   // East Malaysia: RM 12 flat
   const calculateShipping = () => {
+    if (isFreeShipping) return 0;
+
     if (region === 'east') {
       return 12;
     } else {
@@ -71,6 +78,29 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     }
   }, []);
 
+  const handleApplyVoucher = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setVoucherMessage(null);
+    
+    const code = voucherCode.trim().toUpperCase();
+    
+    if (!code) return;
+
+    if (code === 'SHIPFREE88') {
+      setIsFreeShipping(true);
+      setVoucherMessage({ type: 'success', text: 'Free shipping applied!' });
+    } else {
+      setIsFreeShipping(false);
+      setVoucherMessage({ type: 'error', text: 'Invalid voucher code.' });
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setVoucherCode('');
+    setIsFreeShipping(false);
+    setVoucherMessage(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -115,7 +145,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               price: Math.round(item.price * 100) // Chip expects cents
             })),
             {
-              name: "Shipping Fee",
+              name: isFreeShipping ? "Shipping Fee (Waived)" : "Shipping Fee",
               quantity: 1,
               price: Math.round(shipping * 100)
             }
@@ -264,6 +294,50 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               </div>
             </section>
 
+            {/* Voucher Section */}
+            <section>
+              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
+                 <Tag size={14} className="text-gray-400" /> Voucher
+              </h2>
+              
+              <div className="relative">
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Enter voucher code" 
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value)}
+                    disabled={isFreeShipping}
+                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                  />
+                  {isFreeShipping ? (
+                    <button 
+                      type="button" 
+                      onClick={handleRemoveVoucher}
+                      className="text-gray-400 hover:text-red-400 transition-colors px-4 border-b border-brand-latte/40"
+                    >
+                      <X size={18} />
+                    </button>
+                  ) : (
+                    <button 
+                      type="button" 
+                      onClick={handleApplyVoucher}
+                      className="bg-gray-900 text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px]"
+                    >
+                      Apply
+                    </button>
+                  )}
+                </div>
+                
+                {voucherMessage && (
+                  <p className={`text-xs mt-2 flex items-center gap-1 ${voucherMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                    {voucherMessage.type === 'success' ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
+                    {voucherMessage.text}
+                  </p>
+                )}
+              </div>
+            </section>
+
             {/* Payment Info */}
             <section>
               <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Payment Method</h2>
@@ -343,15 +417,32 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                 <span>Subtotal</span>
                 <span>RM {subtotal}</span>
              </div>
-             <div className="flex justify-between text-sm font-sans text-gray-600">
+             <div className="flex justify-between text-sm font-sans text-gray-600 items-center">
                 <span>Shipping</span>
-                <span>RM {shipping}</span>
+                {isFreeShipping ? (
+                  <span className="text-brand-green font-bold text-xs uppercase tracking-wider flex items-center gap-1">
+                    <Tag size={10} /> Free
+                  </span>
+                ) : (
+                  <span>RM {shipping}</span>
+                )}
              </div>
-             <div className="text-[10px] text-gray-400 italic text-right">
-               {region === 'west' 
-                 ? (totalItems >= 3 ? '(West Malaysia Bulk Rate)' : '(West Malaysia Standard Rate)') 
-                 : '(East Malaysia Rate)'}
-             </div>
+             
+             {/* Shipping Note */}
+             {!isFreeShipping && (
+               <div className="text-[10px] text-gray-400 italic text-right">
+                 {region === 'west' 
+                   ? (totalItems >= 3 ? '(West Malaysia Bulk Rate)' : '(West Malaysia Standard Rate)') 
+                   : '(East Malaysia Rate)'}
+               </div>
+             )}
+             
+             {/* Applied Voucher Note */}
+             {isFreeShipping && (
+                <div className="text-[10px] text-brand-green italic text-right">
+                  Code SHIPFREE88 applied
+                </div>
+             )}
           </div>
           
           <div className="border-t border-brand-latte/20 pt-6 mt-6">
