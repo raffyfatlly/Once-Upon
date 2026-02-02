@@ -88,7 +88,8 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({
                 <img 
                   src={coverImage} 
                   alt="" 
-                  className="absolute top-0 left-0 h-full w-[200%] max-w-none object-cover opacity-90 object-center md:object-left"
+                  // Changed md:object-left to lg:object-left so tablet uses object-center (mobile behavior)
+                  className="absolute top-0 left-0 h-full w-[200%] max-w-none object-cover opacity-90 object-center lg:object-left"
                 />
                 {/* Overlay to ensure text readability */}
                 <div className="absolute inset-0 bg-[#F2DDD0]/40 mix-blend-multiply"></div>
@@ -116,7 +117,8 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({
                 <img 
                    src={coverImage} 
                    alt="" 
-                   className="absolute top-0 right-0 h-full w-[200%] max-w-none object-cover opacity-90 object-center md:object-right"
+                   // Changed md:object-right to lg:object-right so tablet uses object-center (mobile behavior)
+                   className="absolute top-0 right-0 h-full w-[200%] max-w-none object-cover opacity-90 object-center lg:object-right"
                 />
                  {/* Overlay to ensure text readability */}
                  <div className="absolute inset-0 bg-[#F2DDD0]/40 mix-blend-multiply"></div>
@@ -145,10 +147,10 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({
                 <FairyTaleCastle size={36} strokeWidth={1.5} className="text-gray-600" />
              </div>
 
-             <h1 className="font-serif text-4xl md:text-7xl text-gray-900 mb-2 tracking-widest text-center drop-shadow-lg text-white mix-blend-hard-light">
+             <h1 className="font-serif text-4xl md:text-5xl lg:text-7xl text-gray-900 mb-2 tracking-widest text-center drop-shadow-lg text-white mix-blend-hard-light">
                 ONCE UPON
              </h1>
-             <p className="font-script text-3xl md:text-5xl text-white mb-12 drop-shadow-md transform -rotate-2">
+             <p className="font-script text-3xl md:text-4xl lg:text-5xl text-white mb-12 drop-shadow-md transform -rotate-2">
                 Kuala Lumpur
              </p>
 

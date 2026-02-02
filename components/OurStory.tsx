@@ -68,15 +68,15 @@ export const OurStory: React.FC = () => {
   };
 
   return (
-    <section className="min-h-screen py-6 md:py-32 bg-[#FFFDF9] relative overflow-hidden flex flex-col items-center justify-center">
+    <section className="min-h-screen pt-28 pb-10 md:py-32 bg-[#FFFDF9] relative overflow-hidden flex flex-col items-center justify-start md:justify-center">
        {/* Background decorative elements */}
        <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-white to-transparent opacity-50"></div>
        <div className="absolute inset-0 bg-paper opacity-40 pointer-events-none"></div>
        
-       <div className="container mx-auto px-4 md:px-6 max-w-2xl relative z-10 flex-grow flex flex-col justify-center">
+       <div className="container mx-auto px-4 md:px-6 max-w-2xl relative z-10 flex-grow flex flex-col justify-start md:justify-center">
          
          {/* Book Container */}
-         <div className="relative bg-white shadow-[0_20px_60px_rgba(217,196,184,0.3)] border border-brand-latte/30 rounded-[2px] md:rounded-[4px] h-[85vh] md:h-auto md:aspect-[4/5] md:min-h-[600px] flex flex-col overflow-hidden">
+         <div className="relative bg-white shadow-[0_20px_60px_rgba(217,196,184,0.3)] border border-brand-latte/30 rounded-[2px] md:rounded-[4px] h-[80vh] md:h-auto md:aspect-[4/5] md:min-h-[600px] flex flex-col overflow-hidden">
             
             {/* Book Texture / Spine Shadow */}
             <div className="absolute left-0 top-0 bottom-0 w-4 md:w-8 bg-gradient-to-r from-black/5 to-transparent pointer-events-none z-10"></div>

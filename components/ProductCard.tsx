@@ -7,11 +7,10 @@ interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product, quantity: number) => void;
   onClick: (product: Product) => void;
-  index: number;
+  index?: number;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick, index }) => {
-  const isEven = index % 2 === 0;
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick }) => {
   const [addState, setAddState] = useState<'idle' | 'loading' | 'success'>('idle');
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -26,8 +25,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
     }, 600);
   };
 
+  // Extract only the first sentence for the preview card logic
+  // This ensures "A majestic voyage begins." is displayed while the full text remains in details
+  const descriptionPreview = product.description 
+    ? product.description.split('.')[0] + '.' 
+    : '';
+
   return (
-    <div className={`group relative w-full flex flex-col items-center ${isEven ? 'md:mt-0' : 'md:mt-32'}`}>
+    <div className="group relative w-full flex flex-col items-center">
       
       {/* "Cute" Frame Container - Clickable */}
       <div 
@@ -59,22 +64,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
               </div>
            </div>
 
-           {/* Desktop Floating Action Button */}
-           <div className="absolute bottom-5 right-5 z-30 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hidden md:block">
+           {/* Floating Action Button (Icon) - Hidden by default, reveals on Hover (Desktop) or Click (Mobile) */}
+           <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 z-30 transform transition-all duration-300 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
              <button 
                 onClick={handleAddToCart}
                 disabled={addState !== 'idle'}
-                className={`p-4 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 flex items-center justify-center group/btn
-                  ${addState === 'success' ? 'bg-brand-green text-white' : 'bg-brand-flamingo text-white hover:bg-brand-gold'}
+                className={`p-3 md:p-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center group/btn
+                  ${addState === 'success' ? 'bg-brand-green text-white' : 'bg-brand-flamingo text-white md:hover:bg-brand-gold'}
                 `}
                 aria-label="Add to cart"
              >
                {addState === 'loading' ? (
-                 <Loader2 size={20} className="animate-spin" />
+                 <Loader2 size={18} className="animate-spin" />
                ) : addState === 'success' ? (
-                 <Check size={20} strokeWidth={2} />
+                 <Check size={18} strokeWidth={2} />
                ) : (
-                 <ShoppingBag size={20} strokeWidth={1.5} className="group-hover/btn:animate-bounce" />
+                 <ShoppingBag size={18} strokeWidth={1.5} className="md:group-hover/btn:animate-bounce" />
                )}
              </button>
            </div>
@@ -83,48 +88,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
 
       {/* Product Details - Clickable Title */}
       <div 
-        className="mt-10 text-center px-4 relative z-10 cursor-pointer"
+        className="mt-6 md:mt-10 text-center px-4 relative z-10 cursor-pointer"
         onClick={() => onClick(product)}
       >
         <h3 className="font-serif text-3xl text-gray-900 mb-2 group-hover:text-brand-flamingo transition-colors duration-300">
           {product.name}
         </h3>
-        <p className="font-script text-2xl text-brand-gold mb-4 -mt-1 flex items-center justify-center gap-2">
+        <p className="font-script text-2xl text-brand-gold mb-3 -mt-1 flex items-center justify-center gap-2">
           <Sparkles size={12} className="opacity-50" />
           {(!product.collection || product.collection === 'Blankets') ? 'Blanket Collection' : product.collection}
           <Sparkles size={12} className="opacity-50" />
         </p>
+
+        {/* Product Description - First Sentence Only */}
+        <p className="font-serif text-gray-500 mb-4 max-w-[250px] mx-auto text-sm leading-relaxed line-clamp-2 opacity-80">
+          {descriptionPreview}
+        </p>
         
-        <div className="flex flex-col items-center gap-3">
-          <p className="font-sans text-gray-500 text-xs leading-relaxed max-w-[280px] font-light tracking-wide">
-            {product.description}
-          </p>
-          
-          <div className="mt-3 inline-block px-6 py-2 rounded-full border border-brand-latte/30 bg-white shadow-sm group-hover:border-brand-flamingo/30 transition-colors">
+        <div className="flex flex-col items-center gap-2">
+          <div className="inline-block px-5 py-1.5 rounded-full border border-brand-latte/30 bg-white shadow-sm group-hover:border-brand-flamingo/30 transition-colors">
             <span className="font-sans font-bold text-sm tracking-widest text-gray-900">
               RM {product.price}
             </span>
           </div>
         </div>
       </div>
-      
-       {/* Mobile-only Button */}
-       <button 
-         onClick={handleAddToCart}
-         disabled={addState !== 'idle'}
-         className={`md:hidden mt-8 w-full max-w-xs text-white font-sans uppercase tracking-[0.2em] text-[10px] font-bold py-4 rounded-full shadow-lg transition-all flex items-center justify-center gap-3
-           ${addState === 'success' ? 'bg-brand-green' : 'bg-brand-flamingo active:bg-brand-gold'}
-         `}
-      >
-        {addState === 'loading' ? (
-           <Loader2 size={14} className="animate-spin" />
-        ) : addState === 'success' ? (
-           <><span>Added</span> <Check size={14} /></>
-        ) : (
-           <><span>Add to Bag</span> <ShoppingBag size={14} /></>
-        )}
-      </button>
-
     </div>
   );
 };
