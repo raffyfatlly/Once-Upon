@@ -266,7 +266,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       } catch (error: any) {
         console.error("Upload failed details:", error);
         setSaveStatus('error');
-        setErrorMessage(error.code === 'storage/unknown' ? "Storage Error: Permissions or Config" : (error.message || "Upload Failed"));
+        
+        // Enhance error message detection
+        const msg = error.message || "Upload Failed";
+        const isPermissionError = error.code === 'storage/unknown' || 
+                                  error.code === 'storage/unauthorized' || 
+                                  msg.includes("Permission Denied");
+                                  
+        setErrorMessage(isPermissionError ? "Storage Error: Permissions or Config" : msg);
         setErrorDetails(error.code || error.message);
       }
     }

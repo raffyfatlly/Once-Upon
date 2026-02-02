@@ -151,9 +151,24 @@ export const deleteOrderFromDb = async (id: string) => {
 // Storage
 export const uploadImage = async (file: File): Promise<string> => {
   if (!storage) throw new Error("Storage not initialized.");
-  const storageRef = ref(storage, `images/${Date.now()}_${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  return await getDownloadURL(snapshot.ref);
+  
+  // Sanitize filename to avoid issues with special characters
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const uniqueName = `images/${Date.now()}_${sanitizedName}`;
+  
+  const storageRef = ref(storage, uniqueName);
+  
+  try {
+    const snapshot = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snapshot.ref);
+  } catch (error: any) {
+    console.error("Firebase Upload Error:", error);
+    // Rethrow with a hint if it's the common permission issue
+    if (error.code === 'storage/unknown' || error.code === 'storage/unauthorized') {
+       throw new Error("Permission Denied: Please check your Firebase Storage Rules in the Console.");
+    }
+    throw error;
+  }
 };
 
 // Site Config
