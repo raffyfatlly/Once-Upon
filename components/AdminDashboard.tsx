@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Product, SiteConfig, Order } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter } from 'lucide-react';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Save, Search, User, Package, Calendar, Menu, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy } from 'lucide-react';
 import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage } from '../firebase';
 
 interface AdminDashboardProps {
@@ -28,6 +28,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'uploading' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
     setSaveStatus('idle');
     setErrorMessage('');
+    setErrorDetails(null);
     setNewAdditionalUrl('');
   };
 
@@ -90,6 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsEditing(true);
     setSaveStatus('idle');
     setErrorMessage('');
+    setErrorDetails(null);
     setNewAdditionalUrl('');
   };
 
@@ -206,6 +209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     e.preventDefault();
     setSaveStatus('saving');
     setErrorMessage('');
+    setErrorDetails(null);
     
     try {
       if (editingProduct && editingProduct.id) {
@@ -243,6 +247,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return;
       }
       setSaveStatus('uploading');
+      setErrorMessage('');
+      setErrorDetails(null);
+      
       try {
         const downloadURL = await uploadImage(file);
         if (type === 'product') {
@@ -257,10 +264,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
         setSaveStatus('idle');
       } catch (error: any) {
-        console.error(error);
+        console.error("Upload failed details:", error);
         setSaveStatus('error');
-        setErrorMessage("Image upload failed. Check Firebase Storage permissions.");
-        alert("Upload Failed. Did you enable Firebase Storage in the console?");
+        setErrorMessage(error.code === 'storage/unknown' ? "Storage Error: Permissions or Config" : (error.message || "Upload Failed"));
+        setErrorDetails(error.code || error.message);
       }
     }
   };
@@ -448,7 +455,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            />
                         </div>
                         
-                        <div className="flex items-start gap-4 p-4 border border-dashed border-brand-latte/30 bg-brand-grey/5 rounded-[2px]">
+                        {/* Error Message Display Area */}
+                        {saveStatus === 'error' && (
+                           <div className="bg-red-50 p-4 rounded border border-red-100 flex flex-col gap-3 mt-2">
+                             <div className="flex items-center gap-2 text-red-600 font-bold">
+                               <AlertTriangle size={18} />
+                               <span className="text-xs">Upload Failed: {errorMessage}</span>
+                             </div>
+                             
+                             <div className="bg-white p-3 rounded border border-red-100 text-xs text-gray-600">
+                               <p className="font-bold mb-2">How to Fix This:</p>
+                               <ol className="list-decimal pl-4 space-y-2 mb-3">
+                                 <li>Ensure <strong>firebase.ts</strong> has your correct Project ID.</li>
+                                 <li>Go to <strong>Firebase Console &gt; Storage &gt; Rules</strong>.</li>
+                                 <li>Paste the rules below to allow public uploads (since this app uses a demo admin):</li>
+                               </ol>
+                               <div className="relative group">
+                                 <div className="bg-gray-900 text-gray-100 p-3 rounded font-mono text-[10px] overflow-x-auto whitespace-pre">
+{`rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}`}
+                                 </div>
+                                 <button 
+                                   type="button"
+                                   onClick={() => navigator.clipboard.writeText(`rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      allow read, write: if true;\n    }\n  }\n}`)}
+                                   className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded transition-colors"
+                                   title="Copy to clipboard"
+                                 >
+                                   <Copy size={12} />
+                                 </button>
+                               </div>
+                             </div>
+                           </div>
+                        )}
+
+                        <div className="flex items-start gap-4 p-4 border border-dashed border-brand-latte/30 bg-brand-grey/5 rounded-[2px] mt-2">
                            {formData.image ? (
                              <img src={formData.image} alt="Preview" className="w-20 h-28 object-cover border border-brand-latte/30 bg-white" />
                            ) : (
@@ -535,12 +581,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                          </button>
                       </div>
                     </div>
-
-                    {errorMessage && (
-                      <div className="bg-red-50 text-red-500 text-xs p-3 rounded flex items-center gap-2">
-                        <AlertTriangle size={14} /> {errorMessage}
-                      </div>
-                    )}
 
                     <div className="flex flex-col-reverse md:flex-row justify-end gap-3 mt-4 border-t border-brand-latte/20 pt-6">
                       <button 

@@ -25,7 +25,7 @@ try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   storage = getStorage(app);
-  console.log("Firebase initialized successfully");
+  console.log("Firebase initialized successfully for Project ID:", firebaseConfig.projectId);
 } catch (error) {
   console.error("CRITICAL FIREBASE ERROR:", error);
   // We leave db undefined. The helpers below must handle this.
