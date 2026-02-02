@@ -194,25 +194,29 @@ const StoreFront: React.FC<{
                      CAROUSEL LAYOUT 
                      Mobile: Vertical Stack (flex-col)
                      Desktop: Horizontal Scroll (flex-row + overflow-x-auto)
-                     Update: Added md:justify-center to center products on desktop.
+                     Update: Using a wrapper strategy to ensure items are centered if they fit, 
+                     but scrollable (starting from left) if they overflow.
                   */}
-                  <div className="
-                    flex flex-col gap-24 px-6
-                    md:flex-row md:overflow-x-auto md:gap-16 md:px-12 md:pb-16 md:snap-x hide-scrollbar items-center md:justify-center
-                  ">
-                    {(collectionProducts as Product[]).map((product, index) => (
-                      <div 
-                        key={product.id} 
-                        className="w-full md:min-w-[400px] md:max-w-[400px] md:snap-center flex-shrink-0"
-                      >
-                        <ProductCard 
-                          product={product} 
-                          onAddToCart={(p, qty) => onAddToCart(p, qty)}
-                          onClick={(p) => navigate(`/product/${p.id}`)}
-                          index={index}
-                        />
-                      </div>
-                    ))}
+                  <div className="md:overflow-x-auto md:pb-16 hide-scrollbar w-full">
+                    <div className="
+                      flex flex-col gap-24 px-6
+                      md:flex-row md:gap-16 md:px-12 md:snap-x items-center 
+                      md:w-fit md:min-w-full md:justify-center
+                    ">
+                      {(collectionProducts as Product[]).map((product, index) => (
+                        <div 
+                          key={product.id} 
+                          className="w-full md:min-w-[400px] md:max-w-[400px] md:snap-center flex-shrink-0"
+                        >
+                          <ProductCard 
+                            product={product} 
+                            onAddToCart={(p, qty) => onAddToCart(p, qty)}
+                            onClick={(p) => navigate(`/product/${p.id}`)}
+                            index={index}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
