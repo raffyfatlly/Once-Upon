@@ -80,14 +80,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     badge: '',
     material: '',
     care: '',
-    collection: 'Blankets'
+    collection: 'Blankets',
+    size: ''
   });
 
   const handleEdit = (product: Product) => {
     setFormData({
         ...product,
         collection: product.collection || 'Blankets',
-        additionalImages: product.additionalImages || []
+        additionalImages: product.additionalImages || [],
+        size: product.size || ''
     });
     setEditingProduct(product);
     setIsEditing(true);
@@ -107,7 +109,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       badge: '',
       material: '',
       care: '',
-      collection: 'Blankets'
+      collection: 'Blankets',
+      size: ''
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -178,6 +181,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         material: '100% Grade-A Mongolian Cashmere',
         care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.',
         collection: 'Blankets',
+        size: '120cm x 120cm',
         additionalImages: []
       },
       {
@@ -188,6 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         material: '80% Organic Cotton, 20% Mulberry Silk',
         care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.',
         collection: 'Blankets',
+        size: '110cm x 110cm',
         additionalImages: []
       }
     ];
@@ -731,10 +736,18 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Description</label>
                       <textarea required rows={3} className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                     </div>
-                    <div>
-                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
-                       <input className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.material || ''} onChange={e => setFormData({...formData, material: e.target.value})} />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
+                           <input className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.material || ''} onChange={e => setFormData({...formData, material: e.target.value})} />
+                        </div>
+                        <div>
+                           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Size / Dimensions</label>
+                           <input className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" placeholder="e.g. 120cm x 120cm" value={formData.size || ''} onChange={e => setFormData({...formData, size: e.target.value})} />
+                        </div>
                     </div>
+
                     <div>
                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Care Instructions</label>
                        <textarea rows={2} className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.care || ''} onChange={e => setFormData({...formData, care: e.target.value})} />
@@ -976,10 +989,11 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
             )}
           </>
         )}
-
-        {/* SALES TAB */}
+        
+        {/* ... (Other Tabs remain unchanged) ... */}
         {activeTab === 'sales' && (
            <div className="animate-fade-in">
+             {/* ... Sales Tab Content ... */}
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                <div>
                  <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
@@ -1293,7 +1307,6 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
         {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto animate-fade-in">
-             {/* ... (Existing Settings) ... */}
              <div className="bg-white border border-brand-latte/30 p-8 rounded-[2px] shadow-sm mb-8">
                <h3 className="font-serif text-xl text-gray-900 mb-6 flex items-center gap-3">
                  <Settings className="text-brand-gold" size={20} />
@@ -1301,7 +1314,7 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
                </h3>
                
                <div className="space-y-6">
-                 {/* ... (Steps 1-4) ... */}
+                 {/* Steps 1-4 */}
                  <div className="flex gap-4">
                    <div className="w-8 h-8 rounded-full bg-brand-latte/20 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">1</div>
                    <div>

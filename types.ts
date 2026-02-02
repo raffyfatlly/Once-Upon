@@ -10,6 +10,7 @@ export interface Product {
   material?: string;
   care?: string;
   collection?: string;
+  size?: string;
 }
 
 export interface CartItem extends Product {

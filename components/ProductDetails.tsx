@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProductDetailsProps {
@@ -193,6 +193,17 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                 </div>
               </AccordionItem>
               
+              <AccordionItem 
+                title="Dimensions" 
+                isOpen={openSection === 'size'} 
+                toggle={() => toggleSection('size')}
+              >
+                <div className="flex items-start gap-3">
+                   <Ruler size={16} className="text-brand-latte mt-1 flex-shrink-0" />
+                   <p>{product.size || 'One size fits most.'}</p>
+                </div>
+              </AccordionItem>
+
               <AccordionItem 
                 title="Care Instructions" 
                 isOpen={openSection === 'care'} 
