@@ -402,7 +402,7 @@ const App: React.FC = () => {
       {showIntro && (
         <IntroOverlay 
            onComplete={() => setShowIntro(false)} 
-           coverImage="https://i.postimg.cc/25fThJhj/5na55d0nvnrmt0cw34fsyzg77c.png"
+           coverImage="https://i.postimg.cc/vmfxp5XF/Gemini-Generated-Image-6xc5k56xc5k56xc5-(1).png"
         />
       )}
       

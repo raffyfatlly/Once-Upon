@@ -53,7 +53,7 @@ const FairyTaleCastle = ({ size = 24, className, strokeWidth = 1.5 }: { size?: n
 export const IntroOverlay: React.FC<IntroOverlayProps> = ({ 
   onComplete,
   // Default luxury texture if no image is provided
-  coverImage = "https://i.postimg.cc/25fThJhj/5na55d0nvnrmt0cw34fsyzg77c.png"
+  coverImage = "https://i.postimg.cc/vmfxp5XF/Gemini-Generated-Image-6xc5k56xc5k56xc5-(1).png"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
