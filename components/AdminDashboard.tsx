@@ -1343,26 +1343,29 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
           <div className="max-w-2xl mx-auto animate-fade-in">
              <div className="bg-white border border-brand-latte/30 p-8 rounded-[2px] shadow-sm mb-8">
                
-               {/* PWA Install Section (Top of Settings) */}
-               {deferredPrompt && (
-                  <div className="mb-8 border-b border-brand-latte/20 pb-8">
-                    <h3 className="font-serif text-xl text-gray-900 mb-4 flex items-center gap-3">
-                      <Download className="text-brand-gold" size={20} />
-                      Install App
-                    </h3>
-                    <div className="bg-brand-gold/10 p-4 rounded border border-brand-gold/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                       <p className="text-xs text-gray-600 leading-relaxed max-w-sm">
-                         Install "Once Upon" on your device for easier access. This works best on Android phones or Chrome desktop.
-                       </p>
-                       <button 
-                         onClick={handleInstallClick}
-                         className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-[2px] hover:bg-brand-flamingo transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
-                       >
-                         <Download size={14} /> Download App
-                       </button>
-                    </div>
-                  </div>
-               )}
+               {/* PWA Install Section (Top of Settings) - VISIBLE EVEN IF PROMPT NOT READY FOR DEBUGGING */}
+               <div className="mb-8 border-b border-brand-latte/20 pb-8">
+                 <h3 className="font-serif text-xl text-gray-900 mb-4 flex items-center gap-3">
+                   <Download className="text-brand-gold" size={20} />
+                   Install App
+                 </h3>
+                 <div className="bg-brand-gold/10 p-4 rounded border border-brand-gold/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <p className="text-xs text-gray-600 leading-relaxed max-w-sm">
+                      Install "Once Upon" on your device. 
+                      {deferredPrompt 
+                        ? " Tap below to add to your home screen." 
+                        : " If the button is disabled, the app might already be installed, or your browser (like Safari/Firefox) requires manual adding via the 'Share' menu."}
+                    </p>
+                    <button 
+                      onClick={handleInstallClick}
+                      disabled={!deferredPrompt}
+                      className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-[2px] hover:bg-brand-flamingo transition-colors whitespace-nowrap shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Download size={14} /> 
+                      {deferredPrompt ? "Download App" : "App Ready (or Installed)"}
+                    </button>
+                 </div>
+               </div>
 
                <h3 className="font-serif text-xl text-gray-900 mb-6 flex items-center gap-3">
                  <Settings className="text-brand-gold" size={20} />
