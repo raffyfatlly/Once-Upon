@@ -131,7 +131,7 @@ export const CartView: React.FC<CartViewProps> = ({
                            <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
                               <PenTool size={12} />
                            </div>
-                           <p className="font-serif text-sm text-gray-900">To & From Card</p>
+                           <p className="font-serif text-sm text-gray-900">Gift Card</p>
                         </div>
                         <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
                     </div>

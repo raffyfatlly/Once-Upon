@@ -488,7 +488,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                       <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
                           <PenTool size={12} />
                       </div>
-                      <p className="font-serif text-sm text-gray-900">To & From Card</p>
+                      <p className="font-serif text-sm text-gray-900">Gift Card</p>
                   </div>
                   <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
               </div>
