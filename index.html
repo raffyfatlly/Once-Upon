@@ -24,8 +24,47 @@
     <meta property="twitter:description" content="Vintage-inspired blankets and swaddles for little dreamers. Soft, breathable, and made for dreaming.">
     <meta property="twitter:image" content="https://i.postimg.cc/rm65hx0j/Gemini-Generated-Image-6xc5k56xc5k56xc5-(1)-(2)-(1).png">
 
-    <!-- Favicon -->
-    <link rel="icon" href="https://i.postimg.cc/QM8B2LJw/favicon-32x32.png">
+    <!-- Favicon (Default Square Fallback) -->
+    <link id="favicon" rel="icon" type="image/png" href="https://i.postimg.cc/gJn37wVJ/favicon-32x32.png">
+    <!-- Apple Touch Icon (iOS automatically rounds this) -->
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/gJn37wVJ/favicon-32x32.png">
+
+    <!-- Dynamic Round Favicon Script -->
+    <script>
+      (function() {
+        var imgUrl = "https://i.postimg.cc/gJn37wVJ/favicon-32x32.png";
+        var img = new Image();
+        // Request permission to load image for canvas manipulation
+        img.crossOrigin = "Anonymous";
+        img.src = imgUrl;
+        img.onload = function() {
+          try {
+            var canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            var ctx = canvas.getContext('2d');
+            
+            // Create circular clip path
+            ctx.beginPath();
+            ctx.arc(16, 16, 16, 0, 2 * Math.PI);
+            ctx.closePath();
+            ctx.clip();
+            
+            // Draw image into circle
+            ctx.drawImage(img, 0, 0, 32, 32);
+            
+            // Update the link tag
+            var link = document.getElementById('favicon');
+            if (link) {
+              link.href = canvas.toDataURL();
+            }
+          } catch (e) {
+            // Fallback to square if CORS fails or browser restricts canvas
+            console.log("Could not round favicon programmatically, keeping square fallback.");
+          }
+        };
+      })();
+    </script>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
