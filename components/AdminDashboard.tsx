@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Product, SiteConfig, Order, Subscriber } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail } from 'lucide-react';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail, Download } from 'lucide-react';
 import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage, subscribeToSubscribers, resetOrderSystem } from '../firebase';
 
 interface AdminDashboardProps {
@@ -50,6 +50,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [testResult, setTestResult] = useState<'none' | 'success' | 'fail'>('none');
   const [testMessage, setTestMessage] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Refs for inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +66,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
     return () => unsubscribe();
   }, []);
+
+  // Listen for PWA install prompt event
+  useEffect(() => {
+    const handler = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      console.log("PWA install prompt captured");
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // We've used the prompt, and can't use it again, discard it
+    setDeferredPrompt(null);
+  };
 
   // Derive unique collections from existing products for autocomplete
   // Safety check: ensure products is an array
@@ -1308,6 +1342,28 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto animate-fade-in">
              <div className="bg-white border border-brand-latte/30 p-8 rounded-[2px] shadow-sm mb-8">
+               
+               {/* PWA Install Section (Top of Settings) */}
+               {deferredPrompt && (
+                  <div className="mb-8 border-b border-brand-latte/20 pb-8">
+                    <h3 className="font-serif text-xl text-gray-900 mb-4 flex items-center gap-3">
+                      <Download className="text-brand-gold" size={20} />
+                      Install App
+                    </h3>
+                    <div className="bg-brand-gold/10 p-4 rounded border border-brand-gold/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                       <p className="text-xs text-gray-600 leading-relaxed max-w-sm">
+                         Install "Once Upon" on your device for easier access. This works best on Android phones or Chrome desktop.
+                       </p>
+                       <button 
+                         onClick={handleInstallClick}
+                         className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-[2px] hover:bg-brand-flamingo transition-colors whitespace-nowrap shadow-sm flex items-center gap-2"
+                       >
+                         <Download size={14} /> Download App
+                       </button>
+                    </div>
+                  </div>
+               )}
+
                <h3 className="font-serif text-xl text-gray-900 mb-6 flex items-center gap-3">
                  <Settings className="text-brand-gold" size={20} />
                  New Bucket Setup Guide
