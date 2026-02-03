@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone, Tag, X } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone, Tag, X, Gift, Feather, Sparkles } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -392,7 +392,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         <div className="max-w-md mx-auto lg:mx-0 sticky top-24">
           <h2 className="font-serif text-2xl text-gray-900 mb-8">In Your Bag</h2>
           
-          <div className="space-y-6 mb-10">
+          <div className="space-y-6 mb-8">
             {cart.map(item => (
               <div key={item.id} className="flex gap-4 items-start">
                  <div className="w-16 h-20 bg-white border border-brand-latte/20 relative rounded-[2px] overflow-hidden">
@@ -410,6 +410,33 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                  </div>
               </div>
             ))}
+          </div>
+
+          {/* Complimentary Touches - Checkout Version */}
+          <div className="bg-white border border-brand-latte/20 p-5 rounded-[2px] mb-8">
+            <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3 flex items-center gap-2">
+              <Sparkles size={12} /> The Unboxing Experience
+            </h4>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                      <Gift size={14} />
+                  </div>
+                  <div>
+                    <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
+                    <p className="font-sans text-[9px] text-gray-400 uppercase tracking-wider">Included</p>
+                  </div>
+              </div>
+              <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                      <Feather size={14} />
+                  </div>
+                  <div>
+                    <p className="font-serif text-sm text-gray-900">Handwritten Gift Note</p>
+                    <p className="font-sans text-[9px] text-gray-400 uppercase tracking-wider">Included</p>
+                  </div>
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-brand-latte/20 pt-6 space-y-3">

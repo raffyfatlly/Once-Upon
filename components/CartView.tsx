@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CartItem } from '../types';
-import { Minus, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, Feather } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CartViewProps {
@@ -105,6 +105,31 @@ export const CartView: React.FC<CartViewProps> = ({
             <div className="bg-brand-grey/5 p-8 border border-brand-latte/10 sticky top-28">
               <h3 className="font-serif text-2xl text-gray-900 mb-6">Order Summary</h3>
               
+              {/* Complimentary Touches Section */}
+              <div className="mb-8 pb-6 border-b border-brand-latte/20">
+                 <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Complimentary Touches</h4>
+                 
+                 <div className="flex items-start gap-3 mb-4 group">
+                    <div className="p-2 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                       <Gift size={14} />
+                    </div>
+                    <div>
+                       <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
+                       <p className="font-sans text-[10px] text-gray-500 font-light">Every order arrives beautifully packaged.</p>
+                    </div>
+                 </div>
+
+                 <div className="flex items-start gap-3 group">
+                    <div className="p-2 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                       <Feather size={14} />
+                    </div>
+                    <div>
+                       <p className="font-serif text-sm text-gray-900">Handwritten Gift Note</p>
+                       <p className="font-sans text-[10px] text-gray-500 font-light">Personalized with care.</p>
+                    </div>
+                 </div>
+              </div>
+
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between text-sm font-sans text-gray-600">
                   <span>Subtotal</span>
