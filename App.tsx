@@ -311,6 +311,9 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
   // Initialize showIntro. 
   // If we are landing on the payment callback page (e.g. returning from gateway),
   // we default to FALSE to avoid showing the book cover again.
@@ -352,6 +355,23 @@ const App: React.FC = () => {
     return () => {
       unsubscribeProducts();
       unsubscribeOrders();
+    };
+  }, []);
+
+  // Capture PWA Install Prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      console.log("PWA install prompt captured in App");
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
 
@@ -478,6 +498,7 @@ const App: React.FC = () => {
               onUpdateSiteConfig={setSiteConfig}
               onUpdateOrders={setOrders}
               onLogout={() => setIsAuthenticated(false)}
+              installPrompt={deferredPrompt}
             />
           ) : (
             <AdminLogin onLogin={() => setIsAuthenticated(true)} />

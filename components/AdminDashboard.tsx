@@ -12,6 +12,7 @@ interface AdminDashboardProps {
   onUpdateSiteConfig: (config: SiteConfig) => void;
   onUpdateOrders: (orders: Order[]) => void;
   onLogout: () => void;
+  installPrompt: any;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -21,7 +22,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateProducts, 
   onUpdateSiteConfig,
   onUpdateOrders,
-  onLogout 
+  onLogout,
+  installPrompt
 }) => {
   const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'club' | 'settings'>('products');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -51,8 +53,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [testMessage, setTestMessage] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   
-  // PWA Install Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  // PWA Install State
+  const [installUsed, setInstallUsed] = useState(false);
 
   // Refs for inputs
   const productFileInputRef = useRef<HTMLInputElement>(null);
@@ -67,35 +69,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return () => unsubscribe();
   }, []);
 
-  // Listen for PWA install prompt event
-  useEffect(() => {
-    const handler = (e: any) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      setDeferredPrompt(e);
-      console.log("PWA install prompt captured");
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
-  }, []);
-
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    if (!installPrompt) return;
     
     // Show the install prompt
-    deferredPrompt.prompt();
+    installPrompt.prompt();
     
     // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+    const { outcome } = await installPrompt.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
-    
-    // We've used the prompt, and can't use it again, discard it
-    setDeferredPrompt(null);
+    setInstallUsed(true);
   };
 
   // Derive unique collections from existing products for autocomplete
@@ -1464,17 +1447,17 @@ ${o.items.map(i => `- ${i.quantity}x ${i.name}`).join('\n')}
                  <div className="bg-brand-gold/10 p-4 rounded border border-brand-gold/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <p className="text-xs text-gray-600 leading-relaxed max-w-sm">
                       Install "Once Upon" on your device. 
-                      {deferredPrompt 
+                      {installPrompt && !installUsed
                         ? " Tap below to add to your home screen." 
                         : " If the button is disabled, the app might already be installed, or your browser requires manual adding via the 'Share' menu."}
                     </p>
                     <button 
                       onClick={handleInstallClick}
-                      disabled={!deferredPrompt}
+                      disabled={!installPrompt || installUsed}
                       className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-[2px] hover:bg-brand-flamingo transition-colors whitespace-nowrap shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Download size={14} /> 
-                      {deferredPrompt ? "Download App" : "App Ready"}
+                      {installPrompt && !installUsed ? "Download App" : "App Ready"}
                     </button>
                  </div>
                </div>
