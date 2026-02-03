@@ -2,6 +2,8 @@
 {
   "rewrites": [
     { "source": "/api/chip/(.*)", "destination": "https://gate.chip-in.asia/api/v1/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/manifest.json", "destination": "/manifest.json" },
+    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ]
 }
