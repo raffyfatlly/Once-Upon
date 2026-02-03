@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CartItem } from '../types';
-import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, Feather } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CartViewProps {
@@ -17,7 +17,11 @@ export const CartView: React.FC<CartViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
+  // Packaging Logic: 1 set for every 2 items
+  const packagingCount = Math.ceil(totalItems / 2);
+
   if (cart.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center bg-white animate-fade-in px-6">
@@ -109,25 +113,33 @@ export const CartView: React.FC<CartViewProps> = ({
               <div className="mb-8 pb-6 border-b border-brand-latte/20">
                  <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Complimentary Touches</h4>
                  
-                 <div className="flex items-start gap-3 mb-4 group">
-                    <div className="p-2 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
-                       <Gift size={14} />
+                 <div className="space-y-3">
+                    {/* Item 1: Box */}
+                    <div className="flex items-center justify-between group">
+                        <div className="flex items-center gap-3">
+                           <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                              <Gift size={12} />
+                           </div>
+                           <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
+                        </div>
+                        <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
                     </div>
-                    <div>
-                       <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
-                       <p className="font-sans text-[10px] text-gray-500 font-light">Every order arrives beautifully packaged.</p>
-                    </div>
-                 </div>
 
-                 <div className="flex items-start gap-3 group">
-                    <div className="p-2 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
-                       <Feather size={14} />
-                    </div>
-                    <div>
-                       <p className="font-serif text-sm text-gray-900">Handwritten Gift Note</p>
-                       <p className="font-sans text-[10px] text-gray-500 font-light">Personalized with care.</p>
+                    {/* Item 2: Card */}
+                    <div className="flex items-center justify-between group">
+                        <div className="flex items-center gap-3">
+                           <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                              <PenTool size={12} />
+                           </div>
+                           <p className="font-serif text-sm text-gray-900">To & From Card</p>
+                        </div>
+                        <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
                     </div>
                  </div>
+                 
+                 <p className="mt-4 text-[10px] text-gray-400 italic">
+                    *One set included for every 2 items.
+                 </p>
               </div>
 
               <div className="space-y-4 mb-8">

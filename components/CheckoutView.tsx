@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Phone, Tag, X, Gift, Feather, Sparkles } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,80 +10,68 @@ interface CheckoutViewProps {
   onOrderSuccess: () => void;
 }
 
-// We use the local proxy path now (configured in vite.config.ts and vercel.json)
-// This avoids CORS errors by letting the server handle the cross-origin request
 const API_URL = '/api/chip/purchases/';
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess }) => {
   const navigate = useNavigate();
+  
+  // --- STATE ---
+  const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Contact, 2: Shipping, 3: Finalize
+  
+  // Cart & Totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  
-  // Shipping State
-  const [region, setRegion] = useState<'west' | 'east'>('west');
-  
-  // Voucher State
-  const [voucherCode, setVoucherCode] = useState('');
-  const [isFreeShipping, setIsFreeShipping] = useState(false);
-  const [voucherMessage, setVoucherMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const packagingCount = Math.ceil(totalItems / 2);
 
-  // Shipping Logic
-  // West Malaysia: RM 8 flat, or RM 10 if 3+ items
-  // East Malaysia: RM 12 flat
-  const calculateShipping = () => {
-    if (isFreeShipping) return 0;
-
-    if (region === 'east') {
-      return 12;
-    } else {
-      return totalItems >= 3 ? 10 : 8;
-    }
-  };
-
-  const shipping = calculateShipping();
-  const total = subtotal + shipping;
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
-  
-  // Form State
+  // Form Data
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState('');
   const [city, setCity] = useState('');
+  const [region, setRegion] = useState<'west' | 'east'>('west');
 
-  // Access Environment Variables Directly
-  // Note: We access them directly on import.meta.env so Vite can statically replace them at build time.
+  const [isGift, setIsGift] = useState(false);
+  const [giftTo, setGiftTo] = useState('');
+  const [giftFrom, setGiftFrom] = useState('');
+
+  // Voucher
+  const [voucherCode, setVoucherCode] = useState('');
+  const [isFreeShipping, setIsFreeShipping] = useState(false);
+  const [voucherMessage, setVoucherMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
+  // Payment Status
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState('');
+
+  // --- LOGIC ---
+
+  const calculateShipping = () => {
+    if (isFreeShipping) return 0;
+    if (region === 'east') return 12;
+    return totalItems >= 3 ? 10 : 8;
+  };
+
+  const shippingCost = calculateShipping();
+  const total = subtotal + shippingCost;
+
   const getPaymentConfig = () => {
     const env = (import.meta as any).env;
     return {
-      // Try VITE_ prefix first (Standard), then CHIP_ prefix
       brandId: env.VITE_CHIP_ID || env.CHIP_ID,
       apiKey: env.VITE_CHIP_API || env.CHIP_API
     };
   };
 
-  // Debugging: Check if keys are loaded
-  useEffect(() => {
-    const { brandId, apiKey } = getPaymentConfig();
-    const isConfigured = !!brandId && !!apiKey;
-    
-    console.log(`[Payment Config] Loaded: ${isConfigured}`);
-    
-    if (!isConfigured) {
-      console.warn("[Payment Config] Missing keys. Ensure VITE_CHIP_ID and VITE_CHIP_API are set in Vercel and you have REDEPLOYED.");
-    }
-  }, []);
+  // --- HANDLERS ---
 
   const handleApplyVoucher = (e: React.MouseEvent) => {
     e.preventDefault();
     setVoucherMessage(null);
-    
     const code = voucherCode.trim().toUpperCase();
-    
     if (!code) return;
 
     if (code === 'SHIPFREE88') {
@@ -101,21 +89,30 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     setVoucherMessage(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
+    if (step === 1) {
+      if (email && phone) setStep(2);
+    } else if (step === 2) {
+      if (firstName && lastName && address && postcode && city) setStep(3);
+    } else if (step === 3) {
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = async () => {
     setIsProcessing(true);
     setError('');
 
     const { brandId, apiKey } = getPaymentConfig();
-
     if (!brandId || !apiKey) {
-      setError("Configuration Error: Payment Gateway ID or API Key is missing.");
+      setError("Payment Configuration Missing. Please contact support.");
       setIsProcessing(false);
       return;
     }
     
     try {
-      // 1. Create Order in Database first (status pending)
+      // 1. Create Order in Database
       const orderRef = await createOrderInDb({
         customerName: `${firstName} ${lastName}`,
         customerEmail: email,
@@ -124,17 +121,19 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         total: total,
         status: 'pending',
         date: new Date().toISOString(),
-        shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`
+        shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`,
+        isGift: isGift,
+        giftTo: isGift ? giftTo : undefined,
+        giftFrom: isGift ? giftFrom : undefined
       });
 
-      // 2. Prepare Chip Payload
-      // Note: Amounts must be in cents (integer)
+      // 2. Chip Payload
       const payload = {
         brand_id: brandId,
         client: {
           email: email,
           phone: phone, 
-          full_name: `${firstName} ${lastName}`.substring(0, 30), // Chip limit
+          full_name: `${firstName} ${lastName}`.substring(0, 30),
         },
         purchase: {
           currency: 'MYR',
@@ -142,53 +141,38 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
             ...cart.map(item => ({
               name: item.name.substring(0, 256),
               quantity: item.quantity,
-              price: Math.round(item.price * 100) // Chip expects cents
+              price: Math.round(item.price * 100)
             })),
             {
               name: isFreeShipping ? "Shipping Fee (Waived)" : "Shipping Fee",
               quantity: 1,
-              price: Math.round(shipping * 100)
+              price: Math.round(shippingCost * 100)
             }
           ]
         },
         reference: orderRef.id,
-        // We pass the order ID in the redirect URL so we can update it later
         success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
         failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,
-        // Redirect cancel to callback too, so we can mark it as 'cancelled' in DB
         cancel_redirect: `${window.location.origin}/#/payment/callback?result=cancelled&order=${orderRef.id}`,
       };
 
-      // 3. Call Chip API via Proxy
+      // 3. Call API
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify(payload)
       });
 
       let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        throw new Error(`Invalid response from payment provider: ${response.statusText}`);
-      }
+      try { data = await response.json(); } catch (e) { throw new Error("Payment gateway response invalid."); }
 
       if (!response.ok) {
-        console.error("Chip API Error Response:", data);
-        const msg = data.message || (data.errors ? Object.values(data.errors).join(', ') : "Payment initialization failed");
-        throw new Error(msg);
+        throw new Error(data.message || "Payment initialization failed");
       }
 
       onOrderSuccess(); 
-
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      } else {
-        throw new Error("No checkout URL returned from payment provider");
-      }
+      if (data.checkout_url) window.location.href = data.checkout_url;
+      else throw new Error("No checkout URL returned.");
 
     } catch (err: any) {
       console.error("Payment Error:", err);
@@ -197,213 +181,286 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     }
   };
 
+  // --- RENDER HELPERS ---
+
+  const StepIndicator = () => (
+    <div className="flex items-center gap-4 mb-12">
+      <div className={`flex items-center gap-2 ${step >= 1 ? 'text-gray-900' : 'text-gray-300'}`}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-serif text-xs border ${step >= 1 ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300'}`}>1</div>
+        <span className="text-[10px] font-bold uppercase tracking-widest hidden md:inline">Contact</span>
+      </div>
+      <div className={`h-[1px] w-8 ${step >= 2 ? 'bg-gray-900' : 'bg-gray-200'}`}></div>
+      <div className={`flex items-center gap-2 ${step >= 2 ? 'text-gray-900' : 'text-gray-300'}`}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-serif text-xs border ${step >= 2 ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300'}`}>2</div>
+        <span className="text-[10px] font-bold uppercase tracking-widest hidden md:inline">Shipping</span>
+      </div>
+      <div className={`h-[1px] w-8 ${step >= 3 ? 'bg-gray-900' : 'bg-gray-200'}`}></div>
+      <div className={`flex items-center gap-2 ${step >= 3 ? 'text-gray-900' : 'text-gray-300'}`}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-serif text-xs border ${step >= 3 ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300'}`}>3</div>
+        <span className="text-[10px] font-bold uppercase tracking-widest hidden md:inline">Finalize</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white animate-fade-in flex flex-col lg:flex-row">
       
-      {/* Left Column: Form */}
-      <div className="w-full lg:w-[58%] px-6 lg:px-24 pt-12 lg:pt-24 pb-12 border-r border-brand-latte/10">
-        <div className="max-w-xl mx-auto lg:mx-0">
+      {/* LEFT COLUMN: WIZARD FORM */}
+      <div className="w-full lg:w-[58%] px-6 lg:px-24 pt-12 lg:pt-24 pb-12 border-r border-brand-latte/10 flex flex-col">
+        <div className="max-w-xl mx-auto lg:mx-0 w-full flex-1 flex flex-col">
           
-          <button onClick={() => navigate('/cart')} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo mb-10 transition-colors text-xs font-bold uppercase tracking-widest">
-            <ArrowLeft size={14} /> Back to Bag
-          </button>
-
-          <div className="mb-12">
-            <h1 className="font-serif text-3xl text-gray-900 mb-2">Checkout</h1>
-            <p className="font-sans text-gray-400 text-sm">Please enter your details below.</p>
+          <div className="flex justify-between items-center mb-10">
+             <button onClick={() => step === 1 ? navigate('/cart') : setStep(prev => (prev - 1) as any)} className="flex items-center gap-2 text-gray-400 hover:text-brand-flamingo transition-colors text-xs font-bold uppercase tracking-widest group">
+               <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> 
+               {step === 1 ? 'Back to Bag' : 'Go Back'}
+             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-10">
+          <StepIndicator />
+
+          <form onSubmit={handleNextStep} className="flex-1 flex flex-col relative">
             
-            {/* Contact */}
-            <section>
-              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Contact Information</h2>
-              <div className="flex flex-col gap-6">
-                <input 
-                  type="email" 
-                  placeholder="Email Address" 
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors"
-                />
-                <input 
-                  type="tel" 
-                  placeholder="Phone Number (e.g. +60123456789)" 
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors"
-                />
-              </div>
-            </section>
+            {/* --- STEP 1: CONTACT --- */}
+            {step === 1 && (
+              <div className="animate-fade-in space-y-8">
+                 <div>
+                   <h1 className="font-serif text-3xl text-gray-900 mb-2">Contact Details</h1>
+                   <p className="font-script text-xl text-brand-gold">Where shall we send your receipt?</p>
+                 </div>
 
-            {/* Shipping */}
-            <section>
-              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Shipping Address</h2>
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <input 
-                  type="text" placeholder="First Name" required 
-                  value={firstName} onChange={e => setFirstName(e.target.value)}
-                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
-                />
-                <input 
-                  type="text" placeholder="Last Name" required 
-                  value={lastName} onChange={e => setLastName(e.target.value)}
-                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
-                />
-              </div>
-              <div className="flex flex-col gap-6">
-                <input 
-                  type="text" placeholder="Address" required 
-                  value={address} onChange={e => setAddress(e.target.value)}
-                  className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
-                />
-                <input type="text" placeholder="Apartment, suite, etc. (optional)" className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" />
-                <div className="grid grid-cols-2 gap-6">
-                   <input 
-                    type="text" placeholder="Postcode" required 
-                    value={postcode} onChange={e => setPostcode(e.target.value)}
-                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
-                   />
-                   <input 
-                    type="text" placeholder="City" required 
-                    value={city} onChange={e => setCity(e.target.value)}
-                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
-                   />
-                </div>
-                
-                {/* Region Selection for Shipping Calc */}
-                <div className="relative">
-                  <select 
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value as 'west' | 'east')}
-                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 transition-colors appearance-none cursor-pointer"
-                  >
-                    <option value="west">West Malaysia (Peninsular)</option>
-                    <option value="east">East Malaysia (Sabah & Sarawak)</option>
-                  </select>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
-                       <path d="M5 6L0 0H10L5 6Z" />
-                    </svg>
-                  </div>
-                </div>
+                 <div className="space-y-6">
+                    <div className="relative group">
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 group-focus-within:text-brand-flamingo transition-colors">Email Address</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="hello@example.com"
+                        className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors pl-8"
+                      />
+                      <Mail size={16} className="absolute left-0 bottom-3.5 text-gray-300 group-focus-within:text-brand-flamingo transition-colors" />
+                    </div>
 
-                <input type="text" placeholder="Country" defaultValue="Malaysia" disabled className="w-full py-3 bg-transparent border-b border-brand-latte/40 text-gray-400 cursor-not-allowed font-sans" />
-              </div>
-            </section>
-
-            {/* Voucher Section */}
-            <section>
-              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6 flex items-center gap-2">
-                 <Tag size={14} className="text-gray-400" /> Voucher
-              </h2>
-              
-              <div className="relative">
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Enter voucher code" 
-                    value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value)}
-                    disabled={isFreeShipping}
-                    className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                  />
-                  {isFreeShipping ? (
-                    <button 
-                      type="button" 
-                      onClick={handleRemoveVoucher}
-                      className="text-gray-400 hover:text-red-400 transition-colors px-4 border-b border-brand-latte/40"
-                    >
-                      <X size={18} />
-                    </button>
-                  ) : (
-                    <button 
-                      type="button" 
-                      onClick={handleApplyVoucher}
-                      className="bg-gray-900 text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px]"
-                    >
-                      Apply
-                    </button>
-                  )}
-                </div>
-                
-                {voucherMessage && (
-                  <p className={`text-xs mt-2 flex items-center gap-1 ${voucherMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-                    {voucherMessage.type === 'success' ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
-                    {voucherMessage.text}
-                  </p>
-                )}
-              </div>
-            </section>
-
-            {/* Payment Info */}
-            <section>
-              <h2 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-6">Payment Method</h2>
-              <div className="bg-brand-grey/5 p-6 rounded-[2px] border border-brand-latte/10">
-                <div className="flex flex-col gap-4 items-center justify-center py-4 text-center">
-                  <Lock size={24} className="text-brand-latte mb-2" />
-                  <p className="text-sm text-gray-500 font-light">
-                    You will be redirected to <span className="font-bold text-gray-900">CHIP</span> to securely complete your payment.
-                  </p>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest mt-2">
-                    <CreditCard size={12} /> Secure Gateway
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            {error && (
-              <div className="bg-red-50 p-4 rounded border border-red-100 flex items-start gap-3">
-                <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
-                <div className="flex-1">
-                  <p className="text-red-600 text-sm font-bold mb-1">Payment Initialization Failed</p>
-                  <p className="text-red-500 text-xs">{error}</p>
-                  {(error.includes("Configuration") || error.includes("missing")) && (
-                     <p className="text-red-500 text-[10px] mt-2 italic">
-                       Developer Note: Ensure VITE_CHIP_ID and VITE_CHIP_API are set in Vercel and the app has been redeployed.
-                     </p>
-                  )}
-                </div>
+                    <div className="relative group">
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 group-focus-within:text-brand-flamingo transition-colors">Phone Number</label>
+                      <input 
+                        type="tel" 
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+60..."
+                        className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors pl-8"
+                      />
+                       <Phone size={16} className="absolute left-0 bottom-3.5 text-gray-300 group-focus-within:text-brand-flamingo transition-colors" />
+                    </div>
+                    
+                    <div className="bg-brand-grey/5 p-4 rounded-[2px] border border-brand-latte/10 flex items-start gap-3">
+                       <CheckCircle size={16} className="text-brand-green mt-0.5" />
+                       <p className="text-xs text-gray-500 font-light leading-relaxed">
+                         We'll only use these details to send your order confirmation and shipping updates.
+                       </p>
+                    </div>
+                 </div>
               </div>
             )}
 
-            <button 
-                type="submit"
-                disabled={isProcessing}
-                className="mt-4 w-full bg-brand-flamingo text-white h-14 rounded-full flex items-center justify-center gap-3 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 disabled:opacity-70 disabled:cursor-wait"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> Redirecting to CHIP...
-                  </>
-                ) : (
-                  `Pay RM ${total}`
-                )}
-            </button>
+            {/* --- STEP 2: SHIPPING --- */}
+            {step === 2 && (
+              <div className="animate-fade-in space-y-8">
+                 <div>
+                   <h1 className="font-serif text-3xl text-gray-900 mb-2">Shipping Address</h1>
+                   <p className="font-script text-xl text-brand-gold">Where is this package traveling to?</p>
+                 </div>
+
+                 <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <input 
+                          type="text" placeholder="First Name" required 
+                          value={firstName} onChange={e => setFirstName(e.target.value)}
+                          className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
+                        />
+                      </div>
+                      <div>
+                        <input 
+                          type="text" placeholder="Last Name" required 
+                          value={lastName} onChange={e => setLastName(e.target.value)}
+                          className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <input 
+                        type="text" placeholder="Street Address" required 
+                        value={address} onChange={e => setAddress(e.target.value)}
+                        className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors pl-6" 
+                      />
+                      <MapPin size={16} className="absolute left-0 top-3.5 text-gray-300" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                       <input 
+                        type="text" placeholder="Postcode" required 
+                        value={postcode} onChange={e => setPostcode(e.target.value)}
+                        className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
+                       />
+                       <input 
+                        type="text" placeholder="City" required 
+                        value={city} onChange={e => setCity(e.target.value)}
+                        className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors" 
+                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Region</label>
+                      <div className="relative">
+                        <select 
+                          value={region}
+                          onChange={(e) => setRegion(e.target.value as 'west' | 'east')}
+                          className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 transition-colors appearance-none cursor-pointer"
+                        >
+                          <option value="west">West Malaysia (Peninsular)</option>
+                          <option value="east">East Malaysia (Sabah & Sarawak)</option>
+                        </select>
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M5 6L0 0H10L5 6Z" /></svg>
+                        </div>
+                      </div>
+                    </div>
+                 </div>
+              </div>
+            )}
+
+            {/* --- STEP 3: FINALIZE --- */}
+            {step === 3 && (
+              <div className="animate-fade-in space-y-8">
+                 <div>
+                   <h1 className="font-serif text-3xl text-gray-900 mb-2">Finishing Touches</h1>
+                   <p className="font-script text-xl text-brand-gold">Make it special.</p>
+                 </div>
+
+                 {/* Gift Section */}
+                 <div className="bg-brand-grey/5 p-6 rounded-[2px] border border-brand-latte/10">
+                    <div className="flex items-center gap-3 mb-4">
+                       <input 
+                          id="isGift"
+                          type="checkbox"
+                          checked={isGift}
+                          onChange={(e) => setIsGift(e.target.checked)}
+                          className="w-4 h-4 text-brand-flamingo rounded border-gray-300 focus:ring-brand-flamingo accent-brand-flamingo"
+                       />
+                       <label htmlFor="isGift" className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 cursor-pointer select-none">
+                         Would you like us to write on the card?
+                       </label>
+                    </div>
+                    
+                    <div className={`grid grid-cols-2 gap-6 transition-all duration-500 overflow-hidden ${isGift ? 'max-h-40 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+                      <div className="col-span-1">
+                         <input 
+                           type="text" 
+                           placeholder="To (Name)"
+                           value={giftTo}
+                           onChange={(e) => setGiftTo(e.target.value)}
+                           className="w-full bg-white border-b border-brand-latte/40 px-3 py-2 font-serif text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm"
+                         />
+                      </div>
+                      <div className="col-span-1">
+                         <input 
+                           type="text" 
+                           placeholder="From (Name)"
+                           value={giftFrom}
+                           onChange={(e) => setGiftFrom(e.target.value)}
+                           className="w-full bg-white border-b border-brand-latte/40 px-3 py-2 font-serif text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm"
+                         />
+                      </div>
+                    </div>
+                 </div>
+
+                 {/* Voucher Section */}
+                 <div>
+                    <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-4 flex items-center gap-2">
+                       <Tag size={14} className="text-gray-400" /> Have a voucher?
+                    </h3>
+                    <div className="flex gap-2 relative">
+                       <input 
+                          type="text" 
+                          placeholder="Enter code" 
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value)}
+                          disabled={isFreeShipping}
+                          className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors disabled:opacity-50" 
+                        />
+                        {isFreeShipping ? (
+                          <button type="button" onClick={handleRemoveVoucher} className="text-gray-400 hover:text-red-400 px-4 border-b border-brand-latte/40"><X size={18} /></button>
+                        ) : (
+                          <button type="button" onClick={handleApplyVoucher} className="text-[10px] font-bold uppercase tracking-widest hover:text-brand-flamingo transition-colors px-2 border-b border-brand-latte/40">Apply</button>
+                        )}
+                    </div>
+                    {voucherMessage && (
+                        <p className={`text-xs mt-2 flex items-center gap-1 ${voucherMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                          {voucherMessage.type === 'success' ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
+                          {voucherMessage.text}
+                        </p>
+                    )}
+                 </div>
+
+                 {/* Error Display */}
+                 {error && (
+                    <div className="bg-red-50 p-4 rounded border border-red-100 flex items-start gap-3">
+                      <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
+                      <div className="flex-1">
+                        <p className="text-red-600 text-sm font-bold mb-1">Payment Initialization Failed</p>
+                        <p className="text-red-500 text-xs">{error}</p>
+                      </div>
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* --- ACTION BUTTONS --- */}
+            <div className="mt-12 pt-6 border-t border-brand-latte/10">
+               <button 
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full bg-brand-flamingo text-white h-14 rounded-full flex items-center justify-center gap-3 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 disabled:opacity-70 disabled:cursor-wait group"
+               >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Redirecting...
+                    </>
+                  ) : step === 3 ? (
+                    `Pay RM ${total}`
+                  ) : (
+                    <>
+                      Next Step <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+               </button>
+            </div>
             
           </form>
         </div>
       </div>
 
-      {/* Right Column: Summary */}
+      {/* RIGHT COLUMN: SUMMARY */}
       <div className="w-full lg:w-[42%] bg-brand-grey/5 px-6 lg:px-16 pt-12 lg:pt-24 pb-12 lg:min-h-screen border-l border-brand-latte/10">
         <div className="max-w-md mx-auto lg:mx-0 sticky top-24">
           <h2 className="font-serif text-2xl text-gray-900 mb-8">In Your Bag</h2>
           
-          <div className="space-y-6 mb-8">
+          <div className="space-y-6 mb-8 max-h-[40vh] overflow-y-auto hide-scrollbar pr-2">
             {cart.map(item => (
               <div key={item.id} className="flex gap-4 items-start">
-                 <div className="w-16 h-20 bg-white border border-brand-latte/20 relative rounded-[2px] overflow-hidden">
+                 <div className="w-14 h-18 bg-white border border-brand-latte/20 relative rounded-[2px] overflow-hidden flex-shrink-0">
                     <img src={item.image} className="w-full h-full object-cover" />
-                    <span className="absolute -top-0 -right-0 w-5 h-5 bg-brand-latte/90 text-white text-[10px] font-bold flex items-center justify-center rounded-bl-lg">
+                    <span className="absolute -top-0 -right-0 w-4 h-4 bg-brand-latte/90 text-white text-[9px] font-bold flex items-center justify-center rounded-bl-sm">
                       {item.quantity}
                     </span>
                  </div>
-                 <div className="flex-1">
-                   <h4 className="font-serif text-gray-900">{item.name}</h4>
-                   <p className="text-xs text-gray-500 font-sans mt-1">RM {item.price}</p>
+                 <div className="flex-1 min-w-0">
+                   <h4 className="font-serif text-gray-900 text-sm truncate">{item.name}</h4>
+                   <p className="text-[10px] text-gray-500 font-sans mt-0.5 uppercase tracking-wide">RM {item.price}</p>
                  </div>
                  <div className="font-sans text-sm font-bold text-gray-900">
                    RM {item.price * item.quantity}
@@ -412,29 +469,28 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
             ))}
           </div>
 
-          {/* Complimentary Touches - Checkout Version */}
           <div className="bg-white border border-brand-latte/20 p-5 rounded-[2px] mb-8">
             <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3 flex items-center gap-2">
               <Sparkles size={12} /> The Unboxing Experience
             </h4>
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
-                      <Gift size={14} />
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                          <Gift size={12} />
+                      </div>
+                      <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
                   </div>
-                  <div>
-                    <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
-                    <p className="font-sans text-[9px] text-gray-400 uppercase tracking-wider">Included</p>
-                  </div>
+                  <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
               </div>
-              <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
-                      <Feather size={14} />
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                          <PenTool size={12} />
+                      </div>
+                      <p className="font-serif text-sm text-gray-900">To & From Card</p>
                   </div>
-                  <div>
-                    <p className="font-serif text-sm text-gray-900">Handwritten Gift Note</p>
-                    <p className="font-sans text-[9px] text-gray-400 uppercase tracking-wider">Included</p>
-                  </div>
+                  <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
               </div>
             </div>
           </div>
@@ -446,42 +502,26 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
              </div>
              <div className="flex justify-between text-sm font-sans text-gray-600 items-center">
                 <span>Shipping</span>
-                {isFreeShipping ? (
-                  <span className="text-brand-green font-bold text-xs uppercase tracking-wider flex items-center gap-1">
-                    <Tag size={10} /> Free
-                  </span>
+                {step < 2 ? (
+                  <span className="text-xs italic text-gray-400">Calculated next step</span>
+                ) : isFreeShipping ? (
+                  <span className="text-brand-green font-bold text-xs uppercase tracking-wider flex items-center gap-1"><Tag size={10} /> Free</span>
                 ) : (
-                  <span>RM {shipping}</span>
+                  <span>RM {shippingCost}</span>
                 )}
              </div>
-             
-             {/* Shipping Note */}
-             {!isFreeShipping && (
-               <div className="text-[10px] text-gray-400 italic text-right">
-                 {region === 'west' 
-                   ? (totalItems >= 3 ? '(West Malaysia Bulk Rate)' : '(West Malaysia Standard Rate)') 
-                   : '(East Malaysia Rate)'}
-               </div>
-             )}
-             
-             {/* Applied Voucher Note */}
-             {isFreeShipping && (
-                <div className="text-[10px] text-brand-green italic text-right">
-                  Code SHIPFREE88 applied
-                </div>
-             )}
           </div>
           
           <div className="border-t border-brand-latte/20 pt-6 mt-6">
              <div className="flex justify-between items-end">
                 <span className="font-serif text-xl text-gray-900">Total</span>
-                <span className="font-serif text-3xl text-gray-900">RM {total}</span>
+                <span className="font-serif text-3xl text-gray-900">RM {step < 2 ? subtotal : total}</span>
              </div>
           </div>
 
-          <div className="mt-12 flex items-center gap-3 justify-center text-brand-gold opacity-60">
-             <CheckCircle size={14} />
-             <span className="text-[10px] uppercase tracking-widest font-bold">Secure Payment Processing</span>
+          <div className="mt-8 flex items-center gap-3 justify-center text-brand-gold opacity-60">
+             <Lock size={12} />
+             <span className="text-[10px] uppercase tracking-widest font-bold">Secure Payment via CHIP</span>
           </div>
 
         </div>
