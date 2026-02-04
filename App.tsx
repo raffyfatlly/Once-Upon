@@ -16,6 +16,7 @@ import { OrderLookup } from './components/OrderLookup';
 import { CollectionView } from './components/CollectionView';
 import { IntroOverlay } from './components/IntroOverlay';
 import { OurStory } from './components/OurStory';
+import { RefundPolicy, ShippingPolicy, PrivacyPolicy, TermsPolicy } from './components/Policies';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
@@ -481,6 +482,28 @@ const App: React.FC = () => {
 
         <Route path="/payment/callback" element={
           <PaymentCallback />
+        } />
+
+        {/* Policy Routes */}
+        <Route path="/policies/refund" element={
+          <Layout cartCount={cartCount} products={products}>
+            <RefundPolicy />
+          </Layout>
+        } />
+        <Route path="/policies/shipping" element={
+          <Layout cartCount={cartCount} products={products}>
+            <ShippingPolicy />
+          </Layout>
+        } />
+        <Route path="/policies/privacy" element={
+          <Layout cartCount={cartCount} products={products}>
+            <PrivacyPolicy />
+          </Layout>
+        } />
+        <Route path="/policies/terms" element={
+          <Layout cartCount={cartCount} products={products}>
+            <TermsPolicy />
+          </Layout>
         } />
 
         {/* Admin Routes */}

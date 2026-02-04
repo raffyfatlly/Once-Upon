@@ -35,6 +35,7 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
           <div className="font-script text-xl text-brand-gold">Kuala Lumpur</div>
         </div>
         
+        {/* Main Nav Links */}
         <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12 items-center">
            <Link to="/" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Shop</Link>
            <Link to="/story" className="font-sans text-[10px] uppercase tracking-[0.2em] text-gray-500 hover:text-brand-flamingo transition-colors font-bold">Our Story</Link>
@@ -62,12 +63,43 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
         </div>
 
         <div className="text-center relative flex flex-col items-center w-full">
-          <p className="font-sans text-[10px] text-gray-400 font-light tracking-wide mb-2">
+          <p className="font-sans text-[10px] text-gray-400 font-light tracking-wide mb-4">
             &copy; {new Date().getFullYear()} Once Upon. All rights reserved.
           </p>
+
+          {/* Policy Links Moved Here */}
+          {/* Use smaller font (text-[7px]) and tighter tracking on mobile to ensure one-line fit */}
+          <div className="flex flex-nowrap justify-center gap-2 md:gap-6 mb-8 items-center w-full overflow-x-auto hide-scrollbar px-2 md:px-4">
+             <Link to="/policies/refund" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Refund Policy</Link>
+             <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             <Link to="/policies/shipping" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Shipping Info</Link>
+             <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             <Link to="/policies/privacy" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Privacy Policy</Link>
+             <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             <Link to="/policies/terms" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Terms of Service</Link>
+          </div>
+
           <p className="font-script text-lg text-brand-latte mb-8">
             Designed with Love
           </p>
+          
+          {/* Contact Details */}
+          <div className="flex flex-col items-center gap-3 mb-8 border-t border-brand-latte/10 pt-6 w-full max-w-md">
+             <div className="text-center space-y-3">
+                <p className="font-sans text-[9px] text-gray-400 tracking-widest uppercase leading-relaxed px-4">
+                  A-G-01, PV2 PLATINUM HILL, JALAN TAMAN MELATI 1, 53100 KUALA LUMPUR.
+                </p>
+                <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 font-sans text-[9px] text-gray-500 tracking-widest uppercase">
+                   <a href="https://www.instagram.com/onceuponbysyahirahkasim/" target="_blank" rel="noopener noreferrer" className="hover:text-brand-flamingo transition-colors">
+                     IG: @onceuponbysyahirahkasim
+                   </a>
+                   <span className="text-brand-latte/40 hidden md:inline">|</span>
+                   <a href="https://wa.link/u3tgry" target="_blank" rel="noopener noreferrer" className="hover:text-brand-flamingo transition-colors">
+                     Whatsapp: 017-202 2770
+                   </a>
+                </div>
+             </div>
+          </div>
           
           {/* Subtle Admin Icon */}
           {onAdminClick && (
