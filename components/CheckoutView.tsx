@@ -21,7 +21,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   // Cart & Totals
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const packagingCount = Math.ceil(totalItems / 2);
+  
+  // Packaging Logic: 1 set for every 1 item
+  const packagingCount = totalItems;
 
   // Form Data
   const [email, setEmail] = useState('');

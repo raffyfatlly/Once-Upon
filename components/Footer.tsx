@@ -83,24 +83,6 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             Designed with Love
           </p>
           
-          {/* Contact Details */}
-          <div className="flex flex-col items-center gap-3 mb-8 border-t border-brand-latte/10 pt-6 w-full max-w-md">
-             <div className="text-center space-y-3">
-                <p className="font-sans text-[9px] text-gray-400 tracking-widest uppercase leading-relaxed px-4">
-                  A-G-01, PV2 PLATINUM HILL, JALAN TAMAN MELATI 1, 53100 KUALA LUMPUR.
-                </p>
-                <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 font-sans text-[9px] text-gray-500 tracking-widest uppercase">
-                   <a href="https://www.instagram.com/onceuponbysyahirahkasim/" target="_blank" rel="noopener noreferrer" className="hover:text-brand-flamingo transition-colors">
-                     IG: @onceuponbysyahirahkasim
-                   </a>
-                   <span className="text-brand-latte/40 hidden md:inline">|</span>
-                   <a href="https://wa.link/u3tgry" target="_blank" rel="noopener noreferrer" className="hover:text-brand-flamingo transition-colors">
-                     Whatsapp: 017-202 2770
-                   </a>
-                </div>
-             </div>
-          </div>
-          
           {/* Subtle Admin Icon */}
           {onAdminClick && (
             <button 

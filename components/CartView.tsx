@@ -19,8 +19,8 @@ export const CartView: React.FC<CartViewProps> = ({
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
-  // Packaging Logic: 1 set for every 2 items
-  const packagingCount = Math.ceil(totalItems / 2);
+  // Packaging Logic: 1 set for every 1 item
+  const packagingCount = totalItems;
 
   if (cart.length === 0) {
     return (
@@ -138,7 +138,7 @@ export const CartView: React.FC<CartViewProps> = ({
                  </div>
                  
                  <p className="mt-4 text-[10px] text-gray-400 italic">
-                    *One set included for every 2 items.
+                    *One set included for every item.
                  </p>
               </div>
 
