@@ -5,6 +5,9 @@ import { Order } from '../types';
 import { Search, Loader2, Package, Calendar, AlertCircle, ShoppingBag, ArrowRight, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Helper for SEO URLs
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 export const OrderLookup: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -189,7 +192,7 @@ export const OrderLookup: React.FC = () => {
                       {/* Only show 'Buy Again' if not cancelled/failed */}
                       {order.status !== 'cancelled' && order.status !== 'failed' && (
                          <button 
-                           onClick={() => navigate(`/product/${order.items[0].id}`)}
+                           onClick={() => navigate(`/product/${order.items[0].id}/${getProductSlug(order.items[0].name)}`)}
                            className="text-brand-flamingo text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
                          >
                            View Item <ArrowRight size={12} />

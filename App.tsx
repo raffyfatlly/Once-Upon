@@ -50,6 +50,9 @@ const REVIEWS = [
   }
 ];
 
+// Helper for SEO URLs
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 // Layout Component wrapping Navbar and Footer
 const Layout: React.FC<{ 
   children: React.ReactNode;
@@ -212,7 +215,7 @@ const StoreFront: React.FC<{
                           <ProductCard 
                             product={product} 
                             onAddToCart={(p, qty) => onAddToCart(p, qty)}
-                            onClick={(p) => navigate(`/product/${p.id}`)}
+                            onClick={(p) => navigate(`/product/${p.id}/${getProductSlug(p.name)}`)}
                             index={index}
                           />
                         </div>
@@ -445,7 +448,13 @@ const App: React.FC = () => {
           </Layout>
         } />
 
+        {/* Supporting both Legacy ID-only URL and New SEO URL */}
         <Route path="/product/:id" element={
+          <Layout cartCount={cartCount} products={products}>
+            <ProductDetails products={products} onAddToCart={handleAddToCart} />
+          </Layout>
+        } />
+        <Route path="/product/:id/:slug" element={
           <Layout cartCount={cartCount} products={products}>
             <ProductDetails products={products} onAddToCart={handleAddToCart} />
           </Layout>

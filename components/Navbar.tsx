@@ -10,6 +10,9 @@ interface NavbarProps {
   products: Product[];
 }
 
+// Helper to generate slug for URL (duplicating to keep component independent or could import)
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -219,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
                                  .map(product => (
                                    <Link
                                      key={product.id}
-                                     to={`/product/${product.id}`}
+                                     to={`/product/${product.id}/${getProductSlug(product.name)}`}
                                      onClick={handleMobileLinkClick}
                                      className="font-sans text-xs text-gray-400 hover:text-gray-900 uppercase tracking-wider"
                                    >

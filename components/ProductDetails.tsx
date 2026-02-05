@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler, Share2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProductDetailsProps {
@@ -33,6 +33,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
   const [openSection, setOpenSection] = useState<string>('material');
   const [quantity, setQuantity] = useState(1);
   const [addState, setAddState] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {
     // In a real app we might fetch from DB here if not in list
@@ -63,6 +64,31 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
         setAddState('idle');
       }, 2000);
     }, 600);
+  };
+
+  const handleShare = async () => {
+    if (!product) return;
+    const shareData = {
+      title: product.name,
+      text: `Check out ${product.name} on Once Upon`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log('Share canceled or failed');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareStatus('copied');
+        setTimeout(() => setShareStatus('idle'), 2000);
+      } catch (err) {
+        console.error('Failed to copy');
+      }
+    }
   };
 
   if (loading) {
@@ -133,7 +159,28 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
 
           {/* Right: Details */}
           <div className="flex flex-col pt-4">
-            <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">{product.name}</h1>
+            
+            {/* Title Row with Share Button - Refined Placement */}
+            <div className="flex justify-between items-start gap-4 mb-2">
+               <h1 className="font-serif text-3xl md:text-4xl text-gray-900 leading-tight">{product.name}</h1>
+               
+               <button 
+                  onClick={handleShare}
+                  className="mt-1 p-2 text-brand-latte hover:text-brand-flamingo hover:bg-brand-flamingo/5 rounded-full transition-all duration-300 relative group flex-shrink-0"
+                  aria-label="Share product"
+                >
+                  {/* Floating Feedback Label */}
+                  <span className={`absolute right-full mr-3 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-widest text-brand-green whitespace-nowrap pointer-events-none transition-all duration-300 ${shareStatus === 'copied' ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
+                    Link Copied
+                  </span>
+                  
+                  {shareStatus === 'copied' ? (
+                     <Check size={20} className="text-brand-green" strokeWidth={1.5} />
+                  ) : (
+                     <Share2 size={20} strokeWidth={1.5} />
+                  )}
+               </button>
+            </div>
             
             <div className="flex items-center gap-4 mb-8">
               <span className="font-serif text-2xl text-gray-900">RM {product.price}</span>

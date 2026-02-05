@@ -10,6 +10,9 @@ interface CollectionViewProps {
   onAddToCart: (product: Product, quantity: number) => void;
 }
 
+// Helper for SEO URLs (can be imported, keeping here for file consistency)
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 const SectionDivider = () => (
   <div className="flex items-center justify-center gap-4 py-8 opacity-40">
     <div className="h-[1px] w-12 md:w-24 bg-brand-latte"></div>
@@ -60,7 +63,7 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
                   key={product.id} 
                   product={product} 
                   onAddToCart={(p, qty) => onAddToCart(p, qty)}
-                  onClick={(p) => navigate(`/product/${p.id}`)}
+                  onClick={(p) => navigate(`/product/${p.id}/${getProductSlug(p.name)}`)}
                   index={index}
                 />
               ))}
