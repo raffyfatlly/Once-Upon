@@ -215,7 +215,7 @@ const StoreFront: React.FC<{
                           <ProductCard 
                             product={product} 
                             onAddToCart={(p, qty) => onAddToCart(p, qty)}
-                            onClick={(p) => navigate(`/product/${p.id}/${getProductSlug(p.name)}`)}
+                            onClick={(p) => navigate(`/product/${getProductSlug(p.name)}`)}
                             index={index}
                           />
                         </div>
@@ -322,7 +322,8 @@ const App: React.FC = () => {
   // If we are landing on the payment callback page (e.g. returning from gateway),
   // we default to FALSE to avoid showing the book cover again.
   const [showIntro, setShowIntro] = useState(() => {
-    if (window.location.hash.includes('payment/callback')) return false;
+    // Check path for callback. window.location.href ensures we catch it regardless of routing mode initially
+    if (window.location.href.includes('payment/callback')) return false;
     return true;
   });
 
@@ -448,13 +449,8 @@ const App: React.FC = () => {
           </Layout>
         } />
 
-        {/* Supporting both Legacy ID-only URL and New SEO URL */}
-        <Route path="/product/:id" element={
-          <Layout cartCount={cartCount} products={products}>
-            <ProductDetails products={products} onAddToCart={handleAddToCart} />
-          </Layout>
-        } />
-        <Route path="/product/:id/:slug" element={
+        {/* Clean URL Product Route (Slug or ID) */}
+        <Route path="/product/:slug" element={
           <Layout cartCount={cartCount} products={products}>
             <ProductDetails products={products} onAddToCart={handleAddToCart} />
           </Layout>

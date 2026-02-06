@@ -1,5 +1,5 @@
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs, runTransaction, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, uploadString, StringFormat } from 'firebase/storage';
 import { Product, Order, SiteConfig, Subscriber } from './types';
@@ -24,10 +24,16 @@ let db: any;
 let storage: any;
 
 try {
-  app = initializeApp(firebaseConfig);
+  // Prevent duplicate initialization check
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+  
   db = getFirestore(app);
   storage = getStorage(app);
-  console.log("Firebase initialized.");
+  console.log("Firebase initialized successfully.");
 } catch (error) {
   console.error("CRITICAL FIREBASE ERROR:", error);
 }
@@ -39,6 +45,7 @@ export { db, storage };
 // Products
 export const subscribeToProducts = (callback: (products: Product[]) => void) => {
   if (!db) {
+    console.warn("Database not initialized, returning empty products.");
     callback([]);
     return () => {};
   }
@@ -52,6 +59,7 @@ export const subscribeToProducts = (callback: (products: Product[]) => void) => 
       callback([]); 
     });
   } catch (e) {
+    console.error("Failed to subscribe to products", e);
     callback([]);
     return () => {};
   }

@@ -222,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
                                  .map(product => (
                                    <Link
                                      key={product.id}
-                                     to={`/product/${product.id}/${getProductSlug(product.name)}`}
+                                     to={`/product/${getProductSlug(product.name)}`}
                                      onClick={handleMobileLinkClick}
                                      className="font-sans text-xs text-gray-400 hover:text-gray-900 uppercase tracking-wider"
                                    >

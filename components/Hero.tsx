@@ -116,16 +116,17 @@ export const Hero: React.FC<HeroProps> = ({ backgroundImage, onEnterShop }) => {
             <div className="flex justify-center mb-6">
                <div className="p-4 bg-white/60 rounded-full border border-white/60 shadow-sm animate-breathe">
                  {/* Custom Building Icon - Lighter gray for elegance */}
-                 <FairyTaleCastle size={36} strokeWidth={1.5} className="text-gray-600" />
+                 <FairyTaleCastle size={36} strokeWidth={1.5} className="text-gray-500" />
                </div>
             </div>
 
-            <span className="block font-sans text-gray-900 tracking-[0.25em] uppercase text-[10px] md:text-xs mb-4 font-bold drop-shadow-sm">
+            <span className="block font-sans text-gray-600 tracking-[0.25em] uppercase text-[10px] md:text-xs mb-4 font-bold drop-shadow-sm">
               Little One's
             </span>
             
-            <h1 className="text-4xl md:text-6xl lg:text-7xl text-gray-900 mb-8 leading-tight md:leading-snug relative drop-shadow-sm">
-              <span className="font-serif">Timeless Comfort</span>
+            {/* Reduced size, switched to sans-serif light for elegance, reverted to gray-700 */}
+            <h1 className="text-3xl md:text-5xl lg:text-6xl text-gray-700 mb-8 leading-tight md:leading-snug relative drop-shadow-sm">
+              <span className="font-sans font-light tracking-wider">Timeless Comfort</span>
               <br />
               
               {/* Cloud Effect Container */}
@@ -144,7 +145,7 @@ export const Hero: React.FC<HeroProps> = ({ backgroundImage, onEnterShop }) => {
               </span>
             </h1>
             
-            <p className="font-serif italic text-gray-900/90 max-w-lg mx-auto mb-10 text-lg md:text-xl font-light leading-relaxed drop-shadow-sm">
+            <p className="font-serif italic text-gray-600 max-w-lg mx-auto mb-10 text-lg md:text-xl font-light leading-relaxed drop-shadow-sm">
               "Wrap your little one in the softness of our signature fabrics."
             </p>
             
@@ -158,7 +159,7 @@ export const Hero: React.FC<HeroProps> = ({ backgroundImage, onEnterShop }) => {
                 </span>
               </button>
               
-              <div className="flex items-center gap-4 text-gray-900/80 font-medium drop-shadow-sm">
+              <div className="flex items-center gap-4 text-gray-600/80 font-medium drop-shadow-sm">
                  <div className="h-[1px] w-12 bg-current opacity-50"></div>
                  <span className="font-script text-2xl">Est. 2026</span>
                  <div className="h-[1px] w-12 bg-current opacity-50"></div>

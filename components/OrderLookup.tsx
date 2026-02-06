@@ -192,7 +192,7 @@ export const OrderLookup: React.FC = () => {
                       {/* Only show 'Buy Again' if not cancelled/failed */}
                       {order.status !== 'cancelled' && order.status !== 'failed' && (
                          <button 
-                           onClick={() => navigate(`/product/${order.items[0].id}/${getProductSlug(order.items[0].name)}`)}
+                           onClick={() => navigate(`/product/${getProductSlug(order.items[0].name)}`)}
                            className="text-brand-flamingo text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
                          >
                            View Item <ArrowRight size={12} />

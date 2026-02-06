@@ -63,7 +63,7 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
                   key={product.id} 
                   product={product} 
                   onAddToCart={(p, qty) => onAddToCart(p, qty)}
-                  onClick={(p) => navigate(`/product/${p.id}/${getProductSlug(p.name)}`)}
+                  onClick={(p) => navigate(`/product/${getProductSlug(p.name)}`)}
                   index={index}
                 />
               ))}

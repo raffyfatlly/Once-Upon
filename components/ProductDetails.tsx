@@ -9,6 +9,9 @@ interface ProductDetailsProps {
   onAddToCart: (product: Product, quantity: number) => void;
 }
 
+// Helper for SEO URLs - duplicated here for safety or import
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 const AccordionItem: React.FC<{ title: string; children: React.ReactNode; isOpen: boolean; toggle: () => void }> = ({ title, children, isOpen, toggle }) => (
   <div className="border-b border-brand-latte/20">
     <button onClick={toggle} className="w-full py-4 flex items-center justify-between text-left group">
@@ -24,7 +27,8 @@ const AccordionItem: React.FC<{ title: string; children: React.ReactNode; isOpen
 );
 
 export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddToCart }) => {
-  const { id } = useParams<{ id: string }>();
+  // Capture slug from URL (which might be ID or name-slug)
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -36,18 +40,27 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {
-    // In a real app we might fetch from DB here if not in list
-    if (products.length > 0) {
-      const found = products.find(p => p.id === id);
+    // Logic to find product by slug or ID
+    if (products.length > 0 && slug) {
+      // 1. Try to find by slug match first (Cleaner URLs)
+      let found = products.find(p => getProductSlug(p.name) === slug);
+      
+      // 2. If not found, try to find by ID (Legacy URLs)
+      if (!found) {
+        found = products.find(p => p.id === slug);
+      }
+
       setProduct(found);
       if (found) setActiveImage(found.image);
       setLoading(false);
-    } else {
+    } else if (products.length === 0) {
       // Allow time for products to load from Firebase
       const timer = setTimeout(() => setLoading(false), 2000);
       return () => clearTimeout(timer);
+    } else {
+        setLoading(false);
     }
-  }, [id, products]);
+  }, [slug, products]);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? '' : section);
