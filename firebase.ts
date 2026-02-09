@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs, runTransaction, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs, runTransaction, setDoc, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, uploadString, StringFormat } from 'firebase/storage';
 import { Product, Order, SiteConfig, Subscriber } from './types';
 
@@ -157,6 +157,62 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
 
     console.log(`Created Order #${newOrderId} and deducted stock.`);
     return newOrderRef; // Return the reference so frontend can use .id
+  });
+};
+
+/**
+ * RESTORE STOCK FUNCTION
+ * Should be called when an order is Cancelled or Failed.
+ * It reads the order, finds the items, and adds the quantity back to the products.
+ */
+export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelled' | 'failed') => {
+  if (!db) throw new Error("Database not connected.");
+  const orderRef = doc(db, 'orders', orderId);
+
+  await runTransaction(db, async (transaction) => {
+    // 1. Get the Order
+    const orderDoc = await transaction.get(orderRef);
+    if (!orderDoc.exists()) {
+      throw new Error("Order not found");
+    }
+
+    const orderData = orderDoc.data() as Order;
+
+    // Safety Check: Prevent double restoration
+    // If it's already cancelled or failed, we assume stock was already restored.
+    // Also, if it's 'paid', we definitely shouldn't be restoring stock here unless it's a refund (which is a different flow).
+    if (orderData.status === 'cancelled' || orderData.status === 'failed') {
+      console.log(`Order ${orderId} is already ${orderData.status}. Skipping stock restoration.`);
+      return; 
+    }
+
+    if (orderData.status === 'paid') {
+      throw new Error("Cannot auto-restore stock for a PAID order. Use manual refund process.");
+    }
+
+    // 2. Read all Product Docs involved
+    const productReads = orderData.items.map(item => {
+      const ref = doc(db, 'products', item.id);
+      return { ref, qty: item.quantity };
+    });
+
+    const productDocs = await Promise.all(productReads.map(p => transaction.get(p.ref)));
+
+    // 3. Write Updates (Restore Stock)
+    productDocs.forEach((docSnapshot, index) => {
+      if (docSnapshot.exists()) {
+        const currentData = docSnapshot.data();
+        const currentStock = currentData.stock || 0;
+        const qtyToRestore = productReads[index].qty;
+        
+        transaction.update(productReads[index].ref, {
+          stock: currentStock + qtyToRestore
+        });
+      }
+    });
+
+    // 4. Update Order Status
+    transaction.update(orderRef, { status: newStatus });
   });
 };
 

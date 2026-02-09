@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
-import { updateOrderStatusInDb } from '../firebase';
+import { updateOrderStatusInDb, restoreStockForOrder } from '../firebase';
 
 export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -24,20 +24,28 @@ export const PaymentCallback: React.FC = () => {
 
       try {
         if (result === 'success') {
+          // Payment Successful: Stock was already deducted at checkout.
+          // Just update status to Paid.
           await updateOrderStatusInDb(orderId, 'paid');
           setStatus('success');
         } else if (result === 'failed') {
-          await updateOrderStatusInDb(orderId, 'failed');
+          // Payment Failed: Restore the stock quantity.
+          await restoreStockForOrder(orderId, 'failed');
           setStatus('failed');
         } else if (result === 'cancelled') {
-          await updateOrderStatusInDb(orderId, 'cancelled');
+          // Payment Cancelled: Restore the stock quantity.
+          await restoreStockForOrder(orderId, 'cancelled');
           setStatus('cancelled');
         } else {
+          // Unknown State: Default to failed/restore safety
+          await restoreStockForOrder(orderId, 'failed');
           setStatus('failed');
         }
       } catch (error) {
         console.error("Failed to update order status:", error);
         // Fallback UI based on result parameter if DB update fails
+        // Note: If restoration fails, stock might be temporarily out of sync, 
+        // but this is safer than overselling.
         if (result === 'success') setStatus('success');
         else if (result === 'cancelled') setStatus('cancelled');
         else setStatus('failed');
@@ -94,7 +102,7 @@ export const PaymentCallback: React.FC = () => {
             </div>
             <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Payment Failed</h1>
             <p className="font-sans text-gray-500 mb-8 leading-relaxed">
-              We couldn't process your payment. Please try again or use a different payment method.
+              We couldn't process your payment. The items have been returned to stock.
             </p>
             <div className="flex gap-4">
               <button 
@@ -120,7 +128,7 @@ export const PaymentCallback: React.FC = () => {
             </div>
             <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-4">Payment Cancelled</h1>
             <p className="font-sans text-gray-500 mb-8 leading-relaxed">
-              You have cancelled the payment process. Your items are still in your bag.
+              You cancelled the payment. The stock reserved for you has been released.
             </p>
             <div className="flex gap-4">
               <button 
