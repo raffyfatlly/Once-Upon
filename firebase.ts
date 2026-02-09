@@ -105,10 +105,15 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
       if (!docSnapshot.exists()) {
          throw new Error(`Product ${requestedItem.id} no longer exists.`);
       }
+      
+      const productData = docSnapshot.data();
+      if (!productData) {
+        throw new Error(`Product data missing for ${requestedItem.id}`);
+      }
 
-      const currentStock = docSnapshot.data().stock || 0;
+      const currentStock = productData.stock || 0;
       if (currentStock < requestedItem.qty) {
-        throw new Error(`Sorry, "${docSnapshot.data().name}" is out of stock or requested quantity is unavailable. Only ${currentStock} left.`);
+        throw new Error(`Sorry, "${productData.name}" is out of stock or requested quantity is unavailable. Only ${currentStock} left.`);
       }
     });
 
@@ -130,7 +135,9 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
     // A. Deduct Stock
     productDocs.forEach((docSnapshot, index) => {
       const requestedItem = productReads[index];
-      const currentStock = docSnapshot.data().stock || 0;
+      const productData = docSnapshot.data();
+      // Ensure we have data (we checked above, but doing it again or just using fallback)
+      const currentStock = (productData && productData.stock) || 0;
       const newStock = currentStock - requestedItem.qty;
       transaction.update(requestedItem.ref, { stock: newStock });
     });
