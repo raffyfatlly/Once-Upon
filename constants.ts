@@ -9,7 +9,8 @@ export const PRODUCTS: Product[] = [
     description: 'An intricate illustration of a whimsical palace in the clouds. Woven from the finest cashmere, this piece features subtle turret details and starry accents.',
     image: 'https://i.postimg.cc/9QVBP1b5/Gemini-Generated-Image-s2ybu4s2ybu4s2yb.png',
     material: '100% Grade-A Mongolian Cashmere',
-    care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.'
+    care: 'Dry clean recommended. Hand wash cold with gentle detergent. Lay flat to dry.',
+    stock: 50
   },
   {
     id: '2',
@@ -18,7 +19,8 @@ export const PRODUCTS: Product[] = [
     description: 'A majestic voyage begins. Vintage hot air balloons drifting over Parisian rooftops. A delicate blend of organic cotton and silk, finished with a refined latte border.',
     image: 'https://i.postimg.cc/cCSNXQ23/Gemini-Generated-Image-tit282tit282tit2.png',
     material: '80% Organic Cotton, 20% Mulberry Silk',
-    care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.'
+    care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.',
+    stock: 50
   },
 ];
 

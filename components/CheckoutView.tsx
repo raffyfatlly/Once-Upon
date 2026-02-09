@@ -115,6 +115,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     
     try {
       // 1. Create Order in Database
+      // Note: This function now checks STOCK and deducts it transactionally.
+      // If stock is unavailable, it will throw an error.
       const orderRef = await createOrderInDb({
         customerName: `${firstName} ${lastName}`,
         customerEmail: email,
@@ -179,7 +181,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
     } catch (err: any) {
       console.error("Payment Error:", err);
-      setError(err.message || "Failed to initiate payment. Please try again.");
+      // Specific handling for out of stock errors coming from Firebase
+      if (err.message.includes('out of stock')) {
+         setError(err.message);
+      } else {
+         setError(err.message || "Failed to initiate payment. Please try again.");
+      }
       setIsProcessing(false);
     }
   };
@@ -414,7 +421,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                     <div className="bg-red-50 p-4 rounded border border-red-100 flex items-start gap-3">
                       <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
                       <div className="flex-1">
-                        <p className="text-red-600 text-sm font-bold mb-1">Payment Initialization Failed</p>
+                        <p className="text-red-600 text-sm font-bold mb-1">Could Not Process Order</p>
                         <p className="text-red-500 text-xs">{error}</p>
                       </div>
                     </div>
@@ -431,7 +438,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                >
                   {isProcessing ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> Redirecting...
+                      <Loader2 size={16} className="animate-spin" /> {step === 3 ? 'Checking stock...' : 'Loading...'}
                     </>
                   ) : step === 3 ? (
                     `Pay RM ${total}`

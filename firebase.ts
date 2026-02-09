@@ -85,9 +85,34 @@ export const deleteProductFromDb = async (id: string) => {
 export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
   if (!db) throw new Error("Database not connected.");
 
-  // Use a transaction to safely increment the order counter
+  // Use a transaction to safely increment the order counter AND deduct stock
+  // This prevents race conditions where two people buy the last item simultaneously
   return await runTransaction(db, async (transaction) => {
-    // 1. Reference the counter document
+    
+    // 1. STOCK CHECK: Read all product documents involved in the order first
+    // Firebase Transaction Rule: All reads must come before writes
+    const productReads = orderData.items.map(item => {
+      const ref = doc(db, 'products', item.id);
+      return { ref, id: item.id, qty: item.quantity };
+    });
+
+    const productDocs = await Promise.all(productReads.map(p => transaction.get(p.ref)));
+
+    // Check availability for each item
+    productDocs.forEach((docSnapshot, index) => {
+      const requestedItem = productReads[index];
+      
+      if (!docSnapshot.exists()) {
+         throw new Error(`Product ${requestedItem.id} no longer exists.`);
+      }
+
+      const currentStock = docSnapshot.data().stock || 0;
+      if (currentStock < requestedItem.qty) {
+        throw new Error(`Sorry, "${docSnapshot.data().name}" is out of stock or requested quantity is unavailable. Only ${currentStock} left.`);
+      }
+    });
+
+    // 2. COUNTER CHECK: Reference the counter document
     const counterRef = doc(db, 'counters', 'orderCounter');
     const counterDoc = await transaction.get(counterRef);
 
@@ -100,20 +125,30 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
       }
     }
 
-    // 2. Convert to string for Document ID
+    // 3. WRITES: Now we perform all the updates
+    
+    // A. Deduct Stock
+    productDocs.forEach((docSnapshot, index) => {
+      const requestedItem = productReads[index];
+      const currentStock = docSnapshot.data().stock || 0;
+      const newStock = currentStock - requestedItem.qty;
+      transaction.update(requestedItem.ref, { stock: newStock });
+    });
+
+    // B. Create Order ID
     const newOrderId = nextId.toString();
     const newOrderRef = doc(db, 'orders', newOrderId);
 
-    // 3. Update the counter
+    // C. Update Counter
     transaction.set(counterRef, { current: nextId });
 
-    // 4. Create the new order with the specific ID
+    // D. Create Order
     transaction.set(newOrderRef, {
       ...orderData,
       id: newOrderId // Store ID inside document as well for easier fetching
     });
 
-    console.log(`Created Order #${newOrderId}`);
+    console.log(`Created Order #${newOrderId} and deducted stock.`);
     return newOrderRef; // Return the reference so frontend can use .id
   });
 };

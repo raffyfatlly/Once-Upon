@@ -11,6 +11,7 @@ export interface Product {
   care?: string;
   collection?: string;
   size?: string;
+  stock: number; // Added stock field
 }
 
 export interface CartItem extends Product {

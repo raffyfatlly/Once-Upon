@@ -13,9 +13,13 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick }) => {
   const [addState, setAddState] = useState<'idle' | 'loading' | 'success'>('idle');
 
+  const stock = product.stock !== undefined ? product.stock : 0;
+  const isOutOfStock = stock <= 0;
+  const isLowStock = stock > 0 && stock <= 5;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (addState !== 'idle') return;
+    if (addState !== 'idle' || isOutOfStock) return;
     
     setAddState('loading');
     setTimeout(() => {
@@ -32,7 +36,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
     : '';
 
   return (
-    <div className="group relative w-full flex flex-col items-center">
+    <div className={`group relative w-full flex flex-col items-center ${isOutOfStock ? 'opacity-80' : ''}`}>
       
       {/* "Cute" Frame Container - Clickable */}
       <div 
@@ -50,39 +54,53 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <div className="relative w-full h-full bg-white rounded-[24px] overflow-hidden shadow-2xl shadow-brand-latte/10 ring-1 ring-black/5 flex flex-col">
            
            {/* The Image Matting */}
-           <div className="w-full h-full overflow-hidden p-3 bg-white">
+           <div className="w-full h-full overflow-hidden p-3 bg-white relative">
               <div className="w-full h-full overflow-hidden rounded-[16px] relative">
                 <img 
                   src={product.image} 
                   alt={product.name}
                   loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-[1.5s] ease-in-out group-hover:scale-110"
+                  className={`w-full h-full object-cover transition-transform duration-[1.5s] ease-in-out group-hover:scale-110 ${isOutOfStock ? 'grayscale-[50%]' : ''}`}
                 />
                 
-                {/* Subtle sheen overlay */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                {/* Out of Stock Overlay */}
+                {isOutOfStock && (
+                  <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] flex items-center justify-center z-10">
+                    <div className="px-6 py-3 bg-white/90 shadow-sm border border-brand-latte/30 rounded-[2px] transform -rotate-12">
+                      <span className="font-serif text-xl text-gray-500 font-bold uppercase tracking-widest opacity-80">Sold Out</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Subtle sheen overlay (only if in stock) */}
+                {!isOutOfStock && (
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                )}
               </div>
            </div>
 
            {/* Floating Action Button (Icon) - Hidden by default, reveals on Hover (Desktop) or Click (Mobile) */}
-           <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 z-30 transform transition-all duration-300 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
-             <button 
-                onClick={handleAddToCart}
-                disabled={addState !== 'idle'}
-                className={`p-3 md:p-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center group/btn
-                  ${addState === 'success' ? 'bg-brand-green text-white' : 'bg-brand-flamingo text-white md:hover:bg-brand-gold'}
-                `}
-                aria-label="Add to cart"
-             >
-               {addState === 'loading' ? (
-                 <Loader2 size={18} className="animate-spin" />
-               ) : addState === 'success' ? (
-                 <Check size={18} strokeWidth={2} />
-               ) : (
-                 <ShoppingBag size={18} strokeWidth={1.5} className="md:group-hover/btn:animate-bounce" />
-               )}
-             </button>
-           </div>
+           {/* Only show if In Stock */}
+           {!isOutOfStock && (
+             <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 z-30 transform transition-all duration-300 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
+               <button 
+                  onClick={handleAddToCart}
+                  disabled={addState !== 'idle'}
+                  className={`p-3 md:p-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center group/btn
+                    ${addState === 'success' ? 'bg-brand-green text-white' : 'bg-brand-flamingo text-white md:hover:bg-brand-gold'}
+                  `}
+                  aria-label="Add to cart"
+               >
+                 {addState === 'loading' ? (
+                   <Loader2 size={18} className="animate-spin" />
+                 ) : addState === 'success' ? (
+                   <Check size={18} strokeWidth={2} />
+                 ) : (
+                   <ShoppingBag size={18} strokeWidth={1.5} className="md:group-hover/btn:animate-bounce" />
+                 )}
+               </button>
+             </div>
+           )}
         </div>
       </div>
 
@@ -111,6 +129,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
               RM {product.price}
             </span>
           </div>
+          
+          {/* Low Stock Indicator */}
+          {isLowStock && (
+            <span className="font-serif italic text-xs text-brand-flamingo mt-1 animate-pulse">
+              Only {stock} left
+            </span>
+          )}
         </div>
       </div>
     </div>

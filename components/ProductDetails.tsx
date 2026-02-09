@@ -126,6 +126,12 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
   }
 
   const galleryImages = [product.image, ...(product.additionalImages || [])];
+  
+  // Stock Logic
+  const stock = product.stock !== undefined ? product.stock : 0;
+  const isOutOfStock = stock <= 0;
+  const isLowStock = stock > 0 && stock <= 5;
+  const maxQty = isOutOfStock ? 0 : stock;
 
   return (
     <div className="min-h-screen bg-white animate-fade-in pt-24 pb-12">
@@ -145,8 +151,15 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                <img 
                  src={activeImage || product.image} 
                  alt={product.name} 
-                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                 className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isOutOfStock ? 'grayscale-[50%]' : ''}`}
                />
+               {isOutOfStock && (
+                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                    <div className="px-6 py-3 bg-white/90 border border-brand-latte/30 rounded-[2px]">
+                      <span className="font-serif text-xl text-gray-500 font-bold uppercase tracking-widest">Sold Out</span>
+                    </div>
+                  </div>
+               )}
             </div>
             {/* Gallery Thumbnails */}
             {galleryImages.length > 1 && (
@@ -161,7 +174,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                    >
                      <img 
                        src={img} 
-                       className={`w-full h-full object-cover transition-opacity duration-300 ${activeImage === img ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} 
+                       className={`w-full h-full object-cover transition-opacity duration-300 ${activeImage === img ? 'opacity-100' : 'opacity-70 hover:opacity-100'} ${isOutOfStock ? 'grayscale-[50%]' : ''}`} 
                        alt={`${product.name} view ${i + 1}`}
                      />
                    </div>
@@ -208,36 +221,62 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
             </p>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-12">
-               <div className="flex items-center border border-brand-latte/30 rounded-full h-12 w-full sm:w-32 px-4 justify-between">
-                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-gray-400 hover:text-brand-flamingo"><Minus size={14}/></button>
-                 <span className="font-sans font-bold text-sm text-gray-900">{quantity}</span>
-                 <button onClick={() => setQuantity(quantity + 1)} className="text-gray-400 hover:text-brand-flamingo"><Plus size={14}/></button>
+            <div className="flex flex-col gap-4 mb-12">
+               <div className="flex flex-col sm:flex-row gap-4">
+                 <div className="flex items-center border border-brand-latte/30 rounded-full h-12 w-full sm:w-32 px-4 justify-between bg-white">
+                   <button 
+                     onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                     className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30"
+                     disabled={isOutOfStock}
+                   >
+                     <Minus size={14}/>
+                   </button>
+                   <span className={`font-sans font-bold text-sm ${isOutOfStock ? 'text-gray-300' : 'text-gray-900'}`}>{isOutOfStock ? 0 : quantity}</span>
+                   <button 
+                     onClick={() => setQuantity(Math.min(maxQty, quantity + 1))} 
+                     className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30"
+                     disabled={isOutOfStock || quantity >= maxQty}
+                   >
+                     <Plus size={14}/>
+                   </button>
+                 </div>
+                 
+                 <button 
+                   onClick={handleAddToCart}
+                   disabled={addState !== 'idle' || isOutOfStock}
+                   className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg 
+                     ${isOutOfStock 
+                       ? 'bg-gray-200 text-gray-400 shadow-none cursor-not-allowed' 
+                       : addState === 'success' 
+                          ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' 
+                          : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'
+                     }`}
+                  >
+                   {isOutOfStock ? (
+                     'Sold Out'
+                   ) : addState === 'loading' ? (
+                     <Loader2 size={16} className="animate-spin" />
+                   ) : addState === 'success' ? (
+                     <>
+                       <Check size={16} />
+                       Added
+                     </>
+                   ) : (
+                     <>
+                       <ShoppingBag size={16} strokeWidth={1.5} />
+                       Add to Bag
+                     </>
+                   )}
+                 </button>
                </div>
                
-               <button 
-                 onClick={handleAddToCart}
-                 disabled={addState !== 'idle'}
-                 className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg 
-                   ${addState === 'success' 
-                      ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' 
-                      : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'
-                   }`}
-                >
-                 {addState === 'loading' ? (
-                   <Loader2 size={16} className="animate-spin" />
-                 ) : addState === 'success' ? (
-                   <>
-                     <Check size={16} />
-                     Added
-                   </>
-                 ) : (
-                   <>
-                     <ShoppingBag size={16} strokeWidth={1.5} />
-                     Add to Bag
-                   </>
-                 )}
-               </button>
+               {/* Low Stock Message */}
+               {isLowStock && (
+                  <div className="flex items-center gap-2 text-brand-flamingo animate-pulse">
+                     <AlertCircle size={14} />
+                     <span className="font-serif italic text-sm">Hurry! Only {stock} left in stock.</span>
+                  </div>
+               )}
             </div>
 
             {/* Info Accordions */}
