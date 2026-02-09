@@ -11,7 +11,7 @@ export interface Product {
   care?: string;
   collection?: string;
   size?: string;
-  stock: number; // Added stock field
+  stock?: number; // Made optional to fix build errors with legacy data checks
 }
 
 export interface CartItem extends Product {

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Product, SiteConfig, Order, Subscriber } from '../types';
-import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail, Download, Box } from 'lucide-react';
+import { Trash2, Edit2, Plus, Image as ImageIcon, LogOut, Search, User, Package, Calendar, Upload, X, Loader2, Check, Link as LinkIcon, Database, AlertTriangle, ShieldAlert, Phone, Filter, Copy, ExternalLink, Settings, RefreshCw, Printer, CheckSquare, Square, ClipboardCopy, Clock, Heart, Mail, Download, Box } from 'lucide-react';
 import { addProductToDb, updateProductInDb, deleteProductFromDb, updateOrderStatusInDb, deleteOrderFromDb, uploadImage, subscribeToSubscribers, resetOrderSystem } from '../firebase';
 
 interface AdminDashboardProps {
@@ -71,18 +71,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleInstallClick = async () => {
     if (!installPrompt) return;
-    
-    // Show the install prompt
     installPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
     const { outcome } = await installPrompt.userChoice;
     console.log(`User response to the install prompt: ${outcome}`);
     setInstallUsed(true);
   };
 
-  // Derive unique collections from existing products for autocomplete
-  // Safety check: ensure products is an array
   const safeProducts = Array.isArray(products) ? products : [];
   const existingCollections = Array.from(new Set(safeProducts.map(p => p.collection || 'Blankets'))).sort();
 
@@ -153,7 +147,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     setDeleteConfirmation(null);
-    
     try {
       await deleteProductFromDb(id);
     } catch (error: any) {
@@ -191,7 +184,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleSeedData = async () => {
     setIsSeeding(true);
-    
     const SEED_DATA = [
       {
         name: 'The Dream Castle',
@@ -316,7 +308,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsTesting(true);
     setTestResult('none');
     setTestMessage('');
-    
     try {
       const blob = new Blob(["test"], { type: 'text/plain' });
       const testFile = new File([blob], "connection_test.txt", { type: "text/plain" });
@@ -333,7 +324,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleResetOrders = async () => {
     if (!window.confirm("Are you sure? This will DELETE ALL EXISTING ORDERS and reset the order ID counter to 1000. This cannot be undone.")) return;
-    
     setIsResetting(true);
     try {
       await resetOrderSystem();
@@ -345,35 +335,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // ... (Date helper and Printing logic remain same, omitted for brevity but presumed present) ...
-
   const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
     if (range === 'clear') {
       setStartDate('');
       setEndDate('');
       return;
     }
-
     const end = new Date();
     const start = new Date();
-
     if (range === 'today') {
-      // Start is today 00:00, end is today now
     } else if (range === 'week') {
       start.setDate(end.getDate() - 7);
     } else if (range === 'month') {
       start.setDate(end.getDate() - 30);
     }
-
     setStartDate(start.toISOString().split('T')[0]);
     setEndDate(end.toISOString().split('T')[0]);
   };
 
    const handlePrintOrder = (order: Order) => {
-    // ... (Use existing print logic)
     const printWindow = window.open('', '_blank', 'width=800,height=800');
     if (!printWindow) return;
-    // ... (Existing print template logic) ...
         const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -382,7 +364,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
          <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
         <style>
           body { font-family: 'Playfair Display', serif; padding: 40px; color: #1a1a1a; max-width: 800px; margin: 0 auto; }
-          /* ... styles ... */
         </style>
       </head>
       <body>
@@ -396,7 +377,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     printWindow.document.close();
   };
 
-  // ... (Bulk Selection helpers) ...
   const toggleOrderSelection = (id: string) => {
     const newSet = new Set(selectedOrders);
     if (newSet.has(id)) newSet.delete(id);
@@ -405,7 +385,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
   
   const filteredOrders = orders.filter(order => {
-     // ... (Existing filter logic) ...
      const matchesSearch = 
       order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
       order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -433,14 +412,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
   
-  const handleBulkCopy = () => { /* ... existing ... */ };
-  const handleCopyEmails = () => { /* ... existing ... */ };
-
+  const handleBulkCopy = () => {};
   const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
 
   return (
     <div className="min-h-screen bg-brand-grey/10 font-sans pb-20">
-      {/* Admin Nav - Unchanged */}
       <nav className="bg-white border-b border-brand-latte/20 sticky top-0 z-40">
         <div className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center justify-between">
@@ -565,7 +541,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div className="flex gap-2 items-center">
                            <div className="relative flex-1">
                              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                               <Link size={14} />
+                               <LinkIcon size={14} />
                              </div>
                              <input 
                                className="w-full border p-3 pl-9 pr-8 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5 font-mono text-xs" 
@@ -605,18 +581,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            />
                         </div>
                         
-                        {/* Error Message Display Area */}
                         {saveStatus === 'error' && (
                            <div className="bg-red-50 p-4 rounded border border-red-100 flex flex-col gap-3 mt-2 animate-fade-in">
                              <div className="flex items-center gap-2 text-red-600 font-bold">
                                <AlertTriangle size={18} />
                                <span className="text-xs">Upload Failed</span>
                              </div>
-                             
                              <div className="text-xs text-gray-700 space-y-2">
-                               <p className="leading-relaxed">
-                                  <strong>Reason:</strong> {errorMessage}
-                               </p>
+                               <p className="leading-relaxed"><strong>Reason:</strong> {errorMessage}</p>
                              </div>
                            </div>
                         )}
@@ -640,119 +612,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {/* Additional Images Section */}
                     <div className="border-t border-brand-latte/20 pt-6 mt-2">
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">Gallery Images (Optional)</label>
-                      
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4">
                          {formData.additionalImages?.map((img, index) => (
                            <div key={index} className="relative aspect-[3/4] group bg-gray-50 border border-brand-latte/20">
                               <img src={img} className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() => removeAdditionalImage(index)}
-                                className="absolute top-1 right-1 bg-white rounded-full p-1 text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
-                              >
-                                <X size={12} />
-                              </button>
+                              <button type="button" onClick={() => removeAdditionalImage(index)} className="absolute top-1 right-1 bg-white rounded-full p-1 text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"><X size={12} /></button>
                            </div>
                          ))}
-                         
-                         {/* Upload Button Box */}
                          <div className="aspect-[3/4] border border-dashed border-brand-latte/40 bg-brand-grey/5 flex flex-col items-center justify-center gap-2 p-2 text-center hover:bg-brand-grey/10 transition-colors">
-                            <button 
-                               type="button" 
-                               onClick={() => additionalFileInputRef.current?.click()}
-                               disabled={saveStatus === 'uploading'}
-                               className="text-gray-500 hover:text-brand-flamingo flex flex-col items-center"
-                            >
+                            <button type="button" onClick={() => additionalFileInputRef.current?.click()} disabled={saveStatus === 'uploading'} className="text-gray-500 hover:text-brand-flamingo flex flex-col items-center">
                                {saveStatus === 'uploading' ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />} 
                                <span className="text-[9px] font-bold uppercase mt-1">Upload File</span>
                             </button>
-                            <input 
-                               type="file" 
-                               accept="image/*" 
-                               ref={additionalFileInputRef}
-                               className="hidden"
-                               onChange={(e) => handleFileUpload(e, 'additional')}
-                            />
+                            <input type="file" accept="image/*" ref={additionalFileInputRef} className="hidden" onChange={(e) => handleFileUpload(e, 'additional')} />
                          </div>
                       </div>
 
-                      {/* URL Add for Additional */}
                       <div className="flex gap-2 items-center mt-2">
                          <div className="relative flex-1">
-                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                               <Link size={14} />
-                             </div>
-                             <input 
-                               className="w-full border p-2 pl-9 pr-4 text-xs focus:border-brand-flamingo outline-none bg-brand-grey/5 font-mono" 
-                               placeholder="Or paste URL for additional image..."
-                               value={newAdditionalUrl} 
-                               onChange={e => setNewAdditionalUrl(e.target.value)}
-                               onKeyDown={e => {
-                                 if (e.key === 'Enter') {
-                                   e.preventDefault();
-                                   addUrlToAdditional();
-                                 }
-                               }}
-                             />
+                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><LinkIcon size={14} /></div>
+                             <input className="w-full border p-2 pl-9 pr-4 text-xs focus:border-brand-flamingo outline-none bg-brand-grey/5 font-mono" placeholder="Or paste URL for additional image..." value={newAdditionalUrl} onChange={e => setNewAdditionalUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addUrlToAdditional(); } }} />
                          </div>
-                         <button 
-                            type="button" 
-                            onClick={addUrlToAdditional}
-                            disabled={!newAdditionalUrl}
-                            className="bg-brand-latte text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed rounded-[2px]"
-                         >
-                            Add
-                         </button>
+                         <button type="button" onClick={addUrlToAdditional} disabled={!newAdditionalUrl} className="bg-brand-latte text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed rounded-[2px]">Add</button>
                       </div>
                     </div>
 
                     <div className="flex flex-col-reverse md:flex-row justify-end gap-3 mt-4 border-t border-brand-latte/20 pt-6">
-                      <button 
-                        type="button" 
-                        onClick={() => setIsEditing(false)} 
-                        className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 border border-transparent hover:border-gray-200"
-                        disabled={saveStatus !== 'idle' && saveStatus !== 'error'}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        type="submit" 
-                        disabled={saveStatus !== 'idle' && saveStatus !== 'error'}
-                        className={`text-white px-8 py-3 text-[10px] font-bold uppercase tracking-widest rounded-[2px] flex items-center gap-2 transition-all ${
-                          saveStatus === 'saved' ? 'bg-green-600' : 'bg-brand-flamingo hover:bg-brand-flamingo/80'
-                        }`}
-                      >
-                        {saveStatus === 'saving' ? (
-                          <><Loader2 size={14} className="animate-spin" /> Saving...</>
-                        ) : saveStatus === 'saved' ? (
-                          <><Check size={14} /> Saved!</>
-                        ) : (
-                          'Save Product'
-                        )}
+                      <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 border border-transparent hover:border-gray-200" disabled={saveStatus !== 'idle' && saveStatus !== 'error'}>Cancel</button>
+                      <button type="submit" disabled={saveStatus !== 'idle' && saveStatus !== 'error'} className={`text-white px-8 py-3 text-[10px] font-bold uppercase tracking-widest rounded-[2px] flex items-center gap-2 transition-all ${ saveStatus === 'saved' ? 'bg-green-600' : 'bg-brand-flamingo hover:bg-brand-flamingo/80' }`}>
+                        {saveStatus === 'saving' ? (<><Loader2 size={14} className="animate-spin" /> Saving...</>) : saveStatus === 'saved' ? (<><Check size={14} /> Saved!</>) : ('Save Product')}
                       </button>
                     </div>
                  </form>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                 {/* Product List Content */}
                  {safeProducts.length === 0 && (
                    <div className="col-span-full text-center p-12 text-gray-400 italic flex flex-col items-center">
                      <p className="mb-4">No products found in database.</p>
                      <div className="p-6 bg-white border border-dashed border-brand-latte/50 rounded flex flex-col items-center max-w-md">
                         <Database className="text-brand-flamingo mb-3" size={32} strokeWidth={1} />
                         <h4 className="font-serif text-lg text-gray-900 mb-2">Initialize Database?</h4>
-                        <p className="text-xs text-gray-500 mb-4 text-center">
-                          Your Firebase database is currently empty. Click below to upload the sample products to the database.
-                        </p>
-                        <button 
-                          type="button"
-                          onClick={handleSeedData}
-                          disabled={isSeeding}
-                          className="bg-brand-gold text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px] flex items-center gap-2 cursor-pointer relative z-10"
-                        >
-                          {isSeeding ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                          Load Sample Data
+                        <p className="text-xs text-gray-500 mb-4 text-center">Your Firebase database is currently empty. Click below to upload the sample products to the database.</p>
+                        <button type="button" onClick={handleSeedData} disabled={isSeeding} className="bg-brand-gold text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px] flex items-center gap-2 cursor-pointer relative z-10">
+                          {isSeeding ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />} Load Sample Data
                         </button>
                      </div>
                    </div>
@@ -766,33 +669,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
                         <div className="flex items-center gap-1 mt-1">
                           <Box size={10} className="text-gray-400" />
-                          <span className={`text-[10px] font-bold uppercase tracking-wide ${
-                            (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500'
-                          }`}>
-                            Stock: {product.stock !== undefined ? product.stock : 0}
+                          <span className={`text-[10px] font-bold uppercase tracking-wide ${ (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500' }`}>
+                            Stock: {product.stock || 0}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
                       <button onClick={() => handleEdit(product)} className="text-gray-400 hover:text-brand-flamingo p-1"><Edit2 size={16} /></button>
-                      <button 
-                        onClick={() => handleDeleteClick(product.id)} 
-                        disabled={deletingId === product.id}
-                        className={`p-1 transition-all rounded ${
-                          deleteConfirmation === product.id 
-                            ? 'text-red-500 bg-red-50 w-full text-[10px] font-bold uppercase flex items-center justify-center gap-1 p-2' 
-                            : 'text-gray-400 hover:text-red-400'
-                        }`}
-                        title={deleteConfirmation === product.id ? "Click to Confirm" : "Delete"}
-                      >
-                        {deletingId === product.id ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : deleteConfirmation === product.id ? (
-                          <>Confirm?</>
-                        ) : (
-                          <Trash2 size={16} />
-                        )}
+                      <button onClick={() => handleDeleteClick(product.id)} disabled={deletingId === product.id} className={`p-1 transition-all rounded ${ deleteConfirmation === product.id ? 'text-red-500 bg-red-50 w-full text-[10px] font-bold uppercase flex items-center justify-center gap-1 p-2' : 'text-gray-400 hover:text-red-400' }`} title={deleteConfirmation === product.id ? "Click to Confirm" : "Delete"}>
+                        {deletingId === product.id ? (<Loader2 size={16} className="animate-spin" />) : deleteConfirmation === product.id ? (<>Confirm?</>) : (<Trash2 size={16} />)}
                       </button>
                     </div>
                   </div>
@@ -802,126 +688,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </>
         )}
         
-        {/* ... (Other Tabs are rendered here, omitted for brevity as they are unchanged) ... */}
+        {/* ... (Other Tabs rendered similarly) ... */}
         {activeTab === 'sales' && (
            <div className="animate-fade-in">
-             {/* ... Sales Tab Content ... */}
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                <div>
                  <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
                  <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Manage orders and check status</p>
                </div>
-               
-               {/* Search, Filter, Date Toolbar */}
                <div className="flex flex-col w-full md:w-auto gap-4">
-                 
-                 {/* Top Row: Date Selection */}
                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px]">
-                    <div className="flex gap-2 items-center px-2 text-gray-400">
-                      <Clock size={14} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Date Range</span>
-                    </div>
-                    
-                    {/* Quick Select Buttons */}
+                    <div className="flex gap-2 items-center px-2 text-gray-400"><Clock size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">Date Range</span></div>
                     <div className="flex gap-1">
                       <button onClick={() => setQuickDate('today')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">Today</button>
                       <button onClick={() => setQuickDate('week')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">7 Days</button>
                       <button onClick={() => setQuickDate('month')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">30 Days</button>
-                      {(startDate || endDate) && (
-                        <button onClick={() => setQuickDate('clear')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:bg-red-50 rounded-[2px] transition-colors">Clear</button>
-                      )}
+                      {(startDate || endDate) && (<button onClick={() => setQuickDate('clear')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:bg-red-50 rounded-[2px] transition-colors">Clear</button>)}
                     </div>
-
                     <div className="h-6 w-[1px] bg-brand-latte/20 hidden sm:block"></div>
-
-                    {/* Manual Inputs - Optimized Layout */}
                     <div className="flex gap-2 items-center flex-1 w-full sm:w-auto">
                       <div className="relative w-full sm:w-auto group">
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors">
-                           <Calendar size={14} />
-                        </div>
-                        <input 
-                           type="date"
-                           value={startDate}
-                           onChange={(e) => setStartDate(e.target.value)}
-                           onClick={(e) => (e.currentTarget as any).showPicker()}
-                           className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors"><Calendar size={14} /></div>
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} onClick={(e) => (e.currentTarget as any).showPicker()} className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
-                      
                       <span className="text-gray-300">-</span>
-                      
                       <div className="relative w-full sm:w-auto group">
-                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors">
-                           <Calendar size={14} />
-                        </div>
-                        <input 
-                           type="date"
-                           value={endDate}
-                           onChange={(e) => setEndDate(e.target.value)}
-                           onClick={(e) => (e.currentTarget as any).showPicker()}
-                           className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                        />
+                         <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors"><Calendar size={14} /></div>
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} onClick={(e) => (e.currentTarget as any).showPicker()} className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                     </div>
                  </div>
-
-                 {/* Bottom Row: Status & Search */}
                  <div className="flex flex-col md:flex-row gap-3">
                       <div className="relative">
-                        <select 
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                          className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-32"
-                        >
+                        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-32">
                           <option value="all">All Status</option>
-                          {ORDER_STATUSES.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
+                          {ORDER_STATUSES.map(status => (<option key={status} value={status}>{status}</option>))}
                         </select>
                         <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       </div>
                       <div className="relative flex-1">
-                        <input 
-                          type="text" 
-                          placeholder="Search order #, name..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-[2px] shadow-sm"
-                        />
+                        <input type="text" placeholder="Search order #, name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-[2px] shadow-sm" />
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                       </div>
                   </div>
                </div>
              </div>
-
-             {/* Bulk Actions Bar */}
              {selectedOrders.size > 0 && (
                <div className="bg-brand-flamingo/5 border border-brand-flamingo/20 p-3 rounded-[2px] mb-4 flex items-center justify-between animate-fade-in">
-                  <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">
-                    {selectedOrders.size} Selected
-                  </span>
-                  <button 
-                    onClick={handleBulkCopy}
-                    className="bg-white border border-brand-flamingo/20 text-brand-flamingo px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo hover:text-white transition-colors flex items-center gap-2"
-                  >
+                  <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">{selectedOrders.size} Selected</span>
+                  <button onClick={handleBulkCopy} className="bg-white border border-brand-flamingo/20 text-brand-flamingo px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo hover:text-white transition-colors flex items-center gap-2">
                     <ClipboardCopy size={14} /> Copy Details
                   </button>
                </div>
              )}
-             
              {filteredOrders.length === 0 ? (
                <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
                  <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
                  <p className="text-gray-400 text-sm">No orders found matching filters.</p>
-                 {(searchQuery || filterStatus !== 'all' || startDate || endDate) && (
-                   <button 
-                    onClick={() => {setSearchQuery(''); setFilterStatus('all'); setStartDate(''); setEndDate('');}} 
-                    className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline"
-                   >
-                     Clear Filters
-                   </button>
-                 )}
+                 {(searchQuery || filterStatus !== 'all' || startDate || endDate) && (<button onClick={() => {setSearchQuery(''); setFilterStatus('all'); setStartDate(''); setEndDate('');}} className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline">Clear Filters</button>)}
                </div>
              ) : (
                <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
@@ -929,15 +753,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    <table className="w-full text-left border-collapse min-w-[900px]">
                      <thead>
                        <tr className="bg-brand-grey/10 border-b border-brand-latte/20">
-                         <th className="p-4 w-12">
-                            <button onClick={toggleSelectAll} className="text-gray-400 hover:text-brand-flamingo">
-                              {selectedOrders.size > 0 && selectedOrders.size === filteredOrders.length ? (
-                                <CheckSquare size={16} className="text-brand-flamingo" />
-                              ) : (
-                                <Square size={16} />
-                              )}
-                            </button>
-                         </th>
+                         <th className="p-4 w-12"><button onClick={toggleSelectAll} className="text-gray-400 hover:text-brand-flamingo">{selectedOrders.size > 0 && selectedOrders.size === filteredOrders.length ? (<CheckSquare size={16} className="text-brand-flamingo" />) : (<Square size={16} />)}</button></th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Order ID / Date</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Customer</th>
                          <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Items</th>
@@ -949,104 +765,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                      <tbody>
                        {filteredOrders.map(order => (
                          <tr key={order.id} className={`border-b border-brand-latte/10 transition-colors ${selectedOrders.has(order.id) ? 'bg-brand-flamingo/5' : 'hover:bg-brand-grey/5'}`}>
-                           <td className="p-4">
-                             <button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">
-                               {selectedOrders.has(order.id) ? (
-                                 <CheckSquare size={16} className="text-brand-flamingo" />
-                               ) : (
-                                 <Square size={16} />
-                               )}
-                             </button>
-                           </td>
-                           <td className="p-4">
-                             <div className="font-mono text-xs text-gray-400" title={order.id}>
-                               {order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}
-                             </div>
-                             <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                               <Calendar size={10} /> {new Date(order.date).toLocaleDateString()}
-                             </div>
-                           </td>
-                           <td className="p-4">
-                             <div className="flex items-start gap-2">
-                               <div className="bg-brand-latte/20 p-1.5 rounded-full mt-0.5">
-                                 <User size={12} className="text-brand-latte" />
-                               </div>
-                               <div>
-                                 <div className="font-serif text-gray-900">{order.customerName}</div>
-                                 <div className="text-xs text-gray-400">{order.customerEmail}</div>
-                                 {order.customerPhone && (
-                                   <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                                     <Phone size={10} /> {order.customerPhone}
-                                   </div>
-                                 )}
-                               </div>
-                             </div>
-                           </td>
-                           <td className="p-4">
-                             <div className="text-xs text-gray-600">
-                               {order.items.map(i => (
-                                 <div key={i.id} className="mb-1">
-                                   {i.quantity}x {i.name}
-                                 </div>
-                               ))}
-                             </div>
-                           </td>
-                           <td className="p-4 font-bold text-sm text-gray-900">
-                             RM {order.total}
-                           </td>
-                           <td className="p-4">
-                             <div className="relative inline-block">
-                               <select 
-                                 value={order.status}
-                                 onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                 className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${
-                                   order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' :
-                                   order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' :
-                                   order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
-                                   order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' :
-                                   order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' :
-                                   'bg-yellow-50 border-yellow-200 text-yellow-700'
-                                 }`}
-                               >
-                                 {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                               </select>
-                               {/* Custom Arrow for select */}
-                               <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                                 <svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current">
-                                   <path d="M4 6L0 0H8L4 6Z" />
-                                 </svg>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="p-4 text-center">
-                             <div className="flex items-center justify-center gap-2">
-                               <button 
-                                 onClick={() => handlePrintOrder(order)}
-                                 className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors"
-                                 title="Print Packing Slip"
-                               >
-                                 <Printer size={16} />
-                               </button>
-                               <button 
-                                  onClick={() => handleOrderDeleteClick(order.id)}
-                                  disabled={deletingOrderId === order.id}
-                                  className={`p-1.5 rounded transition-all ${
-                                    deleteOrderConfirmation === order.id 
-                                    ? 'bg-red-50 text-red-500 ring-1 ring-red-200' 
-                                    : 'text-gray-300 hover:text-red-400 hover:bg-red-50'
-                                  }`}
-                                  title="Delete Order"
-                               >
-                                 {deletingOrderId === order.id ? (
-                                   <Loader2 size={16} className="animate-spin" />
-                                 ) : deleteOrderConfirmation === order.id ? (
-                                   <Check size={16} />
-                                 ) : (
-                                   <Trash2 size={16} />
-                                 )}
-                               </button>
-                             </div>
-                           </td>
+                           <td className="p-4"><button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">{selectedOrders.has(order.id) ? (<CheckSquare size={16} className="text-brand-flamingo" />) : (<Square size={16} />)}</button></td>
+                           <td className="p-4"><div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div><div className="flex items-center gap-1 text-xs text-gray-500 mt-1"><Calendar size={10} /> {new Date(order.date).toLocaleDateString()}</div></td>
+                           <td className="p-4"><div className="flex items-start gap-2"><div className="bg-brand-latte/20 p-1.5 rounded-full mt-0.5"><User size={12} className="text-brand-latte" /></div><div><div className="font-serif text-gray-900">{order.customerName}</div><div className="text-xs text-gray-400">{order.customerEmail}</div>{order.customerPhone && (<div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><Phone size={10} /> {order.customerPhone}</div>)}</div></div></td>
+                           <td className="p-4"><div className="text-xs text-gray-600">{order.items.map(i => (<div key={i.id} className="mb-1">{i.quantity}x {i.name}</div>))}</div></td>
+                           <td className="p-4 font-bold text-sm text-gray-900">RM {order.total}</td>
+                           <td className="p-4"><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
+                           <td className="p-4 text-center"><div className="flex items-center justify-center gap-2"><button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Print Packing Slip"><Printer size={16} /></button><button onClick={() => handleOrderDeleteClick(order.id)} disabled={deletingOrderId === order.id} className={`p-1.5 rounded transition-all ${ deleteOrderConfirmation === order.id ? 'bg-red-50 text-red-500 ring-1 ring-red-200' : 'text-gray-300 hover:text-red-400 hover:bg-red-50' }`} title="Delete Order">{deletingOrderId === order.id ? (<Loader2 size={16} className="animate-spin" />) : deleteOrderConfirmation === order.id ? (<Check size={16} />) : (<Trash2 size={16} />)}</button></div></td>
                          </tr>
                        ))}
                      </tbody>
@@ -1056,11 +781,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              )}
            </div>
         )}
-        
-        {/* ... (Club & Settings Tabs) ... */}
          {activeTab === 'club' && (
           <div className="animate-fade-in">
-             {/* ... (Same as before) ... */}
               {subscribers.length === 0 ? (
                <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
                  <Mail size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
@@ -1080,15 +802,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                      <tbody>
                        {subscribers.map((sub, index) => (
                          <tr key={sub.id} className="border-b border-brand-latte/10 hover:bg-brand-grey/5 transition-colors">
-                           <td className="p-4 text-xs text-gray-400 font-mono">
-                             {index + 1}
-                           </td>
-                           <td className="p-4 font-sans text-sm text-gray-800">
-                             {sub.email}
-                           </td>
-                           <td className="p-4 text-right text-xs text-gray-500">
-                             {new Date(sub.date).toLocaleDateString()}
-                           </td>
+                           <td className="p-4 text-xs text-gray-400 font-mono">{index + 1}</td>
+                           <td className="p-4 font-sans text-sm text-gray-800">{sub.email}</td>
+                           <td className="p-4 text-right text-xs text-gray-500">{new Date(sub.date).toLocaleDateString()}</td>
                          </tr>
                        ))}
                      </tbody>
@@ -1098,14 +814,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              )}
           </div>
         )}
-        
-        {activeTab === 'settings' && (
-            // ... (Same as before) ... 
-            <div className="max-w-2xl mx-auto animate-fade-in">
-             {/* ... */}
-            </div>
-        )}
-
+        {activeTab === 'settings' && (<div className="max-w-2xl mx-auto animate-fade-in"></div>)}
       </div>
     </div>
   );
