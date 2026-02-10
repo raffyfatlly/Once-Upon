@@ -85,11 +85,20 @@ export const deleteProductFromDb = async (id: string) => {
 export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
   if (!db) throw new Error("Database not connected.");
 
+  // 1. Trigger Auto-Cleanup/Release of Stale Orders BEFORE processing new one.
+  // This ensures stock is freed up if someone held it too long (> 5 mins).
+  try {
+    console.log("Running pre-order stock cleanup...");
+    await autoReleaseStaleOrders(5); 
+  } catch (err) {
+    console.warn("Auto-release failed during order creation (non-fatal):", err);
+  }
+
   // Use a transaction to safely increment the order counter AND deduct stock
   // This prevents race conditions where two people buy the last item simultaneously
   return await runTransaction(db, async (transaction) => {
     
-    // 1. STOCK CHECK: Read all product documents involved in the order first
+    // 2. STOCK CHECK: Read all product documents involved in the order first
     // Firebase Transaction Rule: All reads must come before writes
     const productReads = orderData.items.map(item => {
       const ref = doc(db, 'products', item.id);
@@ -117,7 +126,7 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
       }
     });
 
-    // 2. COUNTER CHECK: Reference the counter document
+    // 3. COUNTER CHECK: Reference the counter document
     const counterRef = doc(db, 'counters', 'orderCounter');
     const counterDoc = await transaction.get(counterRef);
 
@@ -130,7 +139,7 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
       }
     }
 
-    // 3. WRITES: Now we perform all the updates
+    // 4. WRITES: Now we perform all the updates
     
     // A. Deduct Stock
     productDocs.forEach((docSnapshot, index) => {
