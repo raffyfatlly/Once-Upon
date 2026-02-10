@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Order } from '../../types';
-import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square } from 'lucide-react';
-import { updateOrderStatusInDb, deleteOrderFromDb } from '../../firebase';
+import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle } from 'lucide-react';
+import { updateOrderAndRestock, deleteOrderFromDb } from '../../firebase';
 
 interface SalesManagerProps {
   orders: Order[];
@@ -11,6 +11,7 @@ interface SalesManagerProps {
 export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterProduct, setFilterProduct] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -20,6 +21,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
 
   const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
+
+  // Extract unique product names from all orders
+  const uniqueProducts = Array.from(new Set(orders.flatMap(o => o.items.map(i => i.name)))).sort();
 
   const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
     if (range === 'clear') {
@@ -39,11 +43,17 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     setEndDate(end.toISOString().split('T')[0]);
   };
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+  const handleStatusUpdate = async (orderId: string, newStatus: string, currentStatus: string) => {
+    // If Admin selects Cancelled or Failed, warn them about stock return
+    if ((newStatus === 'cancelled' || newStatus === 'failed') && (currentStatus !== 'cancelled' && currentStatus !== 'failed')) {
+        const confirm = window.confirm(`Setting this order to '${newStatus}' will AUTOMATICALLY RESTORE STOCK for these items.\n\nAre you sure you want to release the stock back to the store?`);
+        if (!confirm) return;
+    }
+
     try {
-      await updateOrderStatusInDb(orderId, newStatus as Order['status']);
-    } catch (error) {
-      alert("Failed to update status");
+      await updateOrderAndRestock(orderId, newStatus, currentStatus);
+    } catch (error: any) {
+      alert("Failed to update status: " + error.message);
     }
   };
 
@@ -189,6 +199,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
       order.id.includes(searchQuery) ||
       (order.customerPhone && order.customerPhone.includes(searchQuery));
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    const matchesProduct = filterProduct === 'all' || order.items.some(item => item.name === filterProduct);
+
     let matchesDate = true;
     if (startDate || endDate) {
       const orderDate = new Date(order.date);
@@ -199,7 +211,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
         matchesDate = matchesDate && orderDate <= end;
       }
     }
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesDate && matchesProduct;
   });
 
   const toggleSelectAll = () => {
@@ -210,7 +222,61 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     }
   };
   
-  const handleBulkCopy = () => {};
+  const handleBulkCopy = async () => {
+    const ordersToCopy = orders.filter(o => selectedOrders.has(o.id));
+    
+    if (ordersToCopy.length === 0) return;
+
+    const textToCopy = ordersToCopy.map(order => {
+      const itemsList = order.items
+        .map(item => `${item.quantity} x ${item.name} (${item.collection || 'Blankets'})`)
+        .join('\n');
+      
+      let entry = `ORDER #${order.id}\n${itemsList}`;
+      
+      if (order.isGift) {
+        entry += `\n\n[GIFT MESSAGE]\nTo: ${order.giftTo || ''}\nFrom: ${order.giftFrom || ''}`;
+      }
+      
+      return entry;
+    }).join('\n\n----------------------------------------\n\n');
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      alert(`${ordersToCopy.length} Order(s) copied to clipboard!`);
+    } catch (err) {
+      console.error("Copy failed", err);
+      alert("Failed to copy to clipboard.");
+    }
+  };
+
+  // Helper to identify old pending orders
+  const isStalePending = (order: Order) => {
+    if (order.status !== 'pending') return false;
+    const orderTime = new Date(order.date).getTime();
+    const now = new Date().getTime();
+    // Consider stale if older than 30 minutes
+    return (now - orderTime) > (30 * 60 * 1000); 
+  };
+
+  // --- ANALYTICS CALCULATION ---
+  // Only consider 'paid', 'shipped', 'delivered' as valid sales for revenue calculation
+  const analytics = filteredOrders.reduce((acc, order) => {
+    const isSale = ['paid', 'shipped', 'delivered'].includes(order.status);
+    
+    if (isSale) {
+      acc.totalRevenue += order.total;
+      acc.totalItems += order.items.reduce((sum, item) => sum + item.quantity, 0);
+      acc.successfulOrders += 1;
+    }
+    
+    acc.totalOrders += 1; // Tracks visible rows regardless of status
+    return acc;
+  }, { totalRevenue: 0, totalOrders: 0, totalItems: 0, successfulOrders: 0 });
+
+  const averageOrderValue = analytics.successfulOrders > 0 
+    ? analytics.totalRevenue / analytics.successfulOrders 
+    : 0;
 
   return (
     <div className="animate-fade-in">
@@ -249,6 +315,13 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                 </select>
                 <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
+                <div className="relative">
+                <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-32 truncate">
+                    <option value="all">All Products</option>
+                    {uniqueProducts.map(p => (<option key={p} value={p}>{p}</option>))}
+                </select>
+                <Tag size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
                 <div className="relative flex-1">
                 <input type="text" placeholder="Search order #, name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-[2px] shadow-sm" />
                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -256,6 +329,34 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
             </div>
         </div>
         </div>
+
+        {/* --- ANALYTICS CARDS --- */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm relative overflow-hidden">
+              <div className="absolute right-0 top-0 p-4 opacity-10 text-brand-flamingo"><CreditCard size={48} /></div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Sales</p>
+              <h3 className="font-serif text-2xl text-gray-900">RM {analytics.totalRevenue.toLocaleString()}</h3>
+           </div>
+           
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm relative overflow-hidden">
+              <div className="absolute right-0 top-0 p-4 opacity-10 text-brand-gold"><Hash size={48} /></div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Orders Count</p>
+              <h3 className="font-serif text-2xl text-gray-900">{analytics.totalOrders}</h3>
+           </div>
+
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm relative overflow-hidden">
+              <div className="absolute right-0 top-0 p-4 opacity-10 text-brand-green"><Package size={48} /></div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Items Sold</p>
+              <h3 className="font-serif text-2xl text-gray-900">{analytics.totalItems}</h3>
+           </div>
+
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm relative overflow-hidden">
+              <div className="absolute right-0 top-0 p-4 opacity-10 text-blue-400"><TrendingUp size={48} /></div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Avg. Order Value</p>
+              <h3 className="font-serif text-2xl text-gray-900">RM {averageOrderValue.toFixed(2)}</h3>
+           </div>
+        </div>
+
         {selectedOrders.size > 0 && (
         <div className="bg-brand-flamingo/5 border border-brand-flamingo/20 p-3 rounded-[2px] mb-4 flex items-center justify-between animate-fade-in">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">{selectedOrders.size} Selected</span>
@@ -268,7 +369,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
         <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
             <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
             <p className="text-gray-400 text-sm">No orders found matching filters.</p>
-            {(searchQuery || filterStatus !== 'all' || startDate || endDate) && (<button onClick={() => {setSearchQuery(''); setFilterStatus('all'); setStartDate(''); setEndDate('');}} className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline">Clear Filters</button>)}
+            {(searchQuery || filterStatus !== 'all' || filterProduct !== 'all' || startDate || endDate) && (<button onClick={() => {setSearchQuery(''); setFilterStatus('all'); setFilterProduct('all'); setStartDate(''); setEndDate('');}} className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline">Clear Filters</button>)}
         </div>
         ) : (
         <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
@@ -295,11 +396,20 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                         onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                     >
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">{selectedOrders.has(order.id) ? (<CheckSquare size={16} className="text-brand-flamingo" />) : (<Square size={16} />)}</button></td>
-                        <td className="p-4"><div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div><div className="flex items-center gap-1 text-xs text-gray-500 mt-1"><Calendar size={10} /> {new Date(order.date).toLocaleDateString()}</div></td>
+                        <td className="p-4">
+                            <div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div>
+                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1"><Calendar size={10} /> {new Date(order.date).toLocaleDateString()}</div>
+                            {/* Stale Warning for Pending > 30 mins */}
+                            {isStalePending(order) && (
+                                <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase text-red-500 animate-pulse bg-red-50 px-1.5 py-0.5 rounded w-fit border border-red-100">
+                                    <Clock size={10} /> Stuck?
+                                </div>
+                            )}
+                        </td>
                         <td className="p-4"><div className="flex items-start gap-2"><div className="bg-brand-latte/20 p-1.5 rounded-full mt-0.5"><User size={12} className="text-brand-latte" /></div><div><div className="font-serif text-gray-900">{order.customerName}</div><div className="text-xs text-gray-400">{order.customerEmail}</div>{order.customerPhone && (<div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><Phone size={10} /> {order.customerPhone}</div>)}</div></div></td>
                         <td className="p-4"><div className="text-xs text-gray-600">{order.items.map(i => (<div key={i.id} className="mb-1">{i.quantity}x {i.name}</div>))}</div></td>
                         <td className="p-4 font-bold text-sm text-gray-900">RM {order.total}</td>
-                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
+                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
                             <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Print Packing Slip"><Printer size={16} /></button>
@@ -383,13 +493,22 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                     {/* Status Change (Duplicate of row action but handy in detail view) */}
                                     <div>
                                     <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-2">Update Status</h4>
-                                    <select 
-                                        value={order.status} 
-                                        onChange={(e) => handleStatusUpdate(order.id, e.target.value)} 
-                                        className="w-full bg-white border border-brand-latte/30 px-3 py-2 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo"
-                                    >
-                                        {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
+                                    <div className="bg-white border border-brand-latte/20 p-4 rounded-[2px]">
+                                        {/* Status Info for Admin */}
+                                        {order.status === 'pending' && isStalePending(order) && (
+                                            <div className="mb-3 text-[10px] text-red-500 bg-red-50 p-2 rounded border border-red-100 flex gap-2">
+                                                <AlertTriangle size={14} className="flex-shrink-0" />
+                                                This order has been pending for more than 30 minutes. The stock is still reserved. Change to 'Cancelled' to release stock.
+                                            </div>
+                                        )}
+                                        <select 
+                                            value={order.status} 
+                                            onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} 
+                                            className="w-full bg-white border border-brand-latte/30 px-3 py-2 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo"
+                                        >
+                                            {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
                                     </div>
                                 </div>
                             </div>

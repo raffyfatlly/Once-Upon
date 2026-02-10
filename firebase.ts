@@ -161,8 +161,7 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
 };
 
 /**
- * RESTORE STOCK FUNCTION
- * Should be called when an order is Cancelled or Failed.
+ * RESTORE STOCK FUNCTION (Internal logic)
  * It reads the order, finds the items, and adds the quantity back to the products.
  */
 export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelled' | 'failed') => {
@@ -179,15 +178,9 @@ export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelle
     const orderData = orderDoc.data() as Order;
 
     // Safety Check: Prevent double restoration
-    // If it's already cancelled or failed, we assume stock was already restored.
-    // Also, if it's 'paid', we definitely shouldn't be restoring stock here unless it's a refund (which is a different flow).
     if (orderData.status === 'cancelled' || orderData.status === 'failed') {
       console.log(`Order ${orderId} is already ${orderData.status}. Skipping stock restoration.`);
       return; 
-    }
-
-    if (orderData.status === 'paid') {
-      throw new Error("Cannot auto-restore stock for a PAID order. Use manual refund process.");
     }
 
     // 2. Read all Product Docs involved
@@ -215,6 +208,22 @@ export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelle
     transaction.update(orderRef, { status: newStatus });
   });
 };
+
+// ⚠️ NEW: Logic for Admin to update status and handle stock automatically
+export const updateOrderAndRestock = async (orderId: string, newStatus: string, currentStatus: string) => {
+  if (!db) throw new Error("Database not connected.");
+
+  // If we are cancelling or failing an order, we must return stock
+  if ((newStatus === 'cancelled' || newStatus === 'failed') && 
+      (currentStatus !== 'cancelled' && currentStatus !== 'failed')) {
+        await restoreStockForOrder(orderId, newStatus as 'cancelled' | 'failed');
+  } else {
+    // For other status changes (Pending -> Paid, Shipped, etc), stock is already deducted.
+    // Just update the status text.
+    await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+  }
+};
+
 
 // ⚠️ DANGER: Resets the entire order system
 export const resetOrderSystem = async () => {
