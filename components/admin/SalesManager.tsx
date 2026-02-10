@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order } from '../../types';
-import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle } from 'lucide-react';
-import { updateOrderAndRestock, deleteOrderFromDb } from '../../firebase';
+import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw } from 'lucide-react';
+import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders } from '../../firebase';
 
 interface SalesManagerProps {
   orders: Order[];
@@ -20,10 +20,38 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
 
+  // Auto-cleanup state
+  const [lastCleanup, setLastCleanup] = useState<Date>(new Date());
+  const [cleanupMessage, setCleanupMessage] = useState<string>('');
+
   const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
 
   // Extract unique product names from all orders
   const uniqueProducts = Array.from(new Set(orders.flatMap(o => o.items.map(i => i.name)))).sort();
+
+  // --- AUTOMATED STALE ORDER CLEANUP ---
+  // Runs on mount and every 60 seconds
+  useEffect(() => {
+    const runCleanup = async () => {
+      try {
+        const releasedCount = await autoReleaseStaleOrders(5); // 5 minutes timeout
+        setLastCleanup(new Date());
+        if (releasedCount > 0) {
+            setCleanupMessage(`Released stock for ${releasedCount} stale order(s).`);
+            setTimeout(() => setCleanupMessage(''), 5000);
+        }
+      } catch (e) {
+        console.error("Auto-cleanup failed", e);
+      }
+    };
+
+    // Run immediately
+    runCleanup();
+
+    // Run interval
+    const interval = setInterval(runCleanup, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
     if (range === 'clear') {
@@ -255,8 +283,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     if (order.status !== 'pending') return false;
     const orderTime = new Date(order.date).getTime();
     const now = new Date().getTime();
-    // Consider stale if older than 30 minutes
-    return (now - orderTime) > (30 * 60 * 1000); 
+    // Consider stale if older than 5 minutes
+    return (now - orderTime) > (5 * 60 * 1000); 
   };
 
   // --- ANALYTICS CALCULATION ---
@@ -283,7 +311,14 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
             <h2 className="font-serif text-2xl md:text-3xl text-gray-900">Sales & Customers</h2>
-            <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Manage orders and check status</p>
+            <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-gray-400 uppercase tracking-widest">Manage orders and check status</p>
+                <div className="h-1 w-1 bg-gray-300 rounded-full"></div>
+                <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-100 animate-pulse">
+                    <RefreshCw size={10} className="animate-spin-slow" /> Auto-Monitor Active
+                </div>
+            </div>
+            {cleanupMessage && <p className="text-[10px] text-brand-flamingo font-bold mt-1 animate-fade-in">{cleanupMessage}</p>}
         </div>
         <div className="flex flex-col w-full md:w-auto gap-4">
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px]">
@@ -399,7 +434,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                         <td className="p-4">
                             <div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div>
                             <div className="flex items-center gap-1 text-xs text-gray-500 mt-1"><Calendar size={10} /> {new Date(order.date).toLocaleDateString()}</div>
-                            {/* Stale Warning for Pending > 30 mins */}
+                            {/* Stale Warning for Pending > 5 mins */}
                             {isStalePending(order) && (
                                 <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase text-red-500 animate-pulse bg-red-50 px-1.5 py-0.5 rounded w-fit border border-red-100">
                                     <Clock size={10} /> Stuck?
@@ -498,7 +533,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                         {order.status === 'pending' && isStalePending(order) && (
                                             <div className="mb-3 text-[10px] text-red-500 bg-red-50 p-2 rounded border border-red-100 flex gap-2">
                                                 <AlertTriangle size={14} className="flex-shrink-0" />
-                                                This order has been pending for more than 30 minutes. The stock is still reserved. Change to 'Cancelled' to release stock.
+                                                This order has been pending for more than 5 minutes. The stock is still reserved. Change to 'Cancelled' to release stock.
                                             </div>
                                         )}
                                         <select 

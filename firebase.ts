@@ -224,6 +224,42 @@ export const updateOrderAndRestock = async (orderId: string, newStatus: string, 
   }
 };
 
+/**
+ * AUTO RELEASE STALE ORDERS
+ * Checks for orders that have been 'pending' for more than {timeoutMinutes}.
+ * Automatically cancels them and returns stock.
+ */
+export const autoReleaseStaleOrders = async (timeoutMinutes: number = 5): Promise<number> => {
+  if (!db) throw new Error("Database not connected.");
+
+  // 1. Get all pending orders
+  const q = query(collection(db, 'orders'), where('status', '==', 'pending'));
+  const snapshot = await getDocs(q);
+  
+  const now = Date.now();
+  let releaseCount = 0;
+
+  // 2. Check time difference
+  const releasePromises = snapshot.docs.map(async (docSnapshot) => {
+    const order = docSnapshot.data() as Order;
+    const orderTime = new Date(order.date).getTime();
+    const diffMinutes = (now - orderTime) / (1000 * 60);
+
+    if (diffMinutes > timeoutMinutes) {
+      console.log(`Order ${order.id} is stale (${Math.round(diffMinutes)} mins). Releasing stock...`);
+      try {
+        await restoreStockForOrder(order.id, 'cancelled');
+        releaseCount++;
+      } catch (err) {
+        console.error(`Failed to auto-release order ${order.id}:`, err);
+      }
+    }
+  });
+
+  await Promise.all(releasePromises);
+  return releaseCount;
+};
+
 
 // ⚠️ DANGER: Resets the entire order system
 export const resetOrderSystem = async () => {
