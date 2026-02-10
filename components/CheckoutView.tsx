@@ -127,8 +127,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         date: new Date().toISOString(),
         shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`,
         isGift: isGift,
-        giftTo: isGift ? giftTo : undefined,
-        giftFrom: isGift ? giftFrom : undefined
+        // Ensure that if checkbox is checked but fields empty, we send empty strings or handle gracefully
+        // The API treats undefined fields as not present.
+        giftTo: isGift ? (giftTo || '') : undefined,
+        giftFrom: isGift ? (giftFrom || '') : undefined
       });
 
       // 2. Chip Payload
@@ -362,7 +364,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                           className="w-4 h-4 text-brand-flamingo rounded border-gray-300 focus:ring-brand-flamingo accent-brand-flamingo"
                        />
                        <label htmlFor="isGift" className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 cursor-pointer select-none">
-                         Would you like us to write on the card?
+                         Would you like us to write on the card? (Optional)
                        </label>
                     </div>
                     
@@ -370,7 +372,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                       <div className="col-span-1">
                          <input 
                            type="text" 
-                           placeholder="To (Name)"
+                           placeholder="To (Name) - Optional"
                            value={giftTo}
                            onChange={(e) => setGiftTo(e.target.value)}
                            className="w-full bg-white border-b border-brand-latte/40 px-3 py-2 font-serif text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm"
@@ -379,7 +381,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                       <div className="col-span-1">
                          <input 
                            type="text" 
-                           placeholder="From (Name)"
+                           placeholder="From (Name) - Optional"
                            value={giftFrom}
                            onChange={(e) => setGiftFrom(e.target.value)}
                            className="w-full bg-white border-b border-brand-latte/40 px-3 py-2 font-serif text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm"

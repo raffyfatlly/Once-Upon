@@ -32,7 +32,7 @@ const SectionDivider = () => (
 const REVIEWS = [
   {
     id: 1,
-    text: "The only blanket my daughter sleeps with. It feels like a cloud and washes beautifully. Pure magic.",
+    text: "The only blanket my daughter sleeps with. It feels like a cloud, pure magic!",
     author: "Sophie M.",
     location: "Kuala Lumpur"
   },
@@ -40,11 +40,11 @@ const REVIEWS = [
     id: 2,
     text: "Absolutely stunning quality. The print is even more beautiful in person, like a piece of art.",
     author: "Sarah J.",
-    location: "Singapore"
+    location: "Selangor"
   },
   {
     id: 3,
-    text: "Softest organic cotton I've ever felt. It’s become our go-to gift for every new mum.",
+    text: "The fabric is so soft! The perfect go-to gift for every new mum.",
     author: "Emily T.",
     location: "Penang"
   }
