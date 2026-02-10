@@ -127,10 +127,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         date: new Date().toISOString(),
         shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`,
         isGift: isGift,
-        // Ensure that if checkbox is checked but fields empty, we send empty strings or handle gracefully
-        // The API treats undefined fields as not present.
-        giftTo: isGift ? (giftTo || '') : undefined,
-        giftFrom: isGift ? (giftFrom || '') : undefined
+        // Fix: Firestore crashes if fields are undefined. We default to empty strings.
+        giftTo: isGift ? (giftTo || '') : '',
+        giftFrom: isGift ? (giftFrom || '') : ''
       });
 
       // 2. Chip Payload
