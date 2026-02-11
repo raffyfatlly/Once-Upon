@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler, Share2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler, Share2, Clock } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProductDetailsProps {
@@ -111,9 +111,11 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
 
   const galleryImages = [product.image, ...(product.additionalImages || [])];
   const stock = product.stock || 0;
-  const isOutOfStock = stock <= 0;
+  const isPreOrder = stock <= 0;
   const isLowStock = stock > 0 && stock <= 5;
-  const maxQty = isOutOfStock ? 0 : stock;
+  
+  // If pre-order, quantity is effectively unlimited (or reasonable max), else capped by stock
+  const maxQty = isPreOrder ? 100 : stock;
 
   return (
     <div className="min-h-screen bg-white animate-fade-in pt-24 pb-12">
@@ -126,18 +128,25 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
           <div className="flex flex-col gap-6">
             <div className="relative aspect-[3/4] bg-brand-grey/5 rounded-[2px] overflow-hidden group border border-brand-latte/10">
-               <img src={activeImage || product.image} alt={product.name} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isOutOfStock ? 'grayscale-[50%]' : ''}`} />
-               {isOutOfStock && (
-                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-                    <div className="px-6 py-3 bg-white/90 border border-brand-latte/30 rounded-[2px]"><span className="font-serif text-xl text-gray-500 font-bold uppercase tracking-widest">Sold Out</span></div>
+               {/* Removed grayscale here */}
+               <img src={activeImage || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+               {isPreOrder && (
+                  // Made smaller on mobile (px-3 py-1.5 text-xs) and larger on desktop (md:px-6 md:py-3 md:text-xl)
+                  <div className="absolute top-4 right-4 pointer-events-none">
+                    <div className="px-3 py-1.5 md:px-6 md:py-3 bg-white/95 border border-brand-gold/30 rounded-full shadow-sm">
+                      <span className="font-serif text-xs md:text-xl text-brand-gold font-bold uppercase tracking-widest flex items-center gap-2">
+                        <Clock size={14} className="md:w-5 md:h-5" /> Pre-order
+                      </span>
+                    </div>
                   </div>
                )}
             </div>
             {galleryImages.length > 1 && (
               <div className="grid grid-cols-4 gap-4">
                  {galleryImages.map((img, i) => (
+                   // Removed grayscale here as well
                    <div key={i} onClick={() => setActiveImage(img)} className={`aspect-square bg-brand-grey/10 cursor-pointer overflow-hidden rounded-[2px] border transition-all duration-300 ${activeImage === img ? 'border-brand-flamingo ring-1 ring-brand-flamingo/50' : 'border-transparent hover:border-brand-latte'}`}>
-                     <img src={img} className={`w-full h-full object-cover transition-opacity duration-300 ${activeImage === img ? 'opacity-100' : 'opacity-70 hover:opacity-100'} ${isOutOfStock ? 'grayscale-[50%]' : ''}`} alt={`${product.name} view ${i + 1}`} />
+                     <img src={img} className={`w-full h-full object-cover transition-opacity duration-300 ${activeImage === img ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`} alt={`${product.name} view ${i + 1}`} />
                    </div>
                  ))}
               </div>
@@ -162,15 +171,29 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
             <div className="flex flex-col gap-4 mb-12">
                <div className="flex flex-col sm:flex-row gap-4">
                  <div className="flex items-center border border-brand-latte/30 rounded-full h-12 w-full sm:w-32 px-4 justify-between bg-white">
-                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30" disabled={isOutOfStock}><Minus size={14}/></button>
-                   <span className={`font-sans font-bold text-sm ${isOutOfStock ? 'text-gray-300' : 'text-gray-900'}`}>{isOutOfStock ? 0 : quantity}</span>
-                   <button onClick={() => setQuantity(Math.min(maxQty, quantity + 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30" disabled={isOutOfStock || quantity >= maxQty}><Plus size={14}/></button>
+                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30"><Minus size={14}/></button>
+                   <span className="font-sans font-bold text-sm text-gray-900">{quantity}</span>
+                   <button onClick={() => setQuantity(Math.min(maxQty, quantity + 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30" disabled={quantity >= maxQty}><Plus size={14}/></button>
                  </div>
-                 <button onClick={handleAddToCart} disabled={addState !== 'idle' || isOutOfStock} className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg ${isOutOfStock ? 'bg-gray-200 text-gray-400 shadow-none cursor-not-allowed' : addState === 'success' ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'}`}>
-                   {isOutOfStock ? ('Sold Out') : addState === 'loading' ? (<Loader2 size={16} className="animate-spin" />) : addState === 'success' ? (<><Check size={16} />Added</>) : (<><ShoppingBag size={16} strokeWidth={1.5} />Add to Bag</>)}
+                 <button onClick={handleAddToCart} disabled={addState !== 'idle'} className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg ${addState === 'success' ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' : isPreOrder ? 'bg-brand-gold text-white hover:bg-brand-flamingo shadow-brand-gold/20' : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'}`}>
+                   {addState === 'loading' ? (<Loader2 size={16} className="animate-spin" />) : addState === 'success' ? (<><Check size={16} />Added</>) : isPreOrder ? (<><Clock size={16} strokeWidth={1.5} />Pre-order Item</>) : (<><ShoppingBag size={16} strokeWidth={1.5} />Add to Bag</>)}
                  </button>
                </div>
-               {isLowStock && (<div className="flex items-center gap-2 text-brand-flamingo animate-pulse"><AlertCircle size={14} /><span className="font-serif italic text-sm">Hurry! Only {stock} left in stock.</span></div>)}
+               
+               {isPreOrder ? (
+                 <div className="flex items-start gap-3 text-brand-gold bg-brand-gold/5 p-4 rounded-[2px] border border-brand-gold/10">
+                   <Clock size={18} className="mt-0.5 flex-shrink-0" />
+                   <div>
+                     <p className="font-bold text-xs uppercase tracking-wider mb-1">Item Sold Out</p>
+                     <p className="font-serif italic text-sm text-gray-600">This item is available for <strong>pre-order</strong>. It is currently crafting and will ship in approximately <strong>2 weeks</strong>.</p>
+                   </div>
+                 </div>
+               ) : isLowStock && (
+                 <div className="flex items-center gap-2 text-brand-flamingo animate-pulse">
+                   <AlertCircle size={14} />
+                   <span className="font-serif italic text-sm">Hurry! Only {stock} left in stock.</span>
+                 </div>
+               )}
             </div>
 
             <div className="mt-auto">

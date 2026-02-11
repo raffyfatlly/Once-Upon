@@ -86,7 +86,6 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
   if (!db) throw new Error("Database not connected.");
 
   // 1. Trigger Auto-Cleanup/Release of Stale Orders BEFORE processing new one.
-  // This ensures stock is freed up if someone held it too long (> 5 mins).
   try {
     console.log("Running pre-order stock cleanup...");
     await autoReleaseStaleOrders(5); 
@@ -95,11 +94,9 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
   }
 
   // Use a transaction to safely increment the order counter AND deduct stock
-  // This prevents race conditions where two people buy the last item simultaneously
   return await runTransaction(db, async (transaction) => {
     
     // 2. STOCK CHECK: Read all product documents involved in the order first
-    // Firebase Transaction Rule: All reads must come before writes
     const productReads = orderData.items.map(item => {
       const ref = doc(db, 'products', item.id);
       return { ref, id: item.id, qty: item.quantity };
@@ -120,10 +117,13 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
         throw new Error(`Product data missing for ${requestedItem.id}`);
       }
 
-      const currentStock = productData.stock || 0;
-      if (currentStock < requestedItem.qty) {
-        throw new Error(`Sorry, "${productData.name}" is out of stock or requested quantity is unavailable. Only ${currentStock} left.`);
-      }
+      // PRE-ORDER LOGIC UPDATE:
+      // We no longer throw an error if currentStock < requestedItem.qty.
+      // Instead, we allow the stock to go negative, which indicates pre-orders/backlog.
+      // const currentStock = productData.stock || 0;
+      // if (currentStock < requestedItem.qty) {
+      //   throw new Error(`Sorry, "${productData.name}" is out of stock...`);
+      // }
     });
 
     // 3. COUNTER CHECK: Reference the counter document
@@ -141,11 +141,10 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
 
     // 4. WRITES: Now we perform all the updates
     
-    // A. Deduct Stock
+    // A. Deduct Stock (allowing negative values for pre-orders)
     productDocs.forEach((docSnapshot, index) => {
       const requestedItem = productReads[index];
       const productData = docSnapshot.data();
-      // Ensure we have data (we checked above, but doing it again or just using fallback)
       const currentStock = (productData && productData.stock) || 0;
       const newStock = currentStock - requestedItem.qty;
       transaction.update(requestedItem.ref, { stock: newStock });

@@ -398,12 +398,16 @@ const App: React.FC = () => {
 
   // Cart Handlers
   const handleAddToCart = (product: Product, quantity: number = 1) => {
+    // Determine if this is a pre-order (stock <= 0)
+    const isPreOrder = (product.stock || 0) <= 0;
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
+        // Update quantity and ensure isPreOrder flag is current
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity, isPreOrder } : item);
       }
-      return [...prev, { ...product, quantity: quantity }];
+      return [...prev, { ...product, quantity: quantity, isPreOrder }];
     });
   };
 

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin } from 'lucide-react';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,6 +43,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   // Voucher
   const [voucherCode, setVoucherCode] = useState('');
   const [isFreeShipping, setIsFreeShipping] = useState(false);
+  const [isTestDiscount, setIsTestDiscount] = useState(false);
   const [voucherMessage, setVoucherMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   // Payment Status
@@ -52,13 +53,23 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   // --- LOGIC ---
 
   const calculateShipping = () => {
+    if (isTestDiscount) return 0;
     if (isFreeShipping) return 0;
     if (region === 'east') return 12;
     return totalItems >= 3 ? 10 : 8;
   };
 
   const shippingCost = calculateShipping();
-  const total = subtotal + shippingCost;
+  
+  // Calculate total and potential discount
+  let total = subtotal + shippingCost;
+  let discountAmount = 0;
+
+  if (isTestDiscount) {
+    // Force total to 1
+    discountAmount = total - 1;
+    total = 1;
+  }
 
   const getPaymentConfig = () => {
     const env = (import.meta as any).env;
@@ -78,9 +89,15 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
 
     if (code === 'SHIPFREE88') {
       setIsFreeShipping(true);
+      setIsTestDiscount(false);
       setVoucherMessage({ type: 'success', text: 'Free shipping applied!' });
+    } else if (code === 'TESTRM1') {
+      setIsTestDiscount(true);
+      setIsFreeShipping(false);
+      setVoucherMessage({ type: 'success', text: 'Test discount applied! Total is RM 1.' });
     } else {
       setIsFreeShipping(false);
+      setIsTestDiscount(false);
       setVoucherMessage({ type: 'error', text: 'Invalid voucher code.' });
     }
   };
@@ -88,6 +105,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const handleRemoveVoucher = () => {
     setVoucherCode('');
     setIsFreeShipping(false);
+    setIsTestDiscount(false);
     setVoucherMessage(null);
   };
 
@@ -133,6 +151,28 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       });
 
       // 2. Chip Payload
+      const productsPayload = [
+        ...cart.map(item => ({
+          name: item.name.substring(0, 256),
+          quantity: item.quantity,
+          price: Math.round(item.price * 100)
+        })),
+        {
+          name: (isFreeShipping || isTestDiscount) ? "Shipping Fee (Waived)" : "Shipping Fee",
+          quantity: 1,
+          price: Math.round(shippingCost * 100)
+        }
+      ];
+
+      // Add negative line item for test discount
+      if (isTestDiscount) {
+        productsPayload.push({
+            name: "Voucher Discount (TESTRM1)",
+            quantity: 1,
+            price: -Math.round(discountAmount * 100)
+        });
+      }
+
       const payload = {
         brand_id: brandId,
         client: {
@@ -142,18 +182,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         },
         purchase: {
           currency: 'MYR',
-          products: [
-            ...cart.map(item => ({
-              name: item.name.substring(0, 256),
-              quantity: item.quantity,
-              price: Math.round(item.price * 100)
-            })),
-            {
-              name: isFreeShipping ? "Shipping Fee (Waived)" : "Shipping Fee",
-              quantity: 1,
-              price: Math.round(shippingCost * 100)
-            }
-          ]
+          products: productsPayload
         },
         reference: orderRef.id,
         // Remove /# from the redirect URLs to support BrowserRouter
@@ -400,10 +429,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                           placeholder="Enter code" 
                           value={voucherCode}
                           onChange={(e) => setVoucherCode(e.target.value)}
-                          disabled={isFreeShipping}
+                          disabled={isFreeShipping || isTestDiscount}
                           className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 placeholder:text-gray-300 transition-colors disabled:opacity-50" 
                         />
-                        {isFreeShipping ? (
+                        {(isFreeShipping || isTestDiscount) ? (
                           <button type="button" onClick={handleRemoveVoucher} className="text-gray-400 hover:text-red-400 px-4 border-b border-brand-latte/40"><X size={18} /></button>
                         ) : (
                           <button type="button" onClick={handleApplyVoucher} className="text-[10px] font-bold uppercase tracking-widest hover:text-brand-flamingo transition-colors px-2 border-b border-brand-latte/40">Apply</button>
@@ -439,7 +468,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                >
                   {isProcessing ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> {step === 3 ? 'Checking stock...' : 'Loading...'}
+                      <Loader2 size={16} className="animate-spin" /> {step === 3 ? 'Processing...' : 'Loading...'}
                     </>
                   ) : step === 3 ? (
                     `Pay RM ${total}`
@@ -464,7 +493,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
             {cart.map(item => (
               <div key={item.id} className="flex gap-4 items-start">
                  <div className="w-14 h-18 bg-white border border-brand-latte/20 relative rounded-[2px] overflow-hidden flex-shrink-0">
-                    <img src={item.image} className="w-full h-full object-cover" />
+                    <img src={item.image} className={`w-full h-full object-cover ${item.isPreOrder ? 'grayscale-[20%]' : ''}`} />
                     <span className="absolute -top-0 -right-0 w-4 h-4 bg-brand-latte/90 text-white text-[9px] font-bold flex items-center justify-center rounded-bl-sm">
                       {item.quantity}
                     </span>
@@ -472,6 +501,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                  <div className="flex-1 min-w-0">
                    <h4 className="font-serif text-gray-900 text-sm truncate">{item.name}</h4>
                    <p className="text-[10px] text-gray-500 font-sans mt-0.5 uppercase tracking-wide">RM {item.price}</p>
+                   {item.isPreOrder && (
+                      <p className="text-[9px] text-brand-gold font-bold uppercase tracking-wide mt-1 flex items-center gap-1">
+                        <Clock size={10} /> Ships in 2 weeks
+                      </p>
+                   )}
                  </div>
                  <div className="font-sans text-sm font-bold text-gray-900">
                    RM {item.price * item.quantity}
@@ -515,12 +549,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                 <span>Shipping</span>
                 {step < 2 ? (
                   <span className="text-xs italic text-gray-400">Calculated next step</span>
-                ) : isFreeShipping ? (
+                ) : (isFreeShipping || isTestDiscount) ? (
                   <span className="text-brand-green font-bold text-xs uppercase tracking-wider flex items-center gap-1"><Tag size={10} /> Free</span>
                 ) : (
                   <span>RM {shippingCost}</span>
                 )}
              </div>
+             {isTestDiscount && (
+                 <div className="flex justify-between text-sm font-sans text-brand-flamingo font-bold">
+                    <span>Discount (TESTRM1)</span>
+                    <span>- RM {discountAmount.toFixed(2)}</span>
+                 </div>
+             )}
           </div>
           
           <div className="border-t border-brand-latte/20 pt-6 mt-6">

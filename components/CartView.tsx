@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CartItem } from '../types';
-import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CartViewProps {
@@ -51,7 +51,10 @@ export const CartView: React.FC<CartViewProps> = ({
                 <div key={item.id} className="py-8 border-b border-brand-latte/20 flex gap-6 md:gap-8 items-center">
                   {/* Image */}
                   <div className="w-24 h-32 md:w-32 md:h-40 bg-brand-grey/5 flex-shrink-0 relative overflow-hidden rounded-[2px]">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    <img src={item.image} alt={item.name} className={`w-full h-full object-cover ${item.isPreOrder ? 'grayscale-[20%]' : ''}`} />
+                    {item.isPreOrder && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-brand-gold text-white text-[8px] font-bold uppercase tracking-wider text-center py-1">Pre-order</div>
+                    )}
                   </div>
 
                   {/* Details */}
@@ -59,6 +62,13 @@ export const CartView: React.FC<CartViewProps> = ({
                     <div>
                       <h3 className="font-serif text-xl text-gray-900 mb-1">{item.name}</h3>
                       <p className="font-sans text-xs text-gray-500 mb-2">{item.collection || 'Blankets'}</p>
+                      
+                      {item.isPreOrder && (
+                        <p className="text-xs text-brand-gold font-bold uppercase tracking-wide flex items-center gap-1 mb-2">
+                          <Clock size={12} /> Ships in 2 Weeks
+                        </p>
+                      )}
+                      
                       <p className="font-sans text-sm font-bold text-gray-900">RM {item.price}</p>
                     </div>
 

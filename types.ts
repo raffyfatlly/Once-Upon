@@ -16,6 +16,7 @@ export interface Product {
 
 export interface CartItem extends Product {
   quantity: number;
+  isPreOrder?: boolean;
 }
 
 export interface SiteConfig {
