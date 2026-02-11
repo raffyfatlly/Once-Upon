@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types';
-import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders } from '../../firebase';
 
 interface SalesManagerProps {
@@ -16,6 +16,10 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   const [endDate, setEndDate] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
@@ -52,6 +56,11 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     const interval = setInterval(runCleanup, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterProduct, startDate, endDate]);
 
   const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
     if (range === 'clear') {
@@ -306,6 +315,15 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     ? analytics.totalRevenue / analytics.successfulOrders 
     : 0;
 
+  // --- PAGINATION CALCULATION ---
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
   return (
     <div className="animate-fade-in">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -422,7 +440,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-latte/10">
-                {filteredOrders.map(order => (
+                {paginatedOrders.map(order => (
                     <React.Fragment key={order.id}>
                     <tr 
                         className={`transition-colors cursor-pointer group ${
@@ -555,6 +573,20 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                 </tbody>
             </table>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredOrders.length > itemsPerPage && (
+                <div className="border-t border-brand-latte/20 bg-brand-grey/5 p-4 flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredOrders.length)} of {filteredOrders.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 bg-white border border-brand-latte/20 rounded-[2px] text-gray-500 hover:text-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronLeft size={16} /></button>
+                        <span className="text-xs font-bold text-gray-700 px-2">Page {currentPage} of {totalPages}</span>
+                        <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 bg-white border border-brand-latte/20 rounded-[2px] text-gray-500 hover:text-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronRight size={16} /></button>
+                    </div>
+                </div>
+            )}
         </div>
         )}
     </div>

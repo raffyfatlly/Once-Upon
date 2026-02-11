@@ -1,0 +1,281 @@
+
+import React, { useState } from 'react';
+import { Order } from '../../types';
+import { ClipboardCopy, Package, Search, CheckSquare, Square, Truck, Check, X, ArrowRight, AlertCircle } from 'lucide-react';
+
+interface PackingManagerProps {
+  orders: Order[];
+}
+
+export const PackingManager: React.FC<PackingManagerProps> = ({ orders }) => {
+  const [inputText, setInputText] = useState('');
+  const [foundOrders, setFoundOrders] = useState<Order[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleFindOrders = () => {
+    setHasSearched(true);
+    
+    // 1. Extract all sequences of digits from the input text
+    const matches = inputText.match(/\d+/g);
+    
+    if (!matches) {
+      setFoundOrders([]);
+      setSelectedIds(new Set());
+      return;
+    }
+
+    // 2. Create a standardized Set of strings for lookup
+    // We trim and ensure they are strings to prevent type mismatches
+    const matchSet = new Set(matches.map(m => String(m).trim()));
+
+    // 3. Filter orders
+    // We strictly convert order.id to string and trim it before checking
+    const results = orders.filter(o => {
+        const orderIdStr = String(o.id).trim();
+        return matchSet.has(orderIdStr);
+    });
+
+    setFoundOrders(results);
+    // Auto-select all found results for convenience
+    setSelectedIds(new Set(results.map(o => o.id)));
+  };
+
+  const toggleSelection = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === foundOrders.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(foundOrders.map(o => o.id)));
+    }
+  };
+
+  const handleCopyShipping = async () => {
+    const selected = foundOrders.filter(o => selectedIds.has(o.id));
+    if (selected.length === 0) return;
+
+    // Format specifically based on user request:
+    // Order No:
+    // Name:
+    // Phone:
+    // Address:
+    // Items:
+    const text = selected.map(order => {
+      const itemsList = order.items.map(i => `${i.name} (x${i.quantity})`).join(', ');
+
+      return `
+Order No: ${order.id}
+Name: ${order.customerName}
+Phone: ${order.customerPhone}
+Address: ${order.shippingAddress}
+Items: ${itemsList}
+      `.trim();
+    }).join('\n\n----------------------------------------\n\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+      alert('Failed to copy to clipboard');
+    }
+  };
+  
+  // Identify IDs that were pasted but not found in the database
+  const getMissingIds = () => {
+     if (!hasSearched) return [];
+     const matches = inputText.match(/\d+/g) || [];
+     
+     // Normalized Set of IDs found in DB
+     const foundIdSet = new Set(foundOrders.map(o => String(o.id).trim()));
+     
+     // Filter matches that look like IDs (e.g. >= 3 digits) and were not found
+     const missing = matches.filter(rawId => {
+        const id = String(rawId).trim();
+        // Only consider it "missing" if it looks like an order ID (3+ digits)
+        return id.length >= 3 && !foundIdSet.has(id);
+     });
+
+     return Array.from(new Set(missing));
+  };
+
+  const missingIds = getMissingIds();
+
+  return (
+    <div className="animate-fade-in max-w-6xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-3 bg-brand-flamingo/10 rounded-full text-brand-flamingo">
+             <Package size={24} />
+        </div>
+        <div>
+           <h2 className="font-serif text-2xl text-gray-900">Packing & Logistics</h2>
+           <div className="flex items-center gap-2">
+             <p className="text-xs text-gray-500 uppercase tracking-wider">Process packed orders from supplier lists</p>
+             <span className="text-gray-300">•</span>
+             <p className="text-xs text-brand-green font-bold uppercase tracking-wider">{orders.length} Active Orders Scanned</p>
+           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-200px)] min-h-[600px]">
+        {/* Left: Input Area */}
+        <div className="lg:col-span-1 flex flex-col gap-4 h-full">
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm flex-1 flex flex-col">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2">
+                 1. Paste Supplier Update
+              </label>
+              <textarea 
+                className="w-full flex-1 p-4 text-sm bg-brand-grey/5 border border-brand-latte/20 focus:border-brand-flamingo outline-none resize-none font-mono text-gray-600 rounded-[2px] mb-4"
+                placeholder={`Example text from supplier:\n\n"Hi, we have packed the following orders today:\n1058, 1059, 1060\n\nPlease arrange pickup."`}
+                value={inputText}
+                onChange={(e) => {
+                    setInputText(e.target.value);
+                    setHasSearched(false); // Reset search state on edit
+                }}
+              />
+              <button 
+                onClick={handleFindOrders}
+                disabled={!inputText}
+                className="w-full bg-gray-900 text-white py-4 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px] flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+              >
+                <Search size={14} /> Find Orders
+              </button>
+           </div>
+           
+           {/* Missing IDs Warning */}
+           {hasSearched && missingIds.length > 0 && (
+             <div className="bg-red-50 p-4 border border-red-100 rounded-[2px] animate-fade-in">
+               <h4 className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider mb-2">
+                 <X size={14} /> IDs Not Found ({missingIds.length})
+               </h4>
+               <div className="flex flex-wrap gap-2">
+                 {missingIds.map((id, i) => (
+                   <span key={i} className="text-[10px] bg-white border border-red-200 text-red-500 px-2 py-1 rounded font-mono">
+                     {id}
+                   </span>
+                 ))}
+               </div>
+               <p className="text-[10px] text-red-400 mt-2 italic leading-relaxed">
+                 These numbers appeared in your text but do not match any orders in the system. Please check if they are correct.
+               </p>
+             </div>
+           )}
+        </div>
+
+        {/* Right: Results Table */}
+        <div className="lg:col-span-2 h-full flex flex-col">
+          {!hasSearched && foundOrders.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center bg-brand-grey/5 border border-dashed border-brand-latte/30 rounded-[2px] text-gray-400">
+               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                   <ArrowRight size={24} className="opacity-30" />
+               </div>
+               <p className="text-sm font-medium">Paste order numbers to extract delivery details.</p>
+            </div>
+          ) : foundOrders.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center bg-white border border-brand-latte/20 rounded-[2px] text-gray-400">
+               <AlertCircle size={32} className="text-brand-latte mb-3" />
+               <p className="text-sm font-medium">No matching orders found.</p>
+               <p className="text-xs mt-1 text-gray-300">Try checking the IDs again.</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm flex flex-col h-full overflow-hidden animate-fade-in">
+               {/* Toolbar */}
+               <div className="p-4 border-b border-brand-latte/10 flex justify-between items-center bg-brand-grey/5 flex-shrink-0">
+                 <div className="flex items-center gap-2">
+                   <div className="flex items-center justify-center w-6 h-6 bg-brand-green/10 rounded-full text-brand-green">
+                      <Check size={14} />
+                   </div>
+                   <span className="font-bold text-gray-900 text-sm">{foundOrders.length} Orders Found</span>
+                   <span className="text-xs text-gray-400 border-l border-brand-latte/20 pl-2 ml-1">
+                     {selectedIds.size} selected
+                   </span>
+                 </div>
+                 
+                 <button 
+                   onClick={handleCopyShipping}
+                   disabled={selectedIds.size === 0}
+                   className={`flex items-center gap-2 px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-[2px] transition-all shadow-md ${
+                     copyFeedback 
+                       ? 'bg-brand-green text-white scale-105' 
+                       : 'bg-brand-flamingo text-white hover:bg-brand-gold hover:-translate-y-0.5'
+                   }`}
+                 >
+                   {copyFeedback ? <Check size={14} /> : <ClipboardCopy size={14} />}
+                   {copyFeedback ? 'Copied!' : 'Copy Delivery Info'}
+                 </button>
+               </div>
+
+               {/* Table */}
+               <div className="flex-1 overflow-auto">
+                 <table className="w-full text-left border-collapse">
+                   <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                     <tr className="text-[10px] font-bold uppercase tracking-widest text-gray-500 border-b border-brand-latte/20">
+                       <th className="p-4 w-12 bg-white">
+                         <button onClick={toggleSelectAll} className="hover:text-brand-flamingo">
+                           {selectedIds.size > 0 && selectedIds.size === foundOrders.length ? <CheckSquare size={16} className="text-brand-flamingo" /> : <Square size={16} />}
+                         </button>
+                       </th>
+                       <th className="p-4 bg-white">ID</th>
+                       <th className="p-4 bg-white">Delivery Details</th>
+                       <th className="p-4 bg-white w-24">Status</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-brand-latte/10">
+                     {foundOrders.map(order => (
+                       <tr 
+                          key={order.id} 
+                          className={`hover:bg-brand-grey/5 transition-colors cursor-pointer ${selectedIds.has(order.id) ? 'bg-brand-flamingo/5' : ''}`}
+                          onClick={() => toggleSelection(order.id)}
+                        >
+                         <td className="p-4 align-top" onClick={(e) => e.stopPropagation()}>
+                           <button onClick={() => toggleSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">
+                             {selectedIds.has(order.id) ? <CheckSquare size={16} className="text-brand-flamingo" /> : <Square size={16} />}
+                           </button>
+                         </td>
+                         <td className="p-4 align-top">
+                           <span className="font-mono text-xs font-bold text-gray-900 bg-brand-grey/10 px-2 py-1 rounded">#{order.id}</span>
+                         </td>
+                         <td className="p-4 align-top">
+                           <div className="flex items-start gap-3">
+                               <div className="mt-0.5 text-gray-400"><Truck size={14} /></div>
+                               <div>
+                                   <div className="text-sm font-bold text-gray-900 mb-1">{order.customerName}</div>
+                                   <div className="text-xs text-gray-600 mb-1 leading-relaxed max-w-md">
+                                     {order.shippingAddress}
+                                   </div>
+                                   <div className="text-[10px] text-gray-400 font-mono">
+                                      {order.customerPhone}
+                                   </div>
+                               </div>
+                           </div>
+                         </td>
+                         <td className="p-4 align-top">
+                            <span className={`px-2 py-1 text-[9px] font-bold uppercase tracking-widest rounded border ${
+                              order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              order.status === 'paid' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                              order.status === 'shipped' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              'bg-gray-50 text-gray-500 border-gray-200'
+                            }`}>
+                              {order.status}
+                            </span>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

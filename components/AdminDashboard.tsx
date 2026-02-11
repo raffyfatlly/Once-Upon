@@ -4,6 +4,7 @@ import { Product, SiteConfig, Order } from '../types';
 import { LogOut } from 'lucide-react';
 import { ProductManager } from './admin/ProductManager';
 import { SalesManager } from './admin/SalesManager';
+import { PackingManager } from './admin/PackingManager';
 import { MumsClub } from './admin/MumsClub';
 import { SettingsManager } from './admin/SettingsManager';
 
@@ -28,7 +29,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
   installPrompt
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'club' | 'settings'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'packing' | 'club' | 'settings'>('products');
 
   return (
     <div className="min-h-screen bg-brand-grey/10 font-sans pb-20">
@@ -57,6 +58,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               Sales & Customers
             </button>
+            <button 
+              onClick={() => setActiveTab('packing')}
+              className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'packing' ? 'text-brand-flamingo' : 'text-gray-400'}`}
+            >
+              Packing
+            </button>
              <button 
               onClick={() => setActiveTab('club')}
               className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'club' ? 'text-brand-flamingo' : 'text-gray-400'}`}
@@ -79,6 +86,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 max-w-6xl">
         {activeTab === 'products' && <ProductManager products={products} />}
         {activeTab === 'sales' && <SalesManager orders={orders} />}
+        {activeTab === 'packing' && <PackingManager orders={orders} />}
         {activeTab === 'club' && <MumsClub />}
         {activeTab === 'settings' && <SettingsManager siteConfig={siteConfig} onUpdateSiteConfig={onUpdateSiteConfig} installPrompt={installPrompt} />}
       </div>
