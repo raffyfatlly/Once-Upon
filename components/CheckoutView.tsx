@@ -50,6 +50,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
 
+  // --- SECURITY CHECK ---
+  // Redirect to cart if empty to prevent paying for just shipping
+  useEffect(() => {
+    if (cart.length === 0) {
+      navigate('/cart', { replace: true });
+    }
+  }, [cart, navigate]);
+
   // --- LOGIC ---
 
   const calculateShipping = () => {
@@ -121,6 +129,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   };
 
   const handleSubmit = async () => {
+    if (cart.length === 0) {
+      setError("Your shopping bag is empty.");
+      navigate('/cart');
+      return;
+    }
+
     setIsProcessing(true);
     setError('');
 

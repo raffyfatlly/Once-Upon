@@ -144,9 +144,10 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
           table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
           th { text-align: left; font-family: 'Lato', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #999; padding: 10px 0; border-bottom: 1px solid #eee; }
           td { padding: 15px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
-          .item-name { font-weight: 600; color: #1a1a1a; }
+          .item-name { font-weight: 600; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
           .item-meta { font-size: 12px; color: #666; font-style: italic; }
           .qty-col { width: 60px; text-align: right; }
+          .preorder-tag { font-size: 10px; color: #C5A992; text-transform: uppercase; border: 1px solid #C5A992; padding: 1px 4px; border-radius: 3px; font-family: 'Lato', sans-serif; font-weight: 700; }
           
           .footer { text-align: center; margin-top: 60px; padding-top: 30px; border-top: 1px solid #f5f5f5; }
           .thank-you { font-family: 'Pinyon Script', cursive; font-size: 32px; color: #D9C4B8; margin-bottom: 10px; }
@@ -200,7 +201,10 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
             ${order.items.map(item => `
               <tr>
                 <td>
-                  <div class="item-name">${item.name}</div>
+                  <div class="item-name">
+                    ${item.name}
+                    ${item.isPreOrder ? '<span class="preorder-tag">Pre-order</span>' : ''}
+                  </div>
                   <div class="item-meta">${item.collection || 'Blankets'}</div>
                 </td>
                 <td class="qty-col">${item.quantity}</td>
@@ -266,7 +270,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
 
     const textToCopy = ordersToCopy.map(order => {
       const itemsList = order.items
-        .map(item => `${item.quantity} x ${item.name} (${item.collection || 'Blankets'})`)
+        .map(item => `${item.quantity} x ${item.name} (${item.collection || 'Blankets'})${item.isPreOrder ? ' [PRE-ORDER]' : ''}`)
         .join('\n');
       
       let entry = `ORDER #${order.id}\n${itemsList}`;
@@ -460,7 +464,20 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                             )}
                         </td>
                         <td className="p-4"><div className="flex items-start gap-2"><div className="bg-brand-latte/20 p-1.5 rounded-full mt-0.5"><User size={12} className="text-brand-latte" /></div><div><div className="font-serif text-gray-900">{order.customerName}</div><div className="text-xs text-gray-400">{order.customerEmail}</div>{order.customerPhone && (<div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><Phone size={10} /> {order.customerPhone}</div>)}</div></div></td>
-                        <td className="p-4"><div className="text-xs text-gray-600">{order.items.map(i => (<div key={i.id} className="mb-1">{i.quantity}x {i.name}</div>))}</div></td>
+                        <td className="p-4">
+                            <div className="text-xs text-gray-600">
+                                {order.items.map(i => (
+                                    <div key={i.id} className="mb-1 flex items-center gap-1 flex-wrap">
+                                        <span>{i.quantity}x {i.name}</span>
+                                        {i.isPreOrder && (
+                                            <span className="text-[9px] font-bold text-brand-gold bg-brand-gold/10 px-1 rounded uppercase tracking-wider whitespace-nowrap">
+                                                Pre-order
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </td>
                         <td className="p-4 font-bold text-sm text-gray-900">RM {order.total}</td>
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -490,7 +507,12 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                             <img src={item.image} className="w-12 h-16 object-cover bg-gray-100" />
                                             <div className="flex-1">
                                                 <p className="font-serif text-gray-900">{item.name}</p>
-                                                <p className="text-xs text-gray-500">{item.collection || 'Blankets'}</p>
+                                                <p className="text-xs text-gray-500 mb-1">{item.collection || 'Blankets'}</p>
+                                                {item.isPreOrder && (
+                                                    <span className="text-[10px] font-bold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/20 uppercase tracking-wider flex items-center gap-1 w-fit">
+                                                        <Clock size={10} /> Pre-order
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xs text-gray-500">Qty: {item.quantity}</p>

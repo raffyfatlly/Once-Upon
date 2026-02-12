@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Instagram, Heart, Lock } from 'lucide-react';
+import { Instagram, Heart, Lock, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface FooterProps {
@@ -18,9 +18,31 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
 
       <div className="container mx-auto px-6 max-w-6xl flex flex-col items-center">
         
-        <div className="mb-10 text-center">
+        <div className="mb-8 text-center">
           <div className="font-serif text-3xl font-bold text-gray-900 tracking-wider mb-1">ONCE UPON</div>
           <div className="font-script text-xl text-brand-gold">Kuala Lumpur</div>
+        </div>
+
+        {/* Restored Social Icons: Thin & Elegant */}
+        <div className="flex items-center justify-center gap-8 mb-10">
+           <a 
+             href="https://www.instagram.com/onceuponbysyahirahkasim" 
+             target="_blank" 
+             rel="noopener noreferrer" 
+             className="text-brand-gold hover:text-brand-flamingo transition-colors duration-300 transform hover:scale-105"
+             aria-label="Instagram"
+           >
+             <Instagram size={20} strokeWidth={1.2} />
+           </a>
+           <a 
+             href="https://wa.link/ad5hui" 
+             target="_blank" 
+             rel="noopener noreferrer" 
+             className="text-brand-gold hover:text-brand-flamingo transition-colors duration-300 transform hover:scale-105"
+             aria-label="WhatsApp"
+           >
+             <MessageCircle size={20} strokeWidth={1.2} />
+           </a>
         </div>
         
         {/* Main Nav Links */}
