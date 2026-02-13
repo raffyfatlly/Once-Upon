@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Order } from '../../types';
-import { ClipboardCopy, Package, Search, CheckSquare, Square, Truck, Check, X, ArrowRight, AlertCircle } from 'lucide-react';
+import { ClipboardCopy, Package, Search, CheckSquare, Square, Truck, Check, X, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { updateOrderAndRestock } from '../../firebase';
 
 interface PackingManagerProps {
   orders: Order[];
@@ -13,6 +14,7 @@ export const PackingManager: React.FC<PackingManagerProps> = ({ orders }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleFindOrders = () => {
     setHasSearched(true);
@@ -86,6 +88,32 @@ Items: ${itemsList}
     } catch (err) {
       console.error('Failed to copy', err);
       alert('Failed to copy to clipboard');
+    }
+  };
+
+  const handleBulkShip = async () => {
+    const selected = foundOrders.filter(o => selectedIds.has(o.id));
+    if (selected.length === 0) return;
+
+    if (!window.confirm(`Mark ${selected.length} orders as SHIPPED?`)) return;
+
+    setIsUpdating(true);
+    try {
+      // Execute updates in parallel
+      await Promise.all(selected.map(order => 
+        updateOrderAndRestock(order.id, 'shipped', order.status)
+      ));
+      
+      // Update local state to reflect changes immediately
+      setFoundOrders(prev => prev.map(o => 
+        selectedIds.has(o.id) ? { ...o, status: 'shipped' } : o
+      ));
+      
+    } catch (error: any) {
+      console.error("Bulk update failed:", error);
+      alert("Failed to update status.");
+    } finally {
+      setIsUpdating(false);
     }
   };
   
@@ -199,18 +227,29 @@ Items: ${itemsList}
                    </span>
                  </div>
                  
-                 <button 
-                   onClick={handleCopyShipping}
-                   disabled={selectedIds.size === 0}
-                   className={`flex items-center gap-2 px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-[2px] transition-all shadow-md ${
-                     copyFeedback 
-                       ? 'bg-brand-green text-white scale-105' 
-                       : 'bg-brand-flamingo text-white hover:bg-brand-gold hover:-translate-y-0.5'
-                   }`}
-                 >
-                   {copyFeedback ? <Check size={14} /> : <ClipboardCopy size={14} />}
-                   {copyFeedback ? 'Copied!' : 'Copy Delivery Info'}
-                 </button>
+                 <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleBulkShip}
+                      disabled={selectedIds.size === 0 || isUpdating}
+                      className="flex items-center gap-2 px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-[2px] transition-all shadow-sm bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <Truck size={14} />}
+                      Mark Shipped
+                    </button>
+
+                    <button 
+                      onClick={handleCopyShipping}
+                      disabled={selectedIds.size === 0}
+                      className={`flex items-center gap-2 px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-[2px] transition-all shadow-md ${
+                        copyFeedback 
+                          ? 'bg-brand-green text-white scale-105' 
+                          : 'bg-brand-flamingo text-white hover:bg-brand-gold hover:-translate-y-0.5'
+                      }`}
+                    >
+                      {copyFeedback ? <Check size={14} /> : <ClipboardCopy size={14} />}
+                      {copyFeedback ? 'Copied!' : 'Copy Delivery Info'}
+                    </button>
+                 </div>
                </div>
 
                {/* Table */}
