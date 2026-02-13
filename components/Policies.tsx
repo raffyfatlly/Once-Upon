@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowLeft, ShieldAlert, Truck, Lock, FileText } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, Truck, Lock, FileText, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const PolicyLayout: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => {
@@ -159,6 +159,37 @@ export const TermsPolicy: React.FC = () => (
       <p>
         These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of Malaysia.
       </p>
+    </section>
+  </PolicyLayout>
+);
+
+export const BusinessInfoPolicy: React.FC = () => (
+  <PolicyLayout title="Business Information" icon={<Building2 size={28} />}>
+    <section>
+       <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Registered Entity</h3>
+       <div className="bg-brand-grey/10 p-6 rounded-[2px] border border-brand-latte/10">
+         <p className="font-serif text-lg text-gray-900 mb-1">Vanillicious Enterprise</p>
+         <p className="font-mono text-xs text-gray-500 tracking-wide">202303157333 (003504071-D)</p>
+       </div>
+    </section>
+
+    <section>
+       <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Office Address</h3>
+       <p className="text-sm">
+         A-G-01, PV2 Platinum Hill,<br/>
+         Jalan Taman Melati 1,<br/>
+         53100 Kuala Lumpur.
+       </p>
+    </section>
+
+    <section>
+       <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Contact Us</h3>
+       <p className="text-sm mb-1">
+         <span className="font-bold text-gray-600">Office:</span> 03-41622187
+       </p>
+       <p className="text-sm mb-1">
+         <span className="font-bold text-gray-600">Email:</span> vanilliciousbysyahirah@gmail.com
+       </p>
     </section>
   </PolicyLayout>
 );

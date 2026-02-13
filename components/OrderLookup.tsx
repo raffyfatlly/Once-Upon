@@ -270,8 +270,8 @@ export const OrderLookup: React.FC = () => {
                                 <p className="text-xs text-gray-400">{order.customerPhone}</p>
                               </div>
 
-                              {/* Tracking Actions */}
-                              {order.status !== 'cancelled' && order.status !== 'failed' && (
+                              {/* Tracking Actions - ONLY FOR SHIPPED */}
+                              {order.status === 'shipped' && (
                                 <div className="border-t border-brand-latte/10 pt-4">
                                    <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3">
                                       Need Tracking?

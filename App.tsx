@@ -16,7 +16,7 @@ import { OrderLookup } from './components/OrderLookup';
 import { CollectionView } from './components/CollectionView';
 import { IntroOverlay } from './components/IntroOverlay';
 import { OurStory } from './components/OurStory';
-import { RefundPolicy, ShippingPolicy, PrivacyPolicy, TermsPolicy } from './components/Policies';
+import { RefundPolicy, ShippingPolicy, PrivacyPolicy, TermsPolicy, BusinessInfoPolicy } from './components/Policies';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
@@ -512,6 +512,11 @@ const App: React.FC = () => {
         <Route path="/policies/terms" element={
           <Layout cartCount={cartCount} products={products}>
             <TermsPolicy />
+          </Layout>
+        } />
+        <Route path="/policies/business-info" element={
+          <Layout cartCount={cartCount} products={products}>
+            <BusinessInfoPolicy />
           </Layout>
         } />
 

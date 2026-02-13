@@ -58,31 +58,26 @@ export const Footer: React.FC<FooterProps> = ({ onAdminClick }) => {
             &copy; {new Date().getFullYear()} Once Upon. All rights reserved.
           </p>
 
-          {/* Policy Links Moved Here */}
-          {/* Use smaller font (text-[7px]) and tighter tracking on mobile to ensure one-line fit */}
-          <div className="flex flex-nowrap justify-center gap-2 md:gap-6 mb-8 items-center w-full overflow-x-auto hide-scrollbar px-2 md:px-4">
+          {/* Policy Links */}
+          <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-2 md:gap-6 mb-8 w-full px-6 max-w-lg md:max-w-none mx-auto">
              <Link to="/policies/refund" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Refund Policy</Link>
              <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             
              <Link to="/policies/shipping" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Shipping Info</Link>
              <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             
              <Link to="/policies/privacy" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Privacy Policy</Link>
              <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             
              <Link to="/policies/terms" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Terms of Service</Link>
+             <span className="text-[7px] md:text-[9px] text-gray-300 font-light">|</span>
+             
+             <Link to="/policies/business-info" className="font-sans text-[7px] md:text-[9px] uppercase tracking-wider md:tracking-[0.15em] text-gray-400 hover:text-brand-flamingo transition-colors whitespace-nowrap">Business Info</Link>
           </div>
 
           <p className="font-script text-lg text-brand-latte mb-8">
             Designed with Love
           </p>
-          
-          {/* Contact Details & Business Registration */}
-          <div className="flex flex-col items-center gap-3 mb-8 border-t border-brand-latte/10 pt-6 w-full max-w-md">
-             <div className="text-center space-y-3">
-                <div className="font-sans text-[9px] text-gray-400 tracking-widest leading-relaxed px-4">
-                  <p className="mb-1 font-medium">Vanillicious Enterprise (202303157333 (003504071-D))</p>
-                  <p>A-G-01, PV2 Platinum Hill, Jalan Taman Melati 1, 53100 Kuala Lumpur.</p>
-                </div>
-             </div>
-          </div>
           
           {/* Subtle Admin Icon */}
           {onAdminClick && (
