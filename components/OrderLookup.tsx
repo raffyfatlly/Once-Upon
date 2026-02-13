@@ -2,11 +2,83 @@
 import React, { useState } from 'react';
 import { getCustomerOrders } from '../firebase';
 import { Order } from '../types';
-import { Search, Loader2, Package, Calendar, AlertCircle, ShoppingBag, ArrowRight, Truck } from 'lucide-react';
+import { Search, Loader2, Package, Calendar, AlertCircle, ArrowRight, Truck, CheckCircle, CreditCard, MessageCircle, ExternalLink, MapPin, Box } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Helper for SEO URLs
 const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
+const OrderStatusStepper = ({ status }: { status: string }) => {
+  if (status === 'cancelled' || status === 'failed') {
+    return (
+      <div className="bg-red-50 border border-red-100 rounded-[2px] p-4 flex items-center gap-3 text-red-600 mb-6 mx-6">
+        <AlertCircle size={20} />
+        <div>
+          <p className="font-bold text-xs uppercase tracking-widest">Order {status}</p>
+          <p className="text-xs opacity-80">This order was not completed. Please contact support if you have questions.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const steps = [
+    { id: 'paid', label: 'Order Paid', icon: CreditCard },
+    { id: 'shipped', label: 'Shipped', icon: Truck },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle },
+  ];
+
+  let activeIndex = -1;
+  if (status === 'paid') activeIndex = 0;
+  if (status === 'shipped') activeIndex = 1;
+  if (status === 'delivered') activeIndex = 2;
+
+  // Handle pending or other states
+  if (activeIndex === -1 && status !== 'pending') activeIndex = -1;
+
+  return (
+    <div className="w-full py-8 px-6 bg-brand-grey/5 border-y border-brand-latte/10 mb-6">
+       <div className="relative flex items-center justify-between w-full max-w-sm mx-auto">
+          {/* Connecting Line Background */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[1px] bg-brand-latte/30 -z-10"></div>
+          
+          {/* Active Progress Line */}
+          <div 
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-[1px] bg-brand-flamingo transition-all duration-1000 ease-out -z-10"
+            style={{ width: `${Math.max(0, (activeIndex / (steps.length - 1)) * 100)}%` }}
+          ></div>
+
+          {steps.map((step, index) => {
+            const isActive = index <= activeIndex;
+            const Icon = step.icon;
+            
+            return (
+               <div key={step.id} className="flex flex-col items-center gap-3 bg-brand-grey/5 px-2">
+                  <div className={`
+                    w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border transition-all duration-500 z-10
+                    ${isActive 
+                      ? 'bg-brand-flamingo border-brand-flamingo text-white shadow-lg shadow-brand-flamingo/20 scale-110' 
+                      : 'bg-white border-brand-latte/30 text-gray-300'}
+                  `}>
+                     <Icon size={14} className="md:w-4 md:h-4" strokeWidth={isActive ? 2 : 1.5} />
+                  </div>
+                  <span className={`text-[8px] md:text-[9px] font-bold uppercase tracking-widest transition-colors duration-300 ${isActive ? 'text-brand-flamingo' : 'text-gray-300'}`}>
+                    {step.label}
+                  </span>
+               </div>
+            )
+          })}
+       </div>
+       
+       {/* Helper Text */}
+       <div className="text-center mt-6">
+          {status === 'pending' && <p className="text-xs text-gray-500 font-serif italic">Payment processing...</p>}
+          {status === 'paid' && <p className="text-xs text-gray-500 font-serif italic">We are preparing your package.</p>}
+          {status === 'shipped' && <p className="text-xs text-gray-500 font-serif italic">Your order is on its way to you.</p>}
+          {status === 'delivered' && <p className="text-xs text-gray-500 font-serif italic">We hope you love your new treasures.</p>}
+       </div>
+    </div>
+  )
+};
 
 export const OrderLookup: React.FC = () => {
   const navigate = useNavigate();
@@ -33,16 +105,11 @@ export const OrderLookup: React.FC = () => {
     setOrders([]);
 
     try {
-      // 1. Query by Email (Public Index)
       const results = await getCustomerOrders(email);
-      
-      // 2. Client-side Security Filter by Phone
-      // This ensures even if someone guesses an email, they can't see orders without the phone number.
       const searchPhoneNorm = normalizePhone(phone);
       
       const verifiedOrders = results.filter(order => {
         if (!order.customerPhone) return false;
-        // Check if the order's phone contains the search phone or vice versa to be lenient with country codes
         const orderPhoneNorm = normalizePhone(order.customerPhone);
         return orderPhoneNorm.includes(searchPhoneNorm) || searchPhoneNorm.includes(orderPhoneNorm);
       });
@@ -54,17 +121,6 @@ export const OrderLookup: React.FC = () => {
       setError('We could not retrieve your orders at this time. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'paid': return 'bg-indigo-50 text-indigo-700 border-indigo-100';
-      case 'shipped': return 'bg-blue-50 text-blue-700 border-blue-100';
-      case 'delivered': return 'bg-brand-green/10 text-brand-green border-brand-green/20';
-      case 'cancelled': return 'bg-gray-50 text-gray-500 border-gray-200';
-      case 'failed': return 'bg-red-50 text-red-600 border-red-100';
-      default: return 'bg-yellow-50 text-yellow-700 border-yellow-100';
     }
   };
 
@@ -115,7 +171,7 @@ export const OrderLookup: React.FC = () => {
             <button 
               type="submit"
               disabled={loading}
-              className="mt-2 bg-brand-flamingo text-white h-12 flex items-center justify-center gap-2 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 disabled:opacity-70"
+              className="mt-2 bg-brand-flamingo text-white h-12 flex items-center justify-center gap-2 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 disabled:opacity-70 rounded-[2px]"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={14} />}
               Find Orders
@@ -141,64 +197,122 @@ export const OrderLookup: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {orders.map((order) => (
-                  <div key={order.id} className="bg-white border border-brand-latte/20 p-6 md:p-8 rounded-[2px] shadow-sm hover:shadow-md transition-shadow group">
+                  <div key={order.id} className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm hover:shadow-md transition-shadow group overflow-hidden">
+                    
                     {/* Order Header */}
-                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6 border-b border-brand-latte/10 pb-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="font-mono text-sm text-gray-400">
-                            {order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}
-                          </span>
-                          <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
+                    <div className="p-6 md:p-8 pb-0">
+                      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="font-mono text-sm text-gray-400">
+                              #{order.id}
+                            </span>
+                            {/* Date Badge */}
+                            <div className="flex items-center gap-2 text-xs text-gray-500 bg-brand-grey/10 px-2 py-1 rounded-[2px]">
+                              <Calendar size={12} />
+                              {new Date(order.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Calendar size={12} />
-                          {new Date(order.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        <div className="text-right">
+                          <span className="block font-serif text-xl text-gray-900">RM {order.total}</span>
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">Total Paid</span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="block font-serif text-xl text-gray-900">RM {order.total}</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Total Paid</span>
                       </div>
                     </div>
 
-                    {/* Items */}
-                    <div className="flex flex-col gap-4">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex gap-4 items-center">
-                          <div className="w-12 h-16 bg-brand-grey/10 overflow-hidden rounded-[2px] border border-brand-latte/10">
-                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-serif text-gray-900 text-sm">{item.name}</h4>
-                            <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                          </div>
-                          <div className="text-sm font-bold text-gray-900">RM {item.price}</div>
+                    {/* Progress Stepper */}
+                    <OrderStatusStepper status={order.status} />
+
+                    {/* Content Body */}
+                    <div className="px-6 md:px-8 pb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                           
+                           {/* Items Column */}
+                           <div className="flex flex-col gap-4">
+                              <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-2">
+                                <Box size={12} /> Items
+                              </h4>
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex gap-4 items-center">
+                                  <div className="w-12 h-16 bg-brand-grey/10 overflow-hidden rounded-[2px] border border-brand-latte/10">
+                                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-serif text-gray-900 text-sm">{item.name}</h4>
+                                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                                  </div>
+                                  <div className="text-sm font-bold text-gray-900">RM {item.price}</div>
+                                </div>
+                              ))}
+                              
+                              {/* View Item Action */}
+                              {order.status !== 'cancelled' && order.status !== 'failed' && (
+                                <button 
+                                  onClick={() => navigate(`/product/${getProductSlug(order.items[0].name)}`)}
+                                  className="text-brand-flamingo text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all mt-2 w-fit"
+                                >
+                                  View Item <ArrowRight size={12} />
+                                </button>
+                              )}
+                           </div>
+
+                           {/* Delivery & Tracking Column */}
+                           <div className="bg-brand-grey/5 p-6 rounded-[2px] border border-brand-latte/10 flex flex-col justify-between">
+                              <div className="mb-6">
+                                <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 flex items-center gap-2">
+                                   <Truck size={12} /> Shipping To
+                                </h4>
+                                <p className="font-bold text-sm text-gray-900 mb-1">{order.customerName}</p>
+                                <p className="text-xs text-gray-600 leading-relaxed mb-1">{order.shippingAddress}</p>
+                                <p className="text-xs text-gray-400">{order.customerPhone}</p>
+                              </div>
+
+                              {/* Tracking Actions */}
+                              {order.status !== 'cancelled' && order.status !== 'failed' && (
+                                <div className="border-t border-brand-latte/10 pt-4">
+                                   <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3">
+                                      Need Tracking?
+                                   </h4>
+
+                                   {/* Explanatory Steps */}
+                                   <div className="bg-white border border-brand-latte/10 rounded-[2px] p-3 mb-4">
+                                     <p className="text-[10px] text-gray-500 leading-relaxed mb-1.5 flex items-start gap-2">
+                                       <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">1</span>
+                                       <span>Click "Get Tracking No." below to message us on WhatsApp.</span>
+                                     </p>
+                                     <p className="text-[10px] text-gray-500 leading-relaxed flex items-start gap-2">
+                                       <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">2</span>
+                                       <span>Copy the number and track it on the J&T website using the link below.</span>
+                                     </p>
+                                   </div>
+
+                                   <div className="flex flex-col sm:flex-row gap-3">
+                                      <a 
+                                        href="https://wa.link/ad5hui" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex-1 bg-white border border-brand-green/30 text-brand-green px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-green hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                                      >
+                                        <MessageCircle size={14} /> Get Tracking No.
+                                      </a>
+                                      <a 
+                                        href="https://www.jtexpress.my/tracking" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex-1 bg-brand-flamingo text-white px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-gold transition-all flex items-center justify-center gap-2 shadow-sm"
+                                      >
+                                        <ExternalLink size={14} /> Track on J&T
+                                      </a>
+                                   </div>
+                                </div>
+                              )}
+                           </div>
                         </div>
-                      ))}
                     </div>
 
-                    {/* Footer Actions */}
-                    <div className="mt-6 pt-6 border-t border-brand-latte/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Truck size={14} />
-                        <span className="truncate max-w-xs">{order.shippingAddress}</span>
-                      </div>
-                      
-                      {/* Only show 'Buy Again' if not cancelled/failed */}
-                      {order.status !== 'cancelled' && order.status !== 'failed' && (
-                         <button 
-                           onClick={() => navigate(`/product/${getProductSlug(order.items[0].name)}`)}
-                           className="text-brand-flamingo text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
-                         >
-                           View Item <ArrowRight size={12} />
-                         </button>
-                      )}
-                    </div>
                   </div>
                 ))}
               </div>
