@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { getCustomerOrders } from '../firebase';
+import { getCustomerOrders, getOrderById } from '../firebase';
 import { Order } from '../types';
-import { Search, Loader2, Package, Calendar, AlertCircle, ArrowRight, Truck, CheckCircle, CreditCard, MessageCircle, ExternalLink, MapPin, Box } from 'lucide-react';
+import { Search, Loader2, Package, Calendar, AlertCircle, ArrowRight, Truck, CheckCircle, CreditCard, MessageCircle, ExternalLink, Box } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Helper for SEO URLs
@@ -82,8 +82,12 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
 
 export const OrderLookup: React.FC = () => {
   const navigate = useNavigate();
+  const [searchMode, setSearchMode] = useState<'tracking' | 'history'>('tracking');
+  
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [orderId, setOrderId] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -94,28 +98,52 @@ export const OrderLookup: React.FC = () => {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !phone) {
-      setError('Please provide both email and phone number for verification.');
-      return;
-    }
-
     setLoading(true);
     setError('');
     setHasSearched(false);
     setOrders([]);
 
     try {
-      const results = await getCustomerOrders(email);
-      const searchPhoneNorm = normalizePhone(phone);
-      
-      const verifiedOrders = results.filter(order => {
-        if (!order.customerPhone) return false;
-        const orderPhoneNorm = normalizePhone(order.customerPhone);
-        return orderPhoneNorm.includes(searchPhoneNorm) || searchPhoneNorm.includes(orderPhoneNorm);
-      });
+      if (searchMode === 'tracking') {
+        if (!orderId || !email) {
+          setError('Please provide Order ID and Email for verification.');
+          setLoading(false);
+          return;
+        }
+        
+        const order = await getOrderById(orderId.trim());
+        
+        if (order && order.customerEmail.toLowerCase() === email.toLowerCase()) {
+           setOrders([order]);
+           setHasSearched(true);
+        } else {
+           setError('Order not found or email does not match.');
+        }
 
-      setOrders(verifiedOrders);
-      setHasSearched(true);
+      } else {
+        // History Mode
+        if (!email || !phone) {
+          setError('Please provide both email and phone number for verification.');
+          setLoading(false);
+          return;
+        }
+
+        const results = await getCustomerOrders(email);
+        const searchPhoneNorm = normalizePhone(phone);
+        
+        const verifiedOrders = results.filter(order => {
+          if (!order.customerPhone) return false;
+          const orderPhoneNorm = normalizePhone(order.customerPhone);
+          return orderPhoneNorm.includes(searchPhoneNorm) || searchPhoneNorm.includes(orderPhoneNorm);
+        });
+
+        if (verifiedOrders.length > 0) {
+            setOrders(verifiedOrders);
+            setHasSearched(true);
+        } else {
+            setError('No orders found matching these details.');
+        }
+      }
     } catch (err) {
       console.error(err);
       setError('We could not retrieve your orders at this time. Please try again.');
@@ -133,36 +161,81 @@ export const OrderLookup: React.FC = () => {
           <span className="font-script text-3xl text-brand-gold mb-2 block">Concierge</span>
           <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-6">Track Your Order</h1>
           <p className="font-sans text-gray-500 font-light max-w-md mx-auto text-sm leading-relaxed">
-            Please enter the email address and phone number associated with your purchase to view your history.
+            Track a specific order or view your entire purchase history.
           </p>
         </div>
 
         {/* Search Form */}
         <div className="max-w-md mx-auto bg-brand-grey/5 p-8 border border-brand-latte/20 rounded-[2px] mb-16 shadow-sm">
+          
+          {/* Tabs */}
+          <div className="flex border-b border-brand-latte/20 mb-8">
+             <button 
+               onClick={() => { setSearchMode('tracking'); setError(''); setHasSearched(false); }}
+               className={`flex-1 pb-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${searchMode === 'tracking' ? 'text-brand-flamingo border-b-2 border-brand-flamingo -mb-[1px]' : 'text-gray-400 hover:text-gray-600'}`}
+             >
+               Track by Order #
+             </button>
+             <button 
+               onClick={() => { setSearchMode('history'); setError(''); setHasSearched(false); }}
+               className={`flex-1 pb-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${searchMode === 'history' ? 'text-brand-flamingo border-b-2 border-brand-flamingo -mb-[1px]' : 'text-gray-400 hover:text-gray-600'}`}
+             >
+               View History
+             </button>
+          </div>
+
           <form onSubmit={handleSearch} className="flex flex-col gap-6">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Email Address</label>
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="hello@example.com"
-                className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Phone Number</label>
-              <input 
-                type="tel" 
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+60..."
-                className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
-              />
-            </div>
+            
+            {searchMode === 'tracking' ? (
+                <>
+                  <div className="animate-fade-in">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Order Number</label>
+                    <input 
+                        type="text" 
+                        value={orderId}
+                        onChange={(e) => setOrderId(e.target.value)}
+                        placeholder="e.g. 1024"
+                        className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="animate-fade-in">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Email Address</label>
+                    <input 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="For verification"
+                        className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
+                    />
+                  </div>
+                </>
+            ) : (
+                <>
+                  <div className="animate-fade-in">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Email Address</label>
+                    <input 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="hello@example.com"
+                        className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="animate-fade-in">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+60..."
+                        className="w-full bg-white border border-brand-latte/30 px-4 py-3 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo focus:ring-1 focus:ring-brand-flamingo/20 transition-all placeholder:text-gray-300"
+                    />
+                  </div>
+                </>
+            )}
             
             {error && (
-              <div className="flex items-start gap-2 text-red-500 text-xs bg-red-50 p-3 border border-red-100">
+              <div className="flex items-start gap-2 text-red-500 text-xs bg-red-50 p-3 border border-red-100 animate-fade-in">
                 <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
                 {error}
               </div>
@@ -174,7 +247,7 @@ export const OrderLookup: React.FC = () => {
               className="mt-2 bg-brand-flamingo text-white h-12 flex items-center justify-center gap-2 hover:bg-brand-gold transition-colors font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg shadow-brand-flamingo/20 disabled:opacity-70 rounded-[2px]"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={14} />}
-              Find Orders
+              {searchMode === 'tracking' ? 'Track Order' : 'Find History'}
             </button>
           </form>
         </div>
@@ -184,14 +257,16 @@ export const OrderLookup: React.FC = () => {
           <div className="animate-slide-up">
             <div className="flex items-center gap-4 mb-8">
                <div className="h-[1px] flex-1 bg-brand-latte/20"></div>
-               <span className="font-serif text-xl text-gray-900">Your History</span>
+               <span className="font-serif text-xl text-gray-900">
+                   {searchMode === 'tracking' ? 'Order Details' : 'Your History'}
+               </span>
                <div className="h-[1px] flex-1 bg-brand-latte/20"></div>
             </div>
 
             {orders.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-brand-latte/30 rounded-[2px]">
                 <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
-                <p className="text-gray-500 font-sans text-sm">No orders found matching these details.</p>
+                <p className="text-gray-500 font-sans text-sm">No orders found.</p>
                 <button onClick={() => navigate('/')} className="mt-4 text-xs font-bold text-brand-flamingo uppercase tracking-widest hover:text-brand-gold">
                   Return to Shop
                 </button>

@@ -316,6 +316,21 @@ export const getCustomerOrders = async (email: string): Promise<Order[]> => {
   }
 };
 
+export const getOrderById = async (orderId: string): Promise<Order | null> => {
+  if (!db) throw new Error("Database not connected.");
+  try {
+    const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Order;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    throw error;
+  }
+};
+
 export const updateOrderStatusInDb = async (id: string, status: Order['status']) => {
   if (!db) throw new Error("Database not connected.");
   const docRef = doc(db, 'orders', id);
