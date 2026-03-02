@@ -17,7 +17,7 @@ export const PRODUCTS: Product[] = [
     name: 'The Parisian Flight',
     price: 145,
     description: 'A majestic voyage begins. Vintage hot air balloons drifting over Parisian rooftops. A delicate blend of organic cotton and silk, finished with a refined latte border.',
-    image: 'https://i.postimg.cc/cCSNXQ23/Gemini-Generated-Image-tit282tit282tit2.png',
+    image: 'https://picsum.photos/seed/vintage-balloon/600/800',
     material: '80% Organic Cotton, 20% Mulberry Silk',
     care: 'Machine wash delicate cycle in laundry bag. Tumble dry low.',
     stock: 50

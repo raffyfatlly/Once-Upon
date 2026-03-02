@@ -383,15 +383,8 @@ export const uploadImage = async (file: File): Promise<string> => {
   // This helps bypass complex CORS preflight checks that often fail on new buckets.
   
   try {
-    const base64String = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    
-    // Upload as Base64 Data URL
-    const snapshot = await uploadString(storageRef, base64String, StringFormat.DATA_URL);
+    // Standard uploadBytes is more robust for files than base64 strings
+    const snapshot = await uploadBytes(storageRef, file);
     return await getDownloadURL(snapshot.ref);
 
   } catch (error: any) {
