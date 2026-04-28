@@ -63,8 +63,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const calculateShipping = () => {
     if (isTestDiscount) return 0;
     if (isFreeShipping) return 0;
-    if (region === 'east') return 12;
-    return totalItems >= 3 ? 10 : 8;
+    
+    if (region === 'east') {
+      if (totalItems === 1) return 15;
+      if (totalItems <= 3) return 18;
+      if (totalItems <= 6) return 20;
+      return 20 + Math.ceil((totalItems - 6) / 3) * 5; // + RM 5 for every 3 additional items
+    } else {
+      if (totalItems === 1) return 8;
+      if (totalItems <= 3) return 10;
+      if (totalItems <= 6) return 12;
+      return 12 + Math.ceil((totalItems - 6) / 3) * 2; // + RM 2 for every 3 additional items
+    }
   };
 
   const shippingCost = calculateShipping();

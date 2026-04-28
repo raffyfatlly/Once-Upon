@@ -88,11 +88,26 @@ export const ShippingPolicy: React.FC = () => (
     
     <section>
        <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Shipping Rates</h3>
-       <p>
-         West Malaysia: Flat rate RM 8.00.<br/>
-         East Malaysia: Flat rate RM 12.00.<br/>
-         <em>Bulk orders of 3+ items to West Malaysia are charged a standard fee of RM 10.00.</em>
-       </p>
+       <div className="space-y-4 text-gray-600">
+         <div>
+           <strong>West Malaysia:</strong><br/>
+           <ul className="list-disc pl-5 mt-1 space-y-1">
+             <li>1 item: RM 8.00</li>
+             <li>2-3 items: RM 10.00</li>
+             <li>4-6 items: RM 12.00</li>
+             <li className="text-gray-500 italic">Additional items: +RM 2.00 per every 3 items</li>
+           </ul>
+         </div>
+         <div>
+           <strong>East Malaysia (Sabah & Sarawak):</strong><br/>
+           <ul className="list-disc pl-5 mt-1 space-y-1">
+             <li>1 item: RM 15.00</li>
+             <li>2-3 items: RM 18.00</li>
+             <li>4-6 items: RM 20.00</li>
+             <li className="text-gray-500 italic">Additional items: +RM 5.00 per every 3 items</li>
+           </ul>
+         </div>
+       </div>
     </section>
   </PolicyLayout>
 );
