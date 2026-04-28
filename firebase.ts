@@ -98,8 +98,10 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
     
     // 2. STOCK CHECK: Read all product documents involved in the order first
     const productReads = orderData.items.map(item => {
-      const ref = doc(db, 'products', item.id);
-      return { ref, id: item.id, qty: item.quantity };
+      // Use baseProductId if it's a size variant to locate the original document
+      const docId = item.baseProductId || item.id;
+      const ref = doc(db, 'products', docId);
+      return { ref, id: docId, qty: item.quantity };
     });
 
     const productDocs = await Promise.all(productReads.map(p => transaction.get(p.ref)));
@@ -193,7 +195,8 @@ export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelle
 
     // 2. Read all Product Docs involved
     const productReads = orderData.items.map(item => {
-      const ref = doc(db, 'products', item.id);
+      const docId = item.baseProductId || item.id;
+      const ref = doc(db, 'products', docId);
       return { ref, qty: item.quantity };
     });
 
@@ -388,7 +391,10 @@ export const uploadImage = async (file: File): Promise<string> => {
     return await getDownloadURL(snapshot.ref);
 
   } catch (error: any) {
-    console.error("Upload failed:", error);
+    console.error("Upload failed full error object:", error);
+    if (error.customData || error.serverResponse) {
+      console.error("Server response:", error.serverResponse);
+    }
     
     // Diagnose common errors for the user
     if (error.code === 'storage/object-not-found' || error.code === 'storage/bucket-not-found') {
@@ -399,7 +405,7 @@ export const uploadImage = async (file: File): Promise<string> => {
        throw new Error("Upload cancelled.");
     }
     
-    throw new Error(`Upload Error: ${error.message}`);
+    throw new Error(`Upload Error: ${error.message} (Code: ${error.code})`);
   }
 };
 

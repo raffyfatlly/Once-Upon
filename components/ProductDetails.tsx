@@ -31,6 +31,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState<string>('');
+  const [selectedSize, setSelectedSize] = useState<'baby' | 'adult'>('baby');
 
   const [openSection, setOpenSection] = useState<string>('material');
   const [quantity, setQuantity] = useState(1);
@@ -62,7 +63,19 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
     if (addState !== 'idle' || !product) return;
     setAddState('loading');
     setTimeout(() => {
-      onAddToCart(product, quantity);
+      const isAdult = selectedSize === 'adult';
+      
+      const tailoredProduct = product.hasSizes ? { 
+          ...product,
+          id: `${product.id}-${selectedSize}`,
+          baseProductId: product.id,
+          name: `${product.name} (${isAdult ? 'Adult' : 'Baby'})`,
+          price: isAdult ? (product.adultPrice || 108) : (product.babyPrice || 88),
+          sizeOption: selectedSize,
+          size: isAdult ? (product.adultSizeDesc || '150 cm x 100 cm') : (product.babySizeDesc || '70 cm x 100 cm')
+      } : product;
+
+      onAddToCart(tailoredProduct as any, quantity);
       setAddState('success');
       setTimeout(() => {
         setAddState('idle');
@@ -162,11 +175,40 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                </button>
             </div>
             <div className="flex items-center gap-4 mb-8">
-              <span className="font-serif text-2xl text-gray-900">RM {product.price}</span>
+              <span className="font-serif text-2xl text-gray-900">
+                RM {product.hasSizes 
+                  ? (selectedSize === 'adult' ? (product.adultPrice || 108) : (product.babyPrice || 88))
+                  : product.price}
+              </span>
               <div className="h-4 w-[1px] bg-gray-200"></div>
               <span className="font-script text-xl text-brand-gold">{(!product.collection || product.collection === 'Blankets') ? 'Blanket Collection' : product.collection}</span>
             </div>
-            <p className="font-serif italic text-gray-600 text-base leading-relaxed mb-8 border-l-2 border-brand-flamingo pl-6">"{product.description}"</p>
+            <p className="font-serif italic text-gray-600 text-base leading-relaxed mb-6 border-l-2 border-brand-flamingo pl-6">"{product.description}"</p>
+
+            {/* Size Selector */}
+            {product.hasSizes && (
+            <div className="mb-8">
+              <span className="block font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-4">Select Size</span>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setSelectedSize('baby')}
+                  className={`flex flex-col items-center justify-center p-4 border rounded-[2px] transition-all duration-300 flex-1 sm:flex-none sm:w-36 ${selectedSize === 'baby' ? 'border-brand-flamingo bg-brand-flamingo/5 text-brand-flamingo' : 'border-brand-latte/30 hover:border-brand-latte text-gray-500 bg-white'}`}
+                >
+                  <span className="font-bold text-sm">Baby</span>
+                  <span className="text-[10px] mt-1 text-gray-400">{product.babySizeDesc || '70 cm × 100 cm'}</span>
+                  <span className="text-xs font-bold mt-2">RM {product.babyPrice || 88}</span>
+                </button>
+                <button
+                  onClick={() => setSelectedSize('adult')}
+                  className={`flex flex-col items-center justify-center p-4 border rounded-[2px] transition-all duration-300 flex-1 sm:flex-none sm:w-36 ${selectedSize === 'adult' ? 'border-brand-flamingo bg-brand-flamingo/5 text-brand-flamingo' : 'border-brand-latte/30 hover:border-brand-latte text-gray-500 bg-white'}`}
+                >
+                  <span className="font-bold text-sm">Adult</span>
+                  <span className="text-[10px] mt-1 text-gray-400">{product.adultSizeDesc || '150 cm × 100 cm'}</span>
+                  <span className="text-xs font-bold mt-2">RM {product.adultPrice || 108}</span>
+                </button>
+              </div>
+            </div>
+            )}
 
             <div className="flex flex-col gap-4 mb-12">
                <div className="flex flex-col sm:flex-row gap-4">

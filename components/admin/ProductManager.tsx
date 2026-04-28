@@ -38,7 +38,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
     care: '',
     collection: 'Blankets',
     size: '',
-    stock: 0
+    stock: 0,
+    hasSizes: false,
+    babyPrice: 88,
+    adultPrice: 108,
+    babySizeDesc: '70 cm x 100 cm',
+    adultSizeDesc: '150 cm x 100 cm'
   });
 
   const handleEdit = (product: Product) => {
@@ -47,7 +52,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         collection: product.collection || 'Blankets',
         additionalImages: product.additionalImages || [],
         size: product.size || '',
-        stock: product.stock !== undefined ? product.stock : 0
+        stock: product.stock !== undefined ? product.stock : 0,
+        hasSizes: product.hasSizes || false,
+        babyPrice: product.babyPrice !== undefined ? product.babyPrice : 88,
+        adultPrice: product.adultPrice !== undefined ? product.adultPrice : 108,
+        babySizeDesc: product.babySizeDesc || '70 cm x 100 cm',
+        adultSizeDesc: product.adultSizeDesc || '150 cm x 100 cm'
     });
     setEditingProduct(product);
     setIsEditing(true);
@@ -69,7 +79,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
       care: '',
       collection: 'Blankets',
       size: '',
-      stock: 0
+      stock: 0,
+      hasSizes: false,
+      babyPrice: 88,
+      adultPrice: 108,
+      babySizeDesc: '70 cm x 100 cm',
+      adultSizeDesc: '150 cm x 100 cm'
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -274,9 +289,49 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
                       <input className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" value={formData.material || ''} onChange={e => setFormData({...formData, material: e.target.value})} />
                   </div>
                   <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Size / Dimensions</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Default Size / Dimensions</label>
                       <input className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" placeholder="e.g. 120cm x 120cm" value={formData.size || ''} onChange={e => setFormData({...formData, size: e.target.value})} />
                   </div>
+              </div>
+
+              {/* Sizing Options Config */}
+              <div className="mt-2 p-4 border border-brand-latte/30 bg-white rounded-[2px]">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
+                  <input type="checkbox" checked={formData.hasSizes} onChange={e => setFormData({...formData, hasSizes: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
+                  Enable Baby & Adult Sizing
+                </label>
+                <p className="text-[10px] text-gray-500 mb-4">If enabled, customers will choose between baby and adult sizes instead of the default size and price.</p>
+                
+                {formData.hasSizes && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-brand-latte/20">
+                    <div className="bg-brand-grey/5 p-4 rounded-[2px] border border-brand-latte/10">
+                      <p className="text-xs font-bold mb-3 text-gray-900 border-b border-brand-latte/20 pb-2">Baby Variant</p>
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Price (RM)</label>
+                          <input type="number" className="w-full border p-2 text-sm focus:border-brand-flamingo outline-none bg-white" value={formData.babyPrice} onChange={e => setFormData({...formData, babyPrice: Number(e.target.value)})} />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dimensions</label>
+                          <input className="w-full border p-2 text-sm focus:border-brand-flamingo outline-none bg-white" value={formData.babySizeDesc} onChange={e => setFormData({...formData, babySizeDesc: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-brand-grey/5 p-4 rounded-[2px] border border-brand-latte/10">
+                      <p className="text-xs font-bold mb-3 text-gray-900 border-b border-brand-latte/20 pb-2">Adult Variant</p>
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Price (RM)</label>
+                          <input type="number" className="w-full border p-2 text-sm focus:border-brand-flamingo outline-none bg-white" value={formData.adultPrice} onChange={e => setFormData({...formData, adultPrice: Number(e.target.value)})} />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dimensions</label>
+                          <input className="w-full border p-2 text-sm focus:border-brand-flamingo outline-none bg-white" value={formData.adultSizeDesc} onChange={e => setFormData({...formData, adultSizeDesc: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

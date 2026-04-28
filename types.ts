@@ -11,12 +11,19 @@ export interface Product {
   care?: string;
   collection?: string;
   size?: string;
-  stock?: number; // Made optional to fix build errors with legacy data checks
+  stock?: number;
+  hasSizes?: boolean;
+  babyPrice?: number;
+  babySizeDesc?: string;
+  adultPrice?: number;
+  adultSizeDesc?: string;
 }
 
 export interface CartItem extends Product {
   quantity: number;
   isPreOrder?: boolean;
+  baseProductId?: string; // used for stock deduction if id is modified for variants
+  sizeOption?: string;
 }
 
 export interface SiteConfig {
