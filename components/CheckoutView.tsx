@@ -175,29 +175,26 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       });
 
       // 2. Chip Payload
-      let productsPayload = [];
-      
+      const productsPayload = [
+        ...cart.map(item => ({
+          name: item.name.substring(0, 256),
+          quantity: item.quantity,
+          price: Math.round(item.price * 100)
+        })),
+        {
+          name: (isFreeShipping || isTestDiscount) ? "Shipping Fee (Waived)" : "Shipping Fee",
+          quantity: 1,
+          price: Math.round(shippingCost * 100)
+        }
+      ];
+
+      // Add negative line item for test discount
       if (isTestDiscount) {
-         // CHIP API may reject negative prices. 
-         // For test RM1, we just override the entire product list with a single RM1 item.
-         productsPayload = [{
-            name: "Test Order (TESTRM1 Applied)",
+        productsPayload.push({
+            name: "Voucher Discount (TESTRM1)",
             quantity: 1,
-            price: 100 // RM 1.00
-         }];
-      } else {
-         productsPayload = [
-          ...cart.map(item => ({
-            name: item.name.substring(0, 256),
-            quantity: item.quantity,
-            price: Math.round(item.price * 100)
-          })),
-          {
-            name: isFreeShipping ? "Shipping Fee (Waived)" : "Shipping Fee",
-            quantity: 1,
-            price: Math.round(shippingCost * 100)
-          }
-        ];
+            price: -Math.round(discountAmount * 100)
+        });
       }
 
       const payload = {
@@ -212,7 +209,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
           products: productsPayload
         },
         reference: orderRef.id,
-        force_redirect: true,
         // Remove /# from the redirect URLs to support BrowserRouter
         success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
         failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,
@@ -230,10 +226,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       try { data = await response.json(); } catch (e) { throw new Error("Payment gateway response invalid."); }
 
       if (!response.ok) {
-        console.error("Chip API Error Response:", data);
-        const errorDetails = JSON.stringify(data);
-        const msg = data.message || (data.errors ? Object.values(data.errors).join(', ') : `Payment initialization failed: ${errorDetails}`);
-        throw new Error(msg);
+        throw new Error(data.message || "Payment initialization failed");
       }
 
       onOrderSuccess(); 
