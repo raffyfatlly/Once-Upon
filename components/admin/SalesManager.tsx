@@ -4,6 +4,42 @@ import { Order } from '../../types';
 import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders } from '../../firebase';
 
+const formatKLDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit'
+  });
+};
+
+const formatKLTime = (dateString: string) => {
+  return new Date(dateString).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+  });
+};
+
+const getKLDateString = (offsetDays: number = 0) => {
+   const d = new Date();
+   const klTime = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+   klTime.setDate(klTime.getDate() + offsetDays);
+   const year = klTime.getFullYear();
+   const month = String(klTime.getMonth() + 1).padStart(2, '0');
+   const day = String(klTime.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+};
+
+const getKLDateFromIso = (isoString: string) => {
+   const klTime = new Date(new Date(isoString).toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+   const year = klTime.getFullYear();
+   const month = String(klTime.getMonth() + 1).padStart(2, '0');
+   const day = String(klTime.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+};
+
 interface SalesManagerProps {
   orders: Order[];
 }
@@ -38,7 +74,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   useEffect(() => {
     const runCleanup = async () => {
       try {
-        const releasedCount = await autoReleaseStaleOrders(5); // 5 minutes timeout
+        const releasedCount = await autoReleaseStaleOrders(60); // 60 minutes timeout
         setLastCleanup(new Date());
         if (releasedCount > 0) {
             setCleanupMessage(`Released stock for ${releasedCount} stale order(s).`);
@@ -68,16 +104,17 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
       setEndDate('');
       return;
     }
-    const end = new Date();
-    const start = new Date();
-    if (range === 'today') {
-    } else if (range === 'week') {
-      start.setDate(end.getDate() - 7);
+    const endStr = getKLDateString(0);
+    let startStr = endStr;
+
+    if (range === 'week') {
+      startStr = getKLDateString(-7);
     } else if (range === 'month') {
-      start.setDate(end.getDate() - 30);
+      startStr = getKLDateString(-30);
     }
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
+    
+    setStartDate(startStr);
+    setEndDate(endStr);
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: string, currentStatus: string) => {
@@ -167,7 +204,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
         
         <div class="order-meta">
           <div>Order #${order.id}</div>
-          <div>${new Date(order.date).toLocaleDateString()}</div>
+          <div>${formatKLDate(order.date)} - ${formatKLTime(order.date)}</div>
         </div>
         
         <div class="address-section">
@@ -244,13 +281,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
 
     let matchesDate = true;
     if (startDate || endDate) {
-      const orderDate = new Date(order.date);
-      if (startDate) matchesDate = matchesDate && orderDate >= new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && orderDate <= end;
-      }
+      const orderKLDateStr = getKLDateFromIso(order.date);
+      if (startDate) matchesDate = matchesDate && orderKLDateStr >= startDate;
+      if (endDate) matchesDate = matchesDate && orderKLDateStr <= endDate;
     }
     return matchesSearch && matchesStatus && matchesDate && matchesProduct;
   });
@@ -296,8 +329,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
     if (order.status !== 'pending') return false;
     const orderTime = new Date(order.date).getTime();
     const now = new Date().getTime();
-    // Consider stale if older than 5 minutes
-    return (now - orderTime) > (5 * 60 * 1000); 
+    // Consider stale if older than 60 minutes
+    return (now - orderTime) > (60 * 60 * 1000); 
   };
 
   // --- ANALYTICS CALCULATION ---
@@ -455,8 +488,11 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">{selectedOrders.has(order.id) ? (<CheckSquare size={16} className="text-brand-flamingo" />) : (<Square size={16} />)}</button></td>
                         <td className="p-4">
                             <div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div>
-                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1"><Calendar size={10} /> {new Date(order.date).toLocaleDateString()}</div>
-                            {/* Stale Warning for Pending > 5 mins */}
+                            <div className="flex flex-col mt-1.5 gap-0.5">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar size={12} /> {formatKLDate(order.date)}</div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={12} /> {formatKLTime(order.date)}</div>
+                            </div>
+                            {/* Stale Warning for Pending > 60 mins */}
                             {isStalePending(order) && (
                                 <div className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase text-red-500 animate-pulse bg-red-50 px-1.5 py-0.5 rounded w-fit border border-red-100">
                                     <Clock size={10} /> Stuck?
@@ -573,7 +609,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                         {order.status === 'pending' && isStalePending(order) && (
                                             <div className="mb-3 text-[10px] text-red-500 bg-red-50 p-2 rounded border border-red-100 flex gap-2">
                                                 <AlertTriangle size={14} className="flex-shrink-0" />
-                                                This order has been pending for more than 5 minutes. The stock is still reserved. Change to 'Cancelled' to release stock.
+                                                This order has been pending for more than 60 minutes. The stock is still reserved. Change to 'Cancelled' to release stock.
                                             </div>
                                         )}
                                         <select 

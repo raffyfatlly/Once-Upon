@@ -209,6 +209,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
           products: productsPayload
         },
         reference: orderRef.id,
+        force_redirect: true,
         // Remove /# from the redirect URLs to support BrowserRouter
         success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
         failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,

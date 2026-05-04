@@ -88,7 +88,9 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
   // 1. Trigger Auto-Cleanup/Release of Stale Orders BEFORE processing new one.
   try {
     console.log("Running pre-order stock cleanup...");
-    await autoReleaseStaleOrders(5); 
+    // Increased from 5 to 60 minutes to give users enough time for OTP/3D secure,
+    // and prevent false cancellations if they take a bit longer on the CHIP payment page.
+    await autoReleaseStaleOrders(60); 
   } catch (err) {
     console.warn("Auto-release failed during order creation (non-fatal):", err);
   }
@@ -240,7 +242,7 @@ export const updateOrderAndRestock = async (orderId: string, newStatus: string, 
  * Checks for orders that have been 'pending' for more than {timeoutMinutes}.
  * Automatically cancels them and returns stock.
  */
-export const autoReleaseStaleOrders = async (timeoutMinutes: number = 5): Promise<number> => {
+export const autoReleaseStaleOrders = async (timeoutMinutes: number = 60): Promise<number> => {
   if (!db) throw new Error("Database not connected.");
 
   // 1. Get all pending orders
