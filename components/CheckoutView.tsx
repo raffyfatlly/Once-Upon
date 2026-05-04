@@ -209,7 +209,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
           products: productsPayload
         },
         reference: orderRef.id,
-        force_redirect: true,
         // Remove /# from the redirect URLs to support BrowserRouter
         success_redirect: `${window.location.origin}/#/payment/callback?result=success&order=${orderRef.id}`,
         failure_redirect: `${window.location.origin}/#/payment/callback?result=failed&order=${orderRef.id}`,
@@ -227,7 +226,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       try { data = await response.json(); } catch (e) { throw new Error("Payment gateway response invalid."); }
 
       if (!response.ok) {
-        throw new Error(data.message || "Payment initialization failed");
+        console.error("Chip API Error Response:", data);
+        const msg = data.message || (data.errors ? Object.values(data.errors).join(', ') : "Payment initialization failed");
+        throw new Error(msg);
       }
 
       onOrderSuccess(); 
