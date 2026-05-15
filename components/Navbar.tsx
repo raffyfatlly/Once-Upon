@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
 
           {/* Desktop Right Links / Cart */}
           <div className="hidden md:flex space-x-10 items-center flex-1 justify-end">
-             <Link to="/orders" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Concierge</Link>
+             <Link to="/orders" className="font-sans text-[10px] tracking-[0.15em] text-gray-500 hover:text-brand-flamingo transition-colors uppercase font-bold">Tracking</Link>
              <Link 
                 to="/cart"
                 className={`relative cursor-pointer group/cart transition-colors duration-300 ${animateCart ? 'text-brand-flamingo animate-cart-alert' : 'text-gray-800 hover:text-brand-flamingo'}`}
@@ -250,7 +250,7 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
                onClick={handleMobileLinkClick}
                className="font-serif text-3xl text-gray-900 hover:text-brand-flamingo hover:italic transition-all duration-300"
              >
-               Concierge
+               Tracking
              </Link>
           </div>
         </div>

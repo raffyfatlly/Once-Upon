@@ -158,7 +158,7 @@ export const OrderLookup: React.FC = () => {
         
         {/* Header */}
         <div className="text-center mb-16">
-          <span className="font-script text-3xl text-brand-gold mb-2 block">Concierge</span>
+          <span className="font-script text-3xl text-brand-gold mb-2 block">Tracking</span>
           <h1 className="font-serif text-3xl md:text-4xl text-gray-900 mb-6">Track Your Order</h1>
           <p className="font-sans text-gray-500 font-light max-w-md mx-auto text-sm leading-relaxed">
             Track a specific order or view your entire purchase history.
