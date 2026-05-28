@@ -342,6 +342,12 @@ export const updateOrderStatusInDb = async (id: string, status: Order['status'])
   await updateDoc(docRef, { status });
 };
 
+export const updateOrderNotesInDb = async (id: string, adminNotes: string) => {
+  if (!db) throw new Error("Database not connected.");
+  const docRef = doc(db, 'orders', id);
+  await updateDoc(docRef, { adminNotes });
+};
+
 export const deleteOrderFromDb = async (id: string) => {
   if (!db) throw new Error("Database not connected.");
   await deleteDoc(doc(db, 'orders', id));

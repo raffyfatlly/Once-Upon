@@ -83,8 +83,12 @@ const StoreFront: React.FC<{
   const navigate = useNavigate();
   
   // Group products by collection
+  const getProductGroup = (product: Product) => {
+    return product.category?.trim() || product.collection || 'Blankets';
+  };
+
   const groupedProducts = products.reduce((acc, product) => {
-    const collection = product.collection || 'Blankets';
+    const collection = getProductGroup(product);
     if (!acc[collection]) acc[collection] = [];
     acc[collection].push(product);
     return acc;
@@ -397,11 +401,40 @@ const App: React.FC = () => {
   }, [pathname]);
 
   // Cart Handlers
+  const isAddonProduct = (p: Product | CartItem) => Boolean(p.isCheckoutAddon);
+
   const handleAddToCart = (product: Product, quantity: number = 1) => {
+    // Prevent adding out-of-stock add-ons unconditionally
+    const isAddon = isAddonProduct(product);
+    if (isAddon && (product.stock || 0) <= 0) {
+      alert(`Sorry, ${product.name} is currently sold out and cannot be pre-ordered.`);
+      return;
+    }
+
     // Determine if this is a pre-order (stock <= 0)
     const isPreOrder = (product.stock || 0) <= 0;
 
     setCart(prev => {
+      const mainProductsCount = prev.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
+      
+      if (isAddon) {
+        const currentAddonQty = prev.find(i => i.id === product.id)?.quantity || 0;
+        const potentialMax = Math.min(product.stock || 0, mainProductsCount);
+        
+        if (currentAddonQty + quantity > potentialMax) {
+          if (potentialMax === 0) {
+            alert(`You must add a main product to your bag before adding an add-on.`);
+          } else if (currentAddonQty === potentialMax) {
+             alert(`You can only add up to ${potentialMax} of ${product.name} based on your main product quantity and available stock.`);
+          } else {
+             const allowedToAdd = potentialMax - currentAddonQty;
+             alert(`You can only add up to ${potentialMax} of ${product.name} based on your main product quantity and available stock.`);
+             quantity = allowedToAdd;
+          }
+          if (quantity <= 0) return prev;
+        }
+      }
+
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
         // Update quantity and ensure isPreOrder flag is current
@@ -412,16 +445,51 @@ const App: React.FC = () => {
   };
 
   const handleUpdateCartQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, quantity: Math.max(1, item.quantity + delta) };
-      }
-      return item;
-    }));
+    setCart(prev => {
+      let newCart = prev.map(item => {
+        if (item.id === id) {
+          return { ...item, quantity: Math.max(1, item.quantity + delta) };
+        }
+        return item;
+      });
+
+      const mainProductsCount = newCart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
+
+      newCart = newCart.map(item => {
+        if (isAddonProduct(item)) {
+           const maxAllowed = Math.min(item.stock || 0, mainProductsCount);
+           if (item.quantity > maxAllowed) {
+              if (item.id === id && delta > 0) {
+                 alert(`You can only have up to ${maxAllowed} of ${item.name} based on main products and stock.`);
+              }
+              return { ...item, quantity: maxAllowed };
+           }
+        }
+        return item;
+      }).filter(item => item.quantity > 0);
+
+      return newCart;
+    });
   };
 
   const handleRemoveFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    setCart(prev => {
+      let newCart = prev.filter(item => item.id !== id);
+      
+      const mainProductsCount = newCart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
+
+      newCart = newCart.map(item => {
+        if (isAddonProduct(item)) {
+           const maxAllowed = Math.min(item.stock || 0, mainProductsCount);
+           if (item.quantity > maxAllowed) {
+              return { ...item, quantity: maxAllowed };
+           }
+        }
+        return item;
+      }).filter(item => item.quantity > 0);
+
+      return newCart;
+    });
   };
 
   const handleOrderComplete = () => {
@@ -429,6 +497,8 @@ const App: React.FC = () => {
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const regularProducts = products.filter(p => !isAddonProduct(p));
 
   return (
     <>
@@ -442,42 +512,44 @@ const App: React.FC = () => {
       <Routes>
         {/* Public Store Routes */}
         <Route path="/" element={
-          <Layout cartCount={cartCount} products={products}>
-            <StoreFront products={products} siteConfig={siteConfig} onAddToCart={handleAddToCart} />
+          <Layout cartCount={cartCount} products={regularProducts}>
+            <StoreFront products={regularProducts} siteConfig={siteConfig} onAddToCart={handleAddToCart} />
           </Layout>
         } />
         
         <Route path="/story" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <OurStory />
           </Layout>
         } />
 
         {/* Clean URL Product Route (Slug or ID) */}
         <Route path="/product/:slug" element={
-          <Layout cartCount={cartCount} products={products}>
-            <ProductDetails products={products} onAddToCart={handleAddToCart} />
+          <Layout cartCount={cartCount} products={regularProducts}>
+            <ProductDetails products={regularProducts} onAddToCart={handleAddToCart} />
           </Layout>
         } />
         
         <Route path="/collections/:name" element={
-          <Layout cartCount={cartCount} products={products}>
-            <CollectionView products={products} onAddToCart={handleAddToCart} />
+          <Layout cartCount={cartCount} products={regularProducts}>
+            <CollectionView products={regularProducts} onAddToCart={handleAddToCart} />
           </Layout>
         } />
         
         <Route path="/cart" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <CartView 
               cart={cart}
+              products={products}
               onUpdateQuantity={handleUpdateCartQuantity}
               onRemoveItem={handleRemoveFromCart}
+              onAddToCart={handleAddToCart}
             />
           </Layout>
         } />
         
         <Route path="/orders" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <OrderLookup />
           </Layout>
         } />
@@ -495,27 +567,27 @@ const App: React.FC = () => {
 
         {/* Policy Routes */}
         <Route path="/policies/refund" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <RefundPolicy />
           </Layout>
         } />
         <Route path="/policies/shipping" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <ShippingPolicy />
           </Layout>
         } />
         <Route path="/policies/privacy" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <PrivacyPolicy />
           </Layout>
         } />
         <Route path="/policies/terms" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <TermsPolicy />
           </Layout>
         } />
         <Route path="/policies/business-info" element={
-          <Layout cartCount={cartCount} products={products}>
+          <Layout cartCount={cartCount} products={regularProducts}>
             <BusinessInfoPolicy />
           </Layout>
         } />

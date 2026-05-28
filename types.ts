@@ -10,6 +10,7 @@ export interface Product {
   material?: string;
   care?: string;
   collection?: string;
+  category?: string;
   size?: string;
   stock?: number;
   hasSizes?: boolean;
@@ -17,6 +18,7 @@ export interface Product {
   babySizeDesc?: string;
   adultPrice?: number;
   adultSizeDesc?: string;
+  isCheckoutAddon?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -43,6 +45,8 @@ export interface Order {
   isGift?: boolean;
   giftTo?: string;
   giftFrom?: string;
+  giftMessage?: string;
+  adminNotes?: string;
 }
 
 export interface Subscriber {

@@ -1,26 +1,37 @@
 
 import React from 'react';
-import { CartItem } from '../types';
+import { Product, CartItem } from '../types';
 import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CartViewProps {
   cart: CartItem[];
+  products: Product[];
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
+  onAddToCart: (product: Product, quantity?: number) => void;
 }
 
 export const CartView: React.FC<CartViewProps> = ({ 
   cart, 
+  products,
   onUpdateQuantity, 
-  onRemoveItem 
+  onRemoveItem,
+  onAddToCart
 }) => {
   const navigate = useNavigate();
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
-  // Packaging Logic: 1 set for every 1 item
-  const packagingCount = totalItems;
+  // Custom logic to identify addons
+  const isAddonProduct = (p: CartItem | Product) => Boolean(p.isCheckoutAddon);
+
+  // Packaging Logic: 1 set for every 1 main item
+  const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
+  const packagingCount = mainItemsCount;
+
+  const checkoutAddons = products?.filter(p => isAddonProduct(p)) || [];
+  const visibleAddons = checkoutAddons.filter(addon => !cart.some(item => item.id === addon.id));
 
   if (cart.length === 0) {
     return (
@@ -105,6 +116,44 @@ export const CartView: React.FC<CartViewProps> = ({
               ))}
             </div>
             
+            {visibleAddons.length > 0 && (
+              <div className="mt-12 bg-brand-grey/5 p-6 border border-brand-latte/10 rounded-[2px]">
+                 <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-6 border-b border-brand-latte/20 pb-2">
+                   Perfect Additions to Your Order
+                 </h4>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   {visibleAddons.map(addon => {
+                      const isSoldOut = (addon.stock ?? 0) <= 0;
+                      return (
+                      <div key={addon.id} className={`flex gap-4 items-center bg-white p-4 border border-brand-latte/20 rounded-[2px] shadow-sm transition-shadow ${isSoldOut ? 'opacity-60' : 'hover:shadow-md'}`}>
+                         <img src={addon.image} alt={addon.name} className={`w-16 h-20 object-cover bg-gray-50 border border-brand-latte/10 ${isSoldOut ? 'grayscale' : ''}`} />
+                         <div className="flex-1 min-w-0">
+                            <h4 className="font-serif text-sm text-gray-900 line-clamp-2 mb-1">{addon.name}</h4>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">RM {addon.price}</p>
+                         </div>
+                         {isSoldOut ? (
+                           <span className="text-[10px] font-bold uppercase text-brand-flamingo tracking-wider flex-shrink-0 bg-brand-flamingo/10 px-2 py-1 rounded">
+                             Sold Out
+                           </span>
+                         ) : (
+                           <button 
+                             type="button"
+                             onClick={(e) => {
+                               e.preventDefault();
+                               onAddToCart(addon, 1);
+                             }}
+                             className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 text-white hover:bg-brand-flamingo transition-colors flex-shrink-0"
+                             title="Add to order"
+                           >
+                             <Plus size={14} />
+                           </button>
+                         )}
+                      </div>
+                   )})}
+                 </div>
+              </div>
+            )}
+
             <button 
               onClick={() => navigate('/')}
               className="mt-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-brand-flamingo transition-colors group"

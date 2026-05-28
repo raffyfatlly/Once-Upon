@@ -21,7 +21,11 @@ export const Navbar: React.FC<NavbarProps> = ({ cartCount, products }) => {
   const navigate = useNavigate();
 
   // Categories Logic
-  const collections = Array.from(new Set(products.map(p => p.collection || 'Blankets'))).sort() as string[];
+  const getProductGroup = (product: Product) => {
+    return product.category?.trim() || product.collection || 'Blankets';
+  };
+
+  const collections = Array.from(new Set(products.map(getProductGroup))).sort() as string[];
   
   // Mobile accordion state
   const [expandedCollection, setExpandedCollection] = useState<string | null>(null);

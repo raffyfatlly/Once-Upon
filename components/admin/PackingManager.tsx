@@ -293,6 +293,12 @@ Items: ${itemsList}
                                    <div className="text-[10px] text-gray-400 font-mono">
                                       {order.customerPhone}
                                    </div>
+                                   {order.adminNotes && (
+                                     <div className="mt-2 p-2 bg-yellow-50/50 border border-yellow-200/50 rounded flex items-start gap-2">
+                                       <Package size={12} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                                       <span className="text-xs text-yellow-800 break-words whitespace-pre-wrap">{order.adminNotes}</span>
+                                     </div>
+                                   )}
                                </div>
                            </div>
                          </td>

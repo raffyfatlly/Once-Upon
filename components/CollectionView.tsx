@@ -26,7 +26,11 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
   const navigate = useNavigate();
   const collectionName = name ? decodeURIComponent(name) : '';
 
-  const filteredProducts = products.filter(p => (p.collection || 'Blankets') === collectionName);
+  const getProductGroup = (product: Product) => {
+    return product.category?.trim() || product.collection || 'Blankets';
+  };
+
+  const filteredProducts = products.filter(p => getProductGroup(p) === collectionName);
 
   return (
     <div className="min-h-screen bg-white pt-24 pb-20 animate-fade-in">

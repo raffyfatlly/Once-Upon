@@ -24,6 +24,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
 
   const safeProducts = Array.isArray(products) ? products : [];
   const existingCollections = Array.from(new Set(safeProducts.map(p => p.collection || 'Blankets'))).sort();
+  const existingCategories = Array.from(new Set(safeProducts.map(p => p.category).filter(Boolean))).sort() as string[];
 
   // Form State
   const [formData, setFormData] = useState<Product>({
@@ -37,19 +38,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
     material: '',
     care: '',
     collection: 'Blankets',
+    category: '',
     size: '',
     stock: 0,
     hasSizes: false,
     babyPrice: 88,
     adultPrice: 108,
     babySizeDesc: '70 cm x 100 cm',
-    adultSizeDesc: '150 cm x 100 cm'
+    adultSizeDesc: '150 cm x 100 cm',
+    isCheckoutAddon: false
   });
 
   const handleEdit = (product: Product) => {
     setFormData({
         ...product,
         collection: product.collection || 'Blankets',
+        category: product.category || '',
         additionalImages: product.additionalImages || [],
         size: product.size || '',
         stock: product.stock !== undefined ? product.stock : 0,
@@ -57,7 +61,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         babyPrice: product.babyPrice !== undefined ? product.babyPrice : 88,
         adultPrice: product.adultPrice !== undefined ? product.adultPrice : 108,
         babySizeDesc: product.babySizeDesc || '70 cm x 100 cm',
-        adultSizeDesc: product.adultSizeDesc || '150 cm x 100 cm'
+        adultSizeDesc: product.adultSizeDesc || '150 cm x 100 cm',
+        isCheckoutAddon: product.isCheckoutAddon || false
     });
     setEditingProduct(product);
     setIsEditing(true);
@@ -78,13 +83,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
       material: '',
       care: '',
       collection: 'Blankets',
+      category: '',
       size: '',
       stock: 0,
       hasSizes: false,
       babyPrice: 88,
       adultPrice: 108,
       babySizeDesc: '70 cm x 100 cm',
-      adultSizeDesc: '150 cm x 100 cm'
+      adultSizeDesc: '150 cm x 100 cm',
+      isCheckoutAddon: false
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -257,10 +264,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
                   className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" 
                   value={formData.collection || ''} 
                   onChange={e => setFormData({...formData, collection: e.target.value})}
-                  placeholder="e.g. Blankets"
+                  placeholder="Select or type a new collection..."
                 />
                 <datalist id="collection-options">
                   {existingCollections.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Category (Optional)</label>
+                <input 
+                  list="category-options"
+                  className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-brand-grey/5" 
+                  value={formData.category || ''} 
+                  onChange={e => setFormData({...formData, category: e.target.value})}
+                  placeholder="e.g. Add-on, Gift Box, Apparel"
+                />
+                <datalist id="category-options">
+                  {existingCategories.map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
 
@@ -295,14 +316,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
               </div>
 
               {/* Sizing Options Config */}
-              <div className="mt-2 p-4 border border-brand-latte/30 bg-white rounded-[2px]">
-                <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
-                  <input type="checkbox" checked={formData.hasSizes} onChange={e => setFormData({...formData, hasSizes: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
-                  Enable Baby & Adult Sizing
-                </label>
-                <p className="text-[10px] text-gray-500 mb-4">If enabled, customers will choose between baby and adult sizes instead of the default size and price.</p>
-                
-                {formData.hasSizes && (
+              <div className="mt-2 p-4 border border-brand-latte/30 bg-white rounded-[2px] flex flex-col gap-4">
+                <div>
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.isCheckoutAddon} onChange={e => setFormData({...formData, isCheckoutAddon: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
+                    Set as Checkout Add-On
+                  </label>
+                  <p className="text-[10px] text-gray-500 mb-2">If enabled, this product will be recommended during checkout for users to add to their order.</p>
+                </div>
+                <div className="border-t border-brand-latte/20 pt-4">
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.hasSizes} onChange={e => setFormData({...formData, hasSizes: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
+                    Enable Baby & Adult Sizing
+                  </label>
+                  <p className="text-[10px] text-gray-500 mb-4">If enabled, customers will choose between baby and adult sizes instead of the default size and price.</p>
+                  
+                  {formData.hasSizes && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-brand-latte/20">
                     <div className="bg-brand-grey/5 p-4 rounded-[2px] border border-brand-latte/10">
                       <p className="text-xs font-bold mb-3 text-gray-900 border-b border-brand-latte/20 pb-2">Baby Variant</p>
@@ -332,6 +361,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
               <div>

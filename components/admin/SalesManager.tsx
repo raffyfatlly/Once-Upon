@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../../types';
 import { Search, User, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
-import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders } from '../../firebase';
+import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders, updateOrderNotesInDb } from '../../firebase';
 
 const formatKLDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-GB', {
@@ -59,6 +59,21 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
+
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
+
+  const handleNotesChange = (orderId: string, notes: string) => {
+    setEditingNotes(prev => ({ ...prev, [orderId]: notes }));
+  };
+
+  const handleSaveNotes = async (orderId: string) => {
+    try {
+      await updateOrderNotesInDb(orderId, editingNotes[orderId] || '');
+      alert('Notes saved successfully.');
+    } catch (error: any) {
+      alert('Failed to save notes: ' + error.message);
+    }
+  };
 
   // Auto-cleanup state
   const [lastCleanup, setLastCleanup] = useState<Date>(new Date());
@@ -222,7 +237,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
           <div class="gift-title">A Gift For You</div>
           <div class="gift-text">
              To: ${order.giftTo || 'You'}<br>
-             From: ${order.giftFrom || 'Someone Special'}
+             From: ${order.giftFrom || 'Someone Special'}<br><br>
+             ${order.giftMessage ? `"${order.giftMessage}"` : ''}
           </div>
         </div>
         ` : ''}
@@ -310,6 +326,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
       
       if (order.isGift) {
         entry += `\n\n[GIFT MESSAGE]\nTo: ${order.giftTo || ''}\nFrom: ${order.giftFrom || ''}`;
+        if (order.giftMessage) entry += `\nMessage: "${order.giftMessage}"`;
       }
       
       return entry;
@@ -596,10 +613,37 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                                 <span className="text-xs text-gray-400 uppercase tracking-wide">From</span>
                                                 <span className="font-serif text-gray-900">{order.giftFrom || '-'}</span>
                                                 </div>
+                                                {order.giftMessage && (
+                                                <div className="flex flex-col pt-1">
+                                                <span className="text-xs text-gray-400 uppercase tracking-wide mb-1">Message</span>
+                                                <span className="font-serif text-gray-900 text-xs italic break-words whitespace-pre-wrap">{order.giftMessage}</span>
+                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                     )}
+                                    
+                                    {/* Admin Notes */}
+                                    <div>
+                                        <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-2 flex items-center gap-2">
+                                            <Package size={14} /> Admin Notes
+                                        </h4>
+                                        <div className="bg-white p-4 rounded-[2px] border border-brand-latte/20 text-sm">
+                                            <textarea 
+                                                className="w-full bg-brand-grey/5 border border-brand-latte/30 px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:border-brand-flamingo min-h-[80px]"
+                                                placeholder="Add private notes about this order..."
+                                                value={editingNotes[order.id] !== undefined ? editingNotes[order.id] : (order.adminNotes || '')}
+                                                onChange={(e) => handleNotesChange(order.id, e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={() => handleSaveNotes(order.id)}
+                                                className="mt-2 text-xs font-bold uppercase tracking-widest text-brand-flamingo hover:text-brand-gold transition-colors"
+                                            >
+                                                Save Notes
+                                            </button>
+                                        </div>
+                                    </div>
                                     
                                     {/* Status Change (Duplicate of row action but handy in detail view) */}
                                     <div>

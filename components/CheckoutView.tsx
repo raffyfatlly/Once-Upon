@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { CartItem } from '../types';
-import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Product, CartItem } from '../types';
+import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin, Clock, Plus } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,8 +22,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
-  // Packaging Logic: 1 set for every 1 item
-  const packagingCount = totalItems;
+  const isAddonProduct = (p: CartItem) => Boolean(p.isCheckoutAddon);
+
+  // Packaging Logic: 1 set for every 1 main item
+  const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
+  const packagingCount = mainItemsCount;
 
   // Form Data
   const [email, setEmail] = useState('');
@@ -39,6 +42,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [isGift, setIsGift] = useState(false);
   const [giftTo, setGiftTo] = useState('');
   const [giftFrom, setGiftFrom] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
 
   // Voucher
   const [voucherCode, setVoucherCode] = useState('');
@@ -171,7 +175,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         isGift: isGift,
         // Fix: Firestore crashes if fields are undefined. We default to empty strings.
         giftTo: isGift ? (giftTo || '') : '',
-        giftFrom: isGift ? (giftFrom || '') : ''
+        giftFrom: isGift ? (giftFrom || '') : '',
+        giftMessage: isGift ? (giftMessage || '') : ''
       });
 
       // 2. Chip Payload
@@ -427,7 +432,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                        </label>
                     </div>
                     
-                    <div className={`grid grid-cols-2 gap-6 transition-all duration-500 overflow-hidden ${isGift ? 'max-h-40 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+                    <div className={`grid grid-cols-2 gap-6 transition-all duration-500 overflow-hidden ${isGift ? 'max-h-64 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
                       <div className="col-span-1">
                          <input 
                            type="text" 
@@ -445,6 +450,19 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                            onChange={(e) => setGiftFrom(e.target.value)}
                            className="w-full bg-white border-b border-brand-latte/40 px-3 py-2 font-serif text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm"
                          />
+                      </div>
+                      <div className="col-span-2">
+                         <textarea
+                           placeholder="Short Message (Max 80 chars) - Optional"
+                           value={giftMessage}
+                           maxLength={80}
+                           rows={2}
+                           onChange={(e) => setGiftMessage(e.target.value)}
+                           className="w-full bg-white border border-brand-latte/40 px-3 py-2 font-sans text-gray-800 focus:outline-none focus:border-brand-flamingo placeholder:text-gray-400 text-sm rounded-[2px] resize-none"
+                         />
+                         <div className="text-right text-[10px] text-gray-400 mt-1">
+                           {giftMessage.length}/80
+                         </div>
                       </div>
                     </div>
                  </div>
