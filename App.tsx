@@ -191,13 +191,33 @@ const StoreFront: React.FC<{
           ) : (
             <div>
               {Object.entries(groupedProducts).map(([collectionName, collectionProducts]) => (
-                <div key={collectionName} className="mb-32 last:mb-0">
+                <div key={collectionName} className="mb-32 last:mb-0 relative group">
                   {Object.keys(groupedProducts).length > 1 && (
                      <div className="px-6 mb-12 text-center md:text-left md:pl-12">
                        <h3 className="font-serif text-3xl text-gray-900">{collectionName}</h3>
                      </div>
                   )}
                   
+                  {/* Desktop scroll buttons */}
+                  {collectionProducts.length > 2 && (
+                    <>
+                      <button 
+                        onClick={() => document.getElementById(`row-${collectionName.replace(/\s+/g, '-')}`)?.scrollBy({ left: -400, behavior: 'smooth' })}
+                        className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/90 backdrop-blur items-center justify-center rounded-full shadow-sm border border-brand-latte/20 text-brand-latte hover:text-brand-flamingo hover:scale-105 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-auto"
+                        aria-label="Scroll left"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <button 
+                        onClick={() => document.getElementById(`row-${collectionName.replace(/\s+/g, '-')}`)?.scrollBy({ left: 400, behavior: 'smooth' })}
+                        className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/90 backdrop-blur items-center justify-center rounded-full shadow-sm border border-brand-latte/20 text-brand-latte hover:text-brand-flamingo hover:scale-105 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-auto cursor-pointer"
+                        aria-label="Scroll right"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </>
+                  )}
+
                   {/* 
                      CAROUSEL LAYOUT 
                      Mobile: Vertical Stack (flex-col)
@@ -205,7 +225,10 @@ const StoreFront: React.FC<{
                      Update: Using a wrapper strategy to ensure items are centered if they fit, 
                      but scrollable (starting from left) if they overflow.
                   */}
-                  <div className="md:overflow-x-auto md:pb-16 hide-scrollbar w-full">
+                  <div 
+                    id={`row-${collectionName.replace(/\s+/g, '-')}`}
+                    className="md:overflow-x-auto md:pb-16 hide-scrollbar w-full md:scroll-smooth pointer-events-auto"
+                  >
                     <div className="
                       flex flex-col gap-24 px-6
                       md:flex-row md:gap-16 md:px-12 md:snap-x items-center 
