@@ -645,6 +645,36 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                         </div>
                                     </div>
                                     
+                                    {/* Status History */}
+                                    <div>
+                                        <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-2 flex items-center gap-2">
+                                            <Clock size={14} /> Status History
+                                        </h4>
+                                        <div className="bg-white p-4 rounded-[2px] border border-brand-latte/20 text-sm">
+                                            {(!order.statusHistory || order.statusHistory.length === 0) ? (
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="font-bold uppercase tracking-widest text-gray-600">PENDING</span>
+                                                    <span className="text-gray-400">{formatKLDate(order.date)} {formatKLTime(order.date)}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-3">
+                                                    {order.statusHistory.map((history, idx) => (
+                                                        <div key={idx} className="flex justify-between items-start text-xs border-b border-brand-latte/10 pb-2 last:border-0 last:pb-0">
+                                                            <span className="font-bold uppercase tracking-widest flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-brand-flamingo"></span>
+                                                                {history.status}
+                                                            </span>
+                                                            <div className="text-right text-gray-400 flex flex-col items-end">
+                                                                <span>{formatKLDate(history.timestamp)}</span>
+                                                                <span className="text-[10px]">{formatKLTime(history.timestamp)}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     {/* Status Change (Duplicate of row action but handy in detail view) */}
                                     <div>
                                     <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-2">Update Status</h4>

@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs, runTransaction, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs, runTransaction, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, uploadString, StringFormat } from 'firebase/storage';
 import { Product, Order, SiteConfig, Subscriber } from './types';
 
@@ -164,7 +164,8 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
     // D. Create Order
     transaction.set(newOrderRef, {
       ...orderData,
-      id: newOrderId // Store ID inside document as well for easier fetching
+      id: newOrderId, // Store ID inside document as well for easier fetching
+      statusHistory: [{ status: 'pending', timestamp: new Date().toISOString() }]
     });
 
     console.log(`Created Order #${newOrderId} and deducted stock.`);
@@ -218,7 +219,10 @@ export const restoreStockForOrder = async (orderId: string, newStatus: 'cancelle
     });
 
     // 4. Update Order Status
-    transaction.update(orderRef, { status: newStatus });
+    transaction.update(orderRef, { 
+       status: newStatus,
+       statusHistory: arrayUnion({ status: newStatus, timestamp: new Date().toISOString() })
+    });
   });
 };
 
@@ -233,7 +237,10 @@ export const updateOrderAndRestock = async (orderId: string, newStatus: string, 
   } else {
     // For other status changes (Pending -> Paid, Shipped, etc), stock is already deducted.
     // Just update the status text.
-    await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+    await updateDoc(doc(db, 'orders', orderId), { 
+      status: newStatus,
+      statusHistory: arrayUnion({ status: newStatus, timestamp: new Date().toISOString() })
+    });
   }
 };
 

@@ -47,6 +47,7 @@ export interface Order {
   giftFrom?: string;
   giftMessage?: string;
   adminNotes?: string;
+  statusHistory?: { status: string; timestamp: string }[];
 }
 
 export interface Subscriber {
