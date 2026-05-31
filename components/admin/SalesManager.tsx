@@ -532,7 +532,29 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                             </div>
                         </td>
                         <td className="p-4 font-bold text-sm text-gray-900">RM {order.total}</td>
-                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
+                        <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative inline-block mb-2">
+                                <select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div>
+                            </div>
+                            {order.statusHistory && order.statusHistory.length > 0 ? (
+                                <div className="flex flex-col gap-0.5 text-[9px] text-gray-400 capitalize whitespace-nowrap">
+                                    {order.statusHistory.map((h, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="font-bold opacity-70 w-12">{h.status}:</span>
+                                            <span>{formatKLDate(h.timestamp)} {formatKLTime(h.timestamp)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-0.5 text-[9px] text-gray-400 capitalize whitespace-nowrap">
+                                    <div className="flex gap-2">
+                                        <span className="font-bold opacity-70 w-12">pending:</span>
+                                        <span>{formatKLDate(order.date)} {formatKLTime(order.date)}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
                             <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Print Packing Slip"><Printer size={16} /></button>
@@ -598,7 +620,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                     </div>
 
                                     {/* Gift Info */}
-                                    {order.isGift && (
+                                    {(order.isGift || order.giftTo || order.giftFrom || order.giftMessage) && (
                                     <div>
                                         <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-brand-gold mb-2 flex items-center gap-2">
                                             <Gift size={14} /> Gift Message
