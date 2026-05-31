@@ -346,7 +346,10 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 export const updateOrderStatusInDb = async (id: string, status: Order['status']) => {
   if (!db) throw new Error("Database not connected.");
   const docRef = doc(db, 'orders', id);
-  await updateDoc(docRef, { status });
+  await updateDoc(docRef, { 
+    status,
+    statusHistory: arrayUnion({ status, timestamp: new Date().toISOString() })
+  });
 };
 
 export const updateOrderNotesInDb = async (id: string, adminNotes: string) => {
