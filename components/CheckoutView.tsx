@@ -37,7 +37,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState('');
   const [city, setCity] = useState('');
-  const [region, setRegion] = useState<'west' | 'east'>('west');
+  const [region, setRegion] = useState<'west' | 'east' | 'sg'>('west');
 
   const [isGift, setIsGift] = useState(false);
   const [giftTo, setGiftTo] = useState('');
@@ -68,7 +68,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     if (isTestDiscount) return 0;
     if (isFreeShipping) return 0;
     
-    if (region === 'east') {
+    if (region === 'sg') {
+      if (totalItems === 1) return 30;
+      if (totalItems <= 3) return 45;
+      if (totalItems <= 6) return 65;
+      return 65 + Math.ceil((totalItems - 6) / 3) * 15;
+    } else if (region === 'east') {
       if (totalItems === 1) return 15;
       if (totalItems <= 3) return 18;
       if (totalItems <= 6) return 20;
@@ -171,7 +176,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
         total: total,
         status: 'pending',
         date: new Date().toISOString(),
-        shippingAddress: `${address}, ${postcode} ${city}, ${region === 'east' ? 'East Malaysia' : 'West Malaysia'}`,
+        shippingAddress: `${address}, ${postcode} ${city}, ${region === 'sg' ? 'Singapore' : region === 'east' ? 'East Malaysia' : 'West Malaysia'}`,
         isGift: isGift,
         // Fix: Firestore crashes if fields are undefined. We default to empty strings.
         giftTo: isGift ? (giftTo || '') : '',
@@ -394,16 +399,22 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                       <div className="relative">
                         <select 
                           value={region}
-                          onChange={(e) => setRegion(e.target.value as 'west' | 'east')}
+                          onChange={(e) => setRegion(e.target.value as 'west' | 'east' | 'sg')}
                           className="w-full py-3 bg-transparent border-b border-brand-latte/40 focus:border-brand-flamingo outline-none font-sans text-gray-800 transition-colors appearance-none cursor-pointer"
                         >
                           <option value="west">West Malaysia (Peninsular)</option>
                           <option value="east">East Malaysia (Sabah & Sarawak)</option>
+                          <option value="sg">Singapore</option>
                         </select>
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                           <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M5 6L0 0H10L5 6Z" /></svg>
                         </div>
                       </div>
+                      {region === 'sg' && (
+                        <p className="text-[10px] text-gray-500 italic mt-2 animate-fade-in">
+                          Just a heads up: any customs duties or local taxes (like GST) upon delivery are taken care of by the buyer.
+                        </p>
+                      )}
                     </div>
                  </div>
               </div>

@@ -107,7 +107,19 @@ export const ShippingPolicy: React.FC = () => (
              <li className="text-gray-500 italic">Additional items: +RM 5.00 per every 3 items</li>
            </ul>
          </div>
+         <div>
+           <strong>Singapore:</strong><br/>
+           <ul className="list-disc pl-5 mt-1 space-y-1">
+             <li>1 item: RM 30.00</li>
+             <li>2-3 items: RM 45.00</li>
+             <li>4-6 items: RM 65.00</li>
+             <li className="text-gray-500 italic">Additional items: +RM 15.00 per every 3 items</li>
+           </ul>
+         </div>
        </div>
+       <p className="mt-4 text-sm text-gray-500 italic">
+         For international orders, any customs duties or local taxes (like GST) incurred upon delivery are the responsibility of the buyer.
+       </p>
     </section>
   </PolicyLayout>
 );
