@@ -46,7 +46,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
     adultPrice: 108,
     babySizeDesc: '70 cm x 100 cm',
     adultSizeDesc: '150 cm x 100 cm',
-    isCheckoutAddon: false
+    isCheckoutAddon: false,
+    isPosOnly: false
   });
 
   const handleEdit = (product: Product) => {
@@ -62,7 +63,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         adultPrice: product.adultPrice !== undefined ? product.adultPrice : 108,
         babySizeDesc: product.babySizeDesc || '70 cm x 100 cm',
         adultSizeDesc: product.adultSizeDesc || '150 cm x 100 cm',
-        isCheckoutAddon: product.isCheckoutAddon || false
+        isCheckoutAddon: product.isCheckoutAddon || false,
+        isPosOnly: product.isPosOnly || false
     });
     setEditingProduct(product);
     setIsEditing(true);
@@ -91,7 +93,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
       adultPrice: 108,
       babySizeDesc: '70 cm x 100 cm',
       adultSizeDesc: '150 cm x 100 cm',
-      isCheckoutAddon: false
+      isCheckoutAddon: false,
+      isPosOnly: false
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -318,6 +321,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
               {/* Sizing Options Config */}
               <div className="mt-2 p-4 border border-brand-latte/30 bg-white rounded-[2px] flex flex-col gap-4">
                 <div>
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.isPosOnly} onChange={e => setFormData({...formData, isPosOnly: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
+                    Set as POS Only
+                  </label>
+                  <p className="text-[10px] text-gray-500 mb-2">If enabled, this product will not be shown in the online store.</p>
+                </div>
+                <div className="border-t border-brand-latte/20 pt-4">
                   <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
                     <input type="checkbox" checked={formData.isCheckoutAddon} onChange={e => setFormData({...formData, isCheckoutAddon: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
                     Set as Checkout Add-On

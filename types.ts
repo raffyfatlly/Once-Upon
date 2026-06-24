@@ -19,6 +19,7 @@ export interface Product {
   adultPrice?: number;
   adultSizeDesc?: string;
   isCheckoutAddon?: boolean;
+  isPosOnly?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -48,6 +49,8 @@ export interface Order {
   giftMessage?: string;
   adminNotes?: string;
   statusHistory?: { status: string; timestamp: string }[];
+  source?: 'online' | 'pos';
+  paymentMethod?: 'bank_transfer' | 'qr' | 'online';
 }
 
 export interface Subscriber {

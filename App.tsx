@@ -521,7 +521,7 @@ const App: React.FC = () => {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const regularProducts = products.filter(p => !isAddonProduct(p));
+  const regularProducts = products.filter(p => !isAddonProduct(p) && !p.isPosOnly);
 
   return (
     <>

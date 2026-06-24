@@ -9,6 +9,8 @@ import { MumsClub } from './admin/MumsClub';
 import { SettingsManager } from './admin/SettingsManager';
 import { AnalyticsManager } from './admin/AnalyticsManager';
 
+import { POSSystem } from './admin/POSSystem';
+
 interface AdminDashboardProps {
   products: Product[];
   orders: Order[];
@@ -30,7 +32,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onLogout,
   installPrompt
 }) => {
-  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'packing' | 'club' | 'analytics' | 'settings'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'sales' | 'pos' | 'packing' | 'club' | 'analytics' | 'settings'>('pos');
 
   return (
     <div className="min-h-screen bg-brand-grey/10 font-sans pb-20">
@@ -58,6 +60,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'sales' ? 'text-brand-flamingo' : 'text-gray-400'}`}
             >
               Sales & Customers
+            </button>
+            <button 
+              onClick={() => setActiveTab('pos')}
+              className={`text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'pos' ? 'text-brand-flamingo' : 'text-gray-400'}`}
+            >
+              POS System
             </button>
             <button 
               onClick={() => setActiveTab('analytics')}
@@ -91,6 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </nav>
 
       <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 max-w-6xl">
+        {activeTab === 'pos' && <POSSystem products={products} />}
         {activeTab === 'products' && <ProductManager products={products} />}
         {activeTab === 'sales' && <SalesManager orders={orders} />}
         {activeTab === 'analytics' && <AnalyticsManager orders={orders} />}

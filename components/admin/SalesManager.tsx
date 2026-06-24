@@ -508,6 +508,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                             <div className="flex flex-col mt-1.5 gap-0.5">
                                 <div className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar size={12} /> {formatKLDate(order.date)}</div>
                                 <div className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={12} /> {formatKLTime(order.date)}</div>
+                                {order.source === 'pos' && (
+                                  <div className="mt-1 bg-brand-flamingo/10 text-brand-flamingo text-[9px] font-bold uppercase px-1.5 py-0.5 rounded w-fit tracking-widest border border-brand-flamingo/20">POS</div>
+                                )}
                             </div>
                             {/* Stale Warning for Pending > 60 mins */}
                             {isStalePending(order) && (
@@ -531,7 +534,12 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                 ))}
                             </div>
                         </td>
-                        <td className="p-4 font-bold text-sm text-gray-900">RM {order.total}</td>
+                        <td className="p-4">
+                          <div className="font-bold text-sm text-gray-900">RM {order.total}</div>
+                          {order.paymentMethod && (
+                            <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-widest">{order.paymentMethod.replace('_', ' ')}</div>
+                          )}
+                        </td>
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
