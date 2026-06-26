@@ -236,9 +236,13 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         date: new Date().toISOString(),
         shippingAddress: 'In-Store',
         source: 'pos',
-        paymentMethod: paymentMethod,
-        adminNotes: discountNote ? discountNote : undefined
+        paymentMethod: paymentMethod
       };
+
+      if (discountNote) {
+        orderData.adminNotes = discountNote;
+      }
+
       await createOrderInDb(orderData);
       setView('success');
       setCart([]);
