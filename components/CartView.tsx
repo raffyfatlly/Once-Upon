@@ -30,7 +30,7 @@ export const CartView: React.FC<CartViewProps> = ({
   const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
   const packagingCount = mainItemsCount;
 
-  const checkoutAddons = products?.filter(p => isAddonProduct(p)) || [];
+  const checkoutAddons = products?.filter(p => isAddonProduct(p) && p.isLive !== false) || [];
   const visibleAddons = checkoutAddons.filter(addon => !cart.some(item => item.id === addon.id));
 
   if (cart.length === 0) {

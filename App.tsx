@@ -18,7 +18,7 @@ import { IntroOverlay } from './components/IntroOverlay';
 import { OurStory } from './components/OurStory';
 import { RefundPolicy, ShippingPolicy, PrivacyPolicy, TermsPolicy, BusinessInfoPolicy } from './components/Policies';
 import { Product, SiteConfig, CartItem, Order } from './types';
-import { Star, Cloud, AlertCircle, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Cloud, AlertCircle, ArrowRight, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
 
 const SectionDivider = () => (
@@ -84,7 +84,11 @@ const StoreFront: React.FC<{
   
   // Group products by collection
   const getProductGroup = (product: Product) => {
-    return product.category?.trim() || product.collection || 'Blankets';
+    const raw = product.category?.trim() || product.collection || 'Blankets';
+    const lower = raw.toLowerCase();
+    if (lower.includes('blanket')) return 'Blankets';
+    if (lower.includes('swaddle')) return 'Swaddle';
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
   };
 
   const groupedProducts = products.reduce((acc, product) => {
@@ -181,6 +185,80 @@ const StoreFront: React.FC<{
              </div>
           </div>
 
+          {products.length > 0 && (
+            <div className="px-6 mb-24 max-w-5xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                {/* Blankets Card */}
+                <div 
+                  onClick={() => navigate('/collections/Blankets')}
+                  className="group/col-card relative overflow-hidden rounded-[24px] bg-brand-pink/5 border border-brand-latte/20 p-6 sm:p-8 flex flex-col justify-between min-h-[220px] md:min-h-[260px] cursor-pointer hover:border-brand-flamingo/30 transition-all duration-500 shadow-sm hover:shadow-md text-left"
+                >
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-brand-pink/20 to-transparent rounded-bl-full pointer-events-none group-hover/col-card:scale-110 transition-transform duration-500" />
+                  <Star className="absolute top-6 right-6 text-brand-gold/40 animate-pulse pointer-events-none" size={20} />
+                  
+                  {groupedProducts['Blankets']?.[0]?.image && (
+                    <div className="absolute right-2 bottom-4 w-28 h-28 sm:right-4 sm:bottom-4 sm:w-32 sm:h-32 md:w-38 md:h-38 rounded-2xl overflow-hidden shadow-xl border-2 border-white rotate-6 group-hover/col-card:rotate-3 group-hover/col-card:scale-105 transition-all duration-500 block">
+                      <img src={groupedProducts['Blankets'][0].image} alt="Blankets Collection" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
+                  <div className="relative z-10 max-w-[58%] sm:max-w-none">
+                    <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-gray-900 mb-2 leading-tight flex flex-wrap items-center gap-1.5 tracking-tight pr-2 sm:pr-0">
+                      The <span className="italic font-serif font-medium text-brand-gold">Blanket</span> Collection
+                      <Sparkles size={16} className="text-brand-gold/60 inline-block" />
+                    </h3>
+                    <p className="font-sans text-xs text-gray-500 max-w-full sm:max-w-[200px] md:max-w-[240px] leading-relaxed">
+                      Wrap them in their very first story. Each beautiful design brings a new adventure to life, creating a soft and magical companion for your little one's everyday memories.
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-2 relative z-10">
+                    <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-flamingo group-hover/col-card:text-brand-gold transition-colors">
+                      Explore Blankets
+                    </span>
+                    <span className="w-4 h-[1px] bg-brand-flamingo group-hover/col-card:w-8 group-hover/col-card:bg-brand-gold transition-all duration-300"></span>
+                  </div>
+                </div>
+
+                {/* Swaddle Card */}
+                <div 
+                  onClick={() => navigate('/collections/Swaddle')}
+                  className="group/col-card relative overflow-hidden rounded-[24px] bg-brand-gold/5 border border-brand-latte/20 p-6 sm:p-8 flex flex-col justify-between min-h-[220px] md:min-h-[260px] cursor-pointer hover:border-brand-flamingo/30 transition-all duration-500 shadow-sm hover:shadow-md text-left"
+                >
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-brand-gold/20 to-transparent rounded-bl-full pointer-events-none group-hover/col-card:scale-110 transition-transform duration-500" />
+                  <Star className="absolute top-6 right-6 text-brand-gold/40 animate-pulse pointer-events-none" size={20} />
+
+                  {groupedProducts['Swaddle']?.[0]?.image && (
+                    <div className="absolute right-2 bottom-4 w-28 h-28 sm:right-4 sm:bottom-4 sm:w-32 sm:h-32 md:w-38 md:h-38 rounded-2xl overflow-hidden shadow-xl border-2 border-white rotate-6 group-hover/col-card:rotate-3 group-hover/col-card:scale-105 transition-all duration-500 block">
+                      <img src={groupedProducts['Swaddle'][0].image} alt="Swaddle Collection" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
+                  <div className="relative z-10 max-w-[58%] sm:max-w-none">
+                    <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl text-gray-900 mb-2 leading-tight flex flex-wrap items-center gap-1.5 tracking-tight pr-2 sm:pr-0">
+                      The <span className="italic font-serif font-medium text-brand-gold">Swaddle</span> Collection
+                      <Sparkles size={16} className="text-brand-gold/60 inline-block" />
+                    </h3>
+                    <p className="font-sans text-xs text-gray-500 max-w-full sm:max-w-[200px] md:max-w-[240px] leading-relaxed">
+                      A beautiful canvas for their earliest chapters. Spun for silky, breathable softness, these generous wraps gracefully cocoon your newborn in peaceful dreams.
+                    </p>
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-flamingo/15 text-brand-flamingo border border-brand-flamingo/20 text-[9px] font-bold uppercase tracking-[0.15em] mt-2.5 animate-pulse">
+                      <Sparkles size={10} />
+                      <span>Live 27 June!</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-2 relative z-10">
+                    <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-flamingo group-hover/col-card:text-brand-gold transition-colors">
+                      Explore Swaddles
+                    </span>
+                    <span className="w-4 h-[1px] bg-brand-flamingo group-hover/col-card:w-8 group-hover/col-card:bg-brand-gold transition-all duration-300"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {products.length === 0 ? (
              <div className="text-center text-gray-400 font-sans text-sm italic py-20 bg-brand-grey/5 rounded-lg border border-dashed border-brand-latte/30 mx-6">
                <div className="flex flex-col items-center gap-2">
@@ -191,10 +269,34 @@ const StoreFront: React.FC<{
           ) : (
             <div>
               {Object.entries(groupedProducts).map(([collectionName, collectionProducts]) => (
-                <div key={collectionName} className="mb-32 last:mb-0 relative group">
+                <div key={collectionName} id={`row-section-${collectionName}`} className="mb-24 last:mb-0 relative group">
                   {Object.keys(groupedProducts).length > 1 && (
-                     <div className="px-6 mb-12 text-center md:text-left md:pl-12">
-                       <h3 className="font-serif text-3xl text-gray-900">{collectionName}</h3>
+                     <div id={`row-title-${collectionName}`} className="px-6 mb-8 flex flex-col items-center md:items-start md:pl-16 relative">
+                       <div className="flex items-center gap-3 justify-center md:justify-start">
+                         <span className="font-serif text-3xl md:text-4xl text-gray-900 tracking-tight">
+                           {collectionName === 'Blankets' ? 'The Blanket Collection' : collectionName === 'Swaddle' ? 'The Swaddle Collection' : collectionName}
+                         </span>
+                       </div>
+                       <p className="font-script text-lg md:text-xl text-brand-gold mt-1 text-center md:text-left flex flex-col md:flex-row items-center gap-2">
+                         {collectionName.toLowerCase().includes('blanket') ? (
+                           'The signature of warmth and dreams'
+                         ) : (
+                           <>
+                             <span>Gentle touch for peaceful sleep</span>
+                             <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-brand-flamingo/15 text-brand-flamingo border border-brand-flamingo/20 ml-0 md:ml-3 animate-pulse">
+                               Live 27 June!
+                             </span>
+                           </>
+                         )}
+                       </p>
+                       <div className="h-[2px] w-12 bg-brand-gold/30 mt-3 rounded-full mb-4" />
+                       
+                       {collectionProducts.length > 1 && (
+                         <div className="flex md:hidden items-center gap-1.5 text-[10px] text-brand-flamingo uppercase tracking-[0.15em] font-bold animate-pulse mt-2">
+                           <span>Swipe to explore</span>
+                           <ArrowRight size={10} className="text-brand-flamingo" />
+                         </div>
+                       )}
                      </div>
                   )}
                   
@@ -227,17 +329,17 @@ const StoreFront: React.FC<{
                   */}
                   <div 
                     id={`row-${collectionName.replace(/\s+/g, '-')}`}
-                    className="md:overflow-x-auto md:pb-16 hide-scrollbar w-full md:scroll-smooth pointer-events-auto"
+                    className="overflow-x-auto pb-12 md:pb-16 hide-scrollbar w-full scroll-smooth pointer-events-auto snap-x snap-mandatory"
                   >
                     <div className="
-                      flex flex-col gap-24 px-6
-                      md:flex-row md:gap-16 md:px-12 md:snap-x items-center 
-                      md:w-fit md:min-w-full md:justify-center
+                      flex flex-row gap-8 px-6
+                      md:gap-16 md:px-12 items-stretch
+                      w-fit min-w-full md:justify-center
                     ">
                       {(collectionProducts as Product[]).map((product, index) => (
                         <div 
                           key={product.id} 
-                          className="w-full md:min-w-[400px] md:max-w-[400px] md:snap-center flex-shrink-0"
+                          className="w-[85vw] sm:w-[350px] md:min-w-[400px] md:max-w-[400px] snap-center flex-shrink-0"
                         >
                           <ProductCard 
                             product={product} 
@@ -521,7 +623,7 @@ const App: React.FC = () => {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const regularProducts = products.filter(p => !isAddonProduct(p) && !p.isPosOnly);
+  const regularProducts = products.filter(p => !isAddonProduct(p) && !p.isPosOnly && p.isLive !== false);
 
   return (
     <>

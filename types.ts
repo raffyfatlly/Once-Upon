@@ -20,6 +20,7 @@ export interface Product {
   adultSizeDesc?: string;
   isCheckoutAddon?: boolean;
   isPosOnly?: boolean;
+  isLive?: boolean;
 }
 
 export interface CartItem extends Product {

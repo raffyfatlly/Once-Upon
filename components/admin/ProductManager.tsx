@@ -47,7 +47,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
     babySizeDesc: '70 cm x 100 cm',
     adultSizeDesc: '150 cm x 100 cm',
     isCheckoutAddon: false,
-    isPosOnly: false
+    isPosOnly: false,
+    isLive: true
   });
 
   const handleEdit = (product: Product) => {
@@ -64,7 +65,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         babySizeDesc: product.babySizeDesc || '70 cm x 100 cm',
         adultSizeDesc: product.adultSizeDesc || '150 cm x 100 cm',
         isCheckoutAddon: product.isCheckoutAddon || false,
-        isPosOnly: product.isPosOnly || false
+        isPosOnly: product.isPosOnly || false,
+        isLive: product.isLive !== undefined ? product.isLive : true
     });
     setEditingProduct(product);
     setIsEditing(true);
@@ -94,7 +96,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
       babySizeDesc: '70 cm x 100 cm',
       adultSizeDesc: '150 cm x 100 cm',
       isCheckoutAddon: false,
-      isPosOnly: false
+      isPosOnly: false,
+      isLive: true
     });
     setEditingProduct(null);
     setIsEditing(true);
@@ -322,6 +325,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
               <div className="mt-2 p-4 border border-brand-latte/30 bg-white rounded-[2px] flex flex-col gap-4">
                 <div>
                   <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.isLive !== false} onChange={e => setFormData({...formData, isLive: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
+                    Product is Live on Website
+                  </label>
+                  <p className="text-[10px] text-gray-500 mb-2">If disabled, this product will be hidden from online store visitors.</p>
+                </div>
+                <div className="border-t border-brand-latte/20 pt-4">
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-2 cursor-pointer">
                     <input type="checkbox" checked={formData.isPosOnly} onChange={e => setFormData({...formData, isPosOnly: e.target.checked})} className="accent-brand-flamingo w-4 h-4" />
                     Set as POS Only
                   </label>
@@ -513,11 +523,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
                 <h4 className="font-serif text-base md:text-lg text-gray-900 leading-tight mb-1 truncate">{product.name}</h4>
                 <div className="flex flex-col">
                   <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Box size={10} className="text-gray-400" />
-                    <span className={`text-[10px] font-bold uppercase tracking-wide ${ (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500' }`}>
-                      Stock: {product.stock || 0}
-                    </span>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <Box size={10} className="text-gray-400" />
+                      <span className={`text-[10px] font-bold uppercase tracking-wide ${ (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500' }`}>
+                        Stock: {product.stock || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${product.isLive !== false ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                        {product.isLive !== false ? 'Live' : 'Hidden'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

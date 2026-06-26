@@ -42,8 +42,14 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
             <span className="font-script text-3xl md:text-4xl text-brand-gold mb-2 block animate-fade-in">
                Our Collection
             </span>
-            <h1 className="font-serif text-4xl md:text-6xl text-gray-900 mb-6 leading-tight">
-               {collectionName}
+            <h1 className="font-serif text-4xl md:text-6xl text-gray-900 mb-6 leading-tight tracking-tight">
+               {collectionName === 'Blankets' ? (
+                 <>The <span className="italic font-serif font-medium text-brand-gold">Blanket</span> Collection</>
+               ) : collectionName === 'Swaddle' ? (
+                 <>The <span className="italic font-serif font-medium text-brand-gold">Swaddle</span> Collection</>
+               ) : (
+                 collectionName
+               )}
             </h1>
             <div className="w-16 h-[1px] bg-brand-flamingo mx-auto my-6"></div>
           </div>
