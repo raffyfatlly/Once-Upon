@@ -244,7 +244,7 @@ const StoreFront: React.FC<{
                     </p>
                     <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-flamingo/15 text-brand-flamingo border border-brand-flamingo/20 text-[9px] font-bold uppercase tracking-[0.15em] mt-2.5 animate-pulse">
                       <Sparkles size={10} />
-                      <span>Live 27 June!</span>
+                      <span>Available on 27 June</span>
                     </div>
                   </div>
 
@@ -536,8 +536,17 @@ const App: React.FC = () => {
       return;
     }
 
+    const stock = product.stock || 0;
+    const productGroup = (!product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket'))) ? 'Blankets' : 'Swaddle';
+    const isBlanket = productGroup === 'Blankets';
+
+    if (stock <= 0 && !isBlanket) {
+      alert(`Sorry, ${product.name} is currently sold out and cannot be pre-ordered.`);
+      return;
+    }
+
     // Determine if this is a pre-order (stock <= 0)
-    const isPreOrder = (product.stock || 0) <= 0;
+    const isPreOrder = stock <= 0 && isBlanket;
 
     setCart(prev => {
       const mainProductsCount = prev.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
@@ -651,7 +660,7 @@ const App: React.FC = () => {
         {/* Clean URL Product Route (Slug or ID) */}
         <Route path="/product/:slug" element={
           <Layout cartCount={cartCount} products={regularProducts}>
-            <ProductDetails products={regularProducts} onAddToCart={handleAddToCart} />
+            <ProductDetails products={products.filter(p => !p.isPosOnly && p.isLive !== false)} onAddToCart={handleAddToCart} />
           </Layout>
         } />
         

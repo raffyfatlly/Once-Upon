@@ -24,7 +24,7 @@ export const Newsletter: React.FC = () => {
   };
 
   return (
-    <section className="py-24 bg-white relative">
+    <section id="newsletter-section" className="py-24 bg-white relative">
       <div className="container mx-auto px-6 max-w-2xl">
         {/* Invitation Card Look */}
         <div className="relative p-8 md:p-12 border border-brand-latte/30 bg-brand-grey/5 text-center overflow-hidden transition-all duration-500 rounded-[2px]">

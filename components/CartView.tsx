@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Product, CartItem } from '../types';
-import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool, Clock } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, Gift, PenTool, Clock, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const getProductSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
 interface CartViewProps {
   cart: CartItem[];
@@ -20,6 +22,7 @@ export const CartView: React.FC<CartViewProps> = ({
   onAddToCart
 }) => {
   const navigate = useNavigate();
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
@@ -29,6 +32,19 @@ export const CartView: React.FC<CartViewProps> = ({
   // Packaging Logic: 1 set for every 1 main item
   const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
   const packagingCount = mainItemsCount;
+
+  // Swaddle & Blanket counts
+  const swaddleCount = cart.reduce((sum, item) => {
+    if (isAddonProduct(item)) return sum;
+    const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+    return isBlanket ? sum : sum + item.quantity;
+  }, 0);
+
+  const blanketCount = cart.reduce((sum, item) => {
+    if (isAddonProduct(item)) return sum;
+    const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+    return isBlanket ? sum + item.quantity : sum;
+  }, 0);
 
   const checkoutAddons = products?.filter(p => isAddonProduct(p) && p.isLive !== false) || [];
   const visibleAddons = checkoutAddons.filter(addon => !cart.some(item => item.id === addon.id));
@@ -124,29 +140,44 @@ export const CartView: React.FC<CartViewProps> = ({
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    {visibleAddons.map(addon => {
                       const isSoldOut = (addon.stock ?? 0) <= 0;
+                      const isBoxAddon = addon.name.toLowerCase().includes('box') || addon.name.toLowerCase().includes('keepsake') || addon.name.toLowerCase().includes('edition');
                       return (
-                      <div key={addon.id} className={`flex gap-4 items-center bg-white p-4 border border-brand-latte/20 rounded-[2px] shadow-sm transition-shadow ${isSoldOut ? 'opacity-60' : 'hover:shadow-md'}`}>
-                         <img src={addon.image} alt={addon.name} className={`w-16 h-20 object-cover bg-gray-50 border border-brand-latte/10 ${isSoldOut ? 'grayscale' : ''}`} />
-                         <div className="flex-1 min-w-0">
-                            <h4 className="font-serif text-sm text-gray-900 line-clamp-2 mb-1">{addon.name}</h4>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">RM {addon.price}</p>
+                      <div key={addon.id} className={`flex flex-col bg-white border border-brand-latte/20 rounded-[2px] shadow-sm transition-shadow ${isSoldOut ? 'opacity-60' : 'hover:shadow-md'} overflow-hidden`}>
+                         <div className="flex gap-4 items-center p-4">
+                            <div 
+                              onClick={() => setPreviewImage({ url: addon.image, name: addon.name })}
+                              className="flex gap-4 items-center flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              title={`View ${addon.name} image`}
+                            >
+                               <img src={addon.image} alt={addon.name} className={`w-16 h-20 object-cover bg-gray-50 border border-brand-latte/10 ${isSoldOut ? 'grayscale' : ''}`} />
+                               <div className="flex-1 min-w-0">
+                                  <h4 className="font-serif text-sm text-gray-900 hover:text-brand-flamingo transition-colors line-clamp-2 mb-1">{addon.name}</h4>
+                                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">RM {addon.price}</p>
+                                  <span className="text-[10px] font-sans font-medium text-brand-flamingo underline">View Image</span>
+                               </div>
+                            </div>
+                            {isSoldOut ? (
+                              <span className="text-[10px] font-bold uppercase text-brand-flamingo tracking-wider flex-shrink-0 bg-brand-flamingo/10 px-2 py-1 rounded">
+                                Sold Out
+                              </span>
+                            ) : (
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  onAddToCart(addon, 1);
+                                }}
+                                className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 text-white hover:bg-brand-flamingo transition-colors flex-shrink-0"
+                                title="Add to order"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            )}
                          </div>
-                         {isSoldOut ? (
-                           <span className="text-[10px] font-bold uppercase text-brand-flamingo tracking-wider flex-shrink-0 bg-brand-flamingo/10 px-2 py-1 rounded">
-                             Sold Out
-                           </span>
-                         ) : (
-                           <button 
-                             type="button"
-                             onClick={(e) => {
-                               e.preventDefault();
-                               onAddToCart(addon, 1);
-                             }}
-                             className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-900 text-white hover:bg-brand-flamingo transition-colors flex-shrink-0"
-                             title="Add to order"
-                           >
-                             <Plus size={14} />
-                           </button>
+                         {isBoxAddon && swaddleCount > 0 && (
+                           <div className="bg-brand-gold/10 px-4 py-3 border-t border-brand-gold/20 text-[10px] text-brand-gold font-sans font-medium italic leading-relaxed">
+                             Note: Since you are purchasing a Swaddle, you will receive a complimentary Once Upon 1st Edition I Box automatically with your swaddle! There is no need to purchase this unless you want an extra for a blanket purchase.
+                           </div>
                          )}
                       </div>
                    )})}
@@ -169,37 +200,49 @@ export const CartView: React.FC<CartViewProps> = ({
               <h3 className="font-serif text-2xl text-gray-900 mb-6">Order Summary</h3>
               
               {/* Complimentary Touches Section */}
-              <div className="mb-8 pb-6 border-b border-brand-latte/20">
-                 <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Complimentary Touches</h4>
-                 
-                 <div className="space-y-3">
-                    {/* Item 1: Box */}
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                           <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
-                              <Gift size={12} />
-                           </div>
-                           <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
-                        </div>
-                        <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
-                    </div>
+              {(swaddleCount > 0 || blanketCount > 0) && (
+                 <div className="mb-8 pb-6 border-b border-brand-latte/20 animate-fade-in">
+                    <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">Complimentary Touches</h4>
+                    
+                    <div className="space-y-3">
+                       {/* Swaddle Box */}
+                       {swaddleCount > 0 && (
+                          <div className="flex items-center justify-between group animate-fade-in">
+                              <div className="flex items-center gap-3">
+                                 <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                                    <Gift size={12} />
+                                 </div>
+                                 <div>
+                                    <p className="font-serif text-sm text-gray-900">Once Upon 1st Edition Box</p>
+                                    <p className="text-[10px] text-brand-gold italic">Free Box with Swaddles</p>
+                                 </div>
+                              </div>
+                              <span className="font-serif text-sm text-brand-gold italic">x {swaddleCount}</span>
+                          </div>
+                       )}
 
-                    {/* Item 2: Card */}
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                           <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
-                              <PenTool size={12} />
+                       {/* Item 2: Card */}
+                       <div className="flex items-center justify-between group animate-fade-in">
+                           <div className="flex items-center gap-3">
+                              <div className="p-1.5 bg-white border border-brand-latte/20 rounded-full text-brand-gold group-hover:text-brand-flamingo transition-colors">
+                                 <PenTool size={12} />
+                              </div>
+                              <p className="font-serif text-sm text-gray-900">Gift Card</p>
                            </div>
-                           <p className="font-serif text-sm text-gray-900">Gift Card</p>
-                        </div>
-                        <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
+                           <span className="font-serif text-sm text-brand-gold italic">x {swaddleCount + blanketCount}</span>
+                       </div>
                     </div>
+                    
+                    <p className="mt-4 text-[10px] text-gray-400 italic leading-relaxed">
+                       {swaddleCount > 0 && blanketCount > 0 
+                         ? "*Swaddles include a free Once Upon 1st Edition Box & Gift Card. Blankets include a free Gift Card."
+                         : swaddleCount > 0 
+                           ? "*Swaddles include a free Once Upon 1st Edition Box & Gift Card."
+                           : "*Blankets include a free Gift Card."
+                       }
+                    </p>
                  </div>
-                 
-                 <p className="mt-4 text-[10px] text-gray-400 italic">
-                    *One set included for every item.
-                 </p>
-              </div>
+              )}
 
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between text-sm font-sans text-gray-600">
@@ -241,6 +284,32 @@ export const CartView: React.FC<CartViewProps> = ({
 
         </div>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in cursor-zoom-out"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button 
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-6 right-6 z-50 p-3 rounded-full bg-white/10 text-white/80 hover:bg-brand-flamingo hover:text-white transition-all duration-200 cursor-pointer shadow-lg hover:scale-105"
+            title="Close preview"
+          >
+            <X size={24} />
+          </button>
+          <div 
+            className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center pointer-events-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={previewImage.url} 
+              alt={previewImage.name} 
+              className="max-w-full max-h-full object-contain rounded-[2px] shadow-2xl pointer-events-auto cursor-default select-none animate-scale-up"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

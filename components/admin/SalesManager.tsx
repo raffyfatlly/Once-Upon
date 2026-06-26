@@ -522,16 +522,30 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                         <td className="p-4"><div className="flex items-start gap-2"><div className="bg-brand-latte/20 p-1.5 rounded-full mt-0.5"><User size={12} className="text-brand-latte" /></div><div><div className="font-serif text-gray-900">{order.customerName}</div><div className="text-xs text-gray-400">{order.customerEmail}</div>{order.customerPhone && (<div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><Phone size={10} /> {order.customerPhone}</div>)}</div></div></td>
                         <td className="p-4">
                             <div className="text-xs text-gray-600">
-                                {order.items.map(i => (
-                                    <div key={i.id} className="mb-1 flex items-center gap-1 flex-wrap">
-                                        <span>{i.quantity}x {i.name}</span>
-                                        {i.isPreOrder && (
-                                            <span className="text-[9px] font-bold text-brand-gold bg-brand-gold/10 px-1 rounded uppercase tracking-wider whitespace-nowrap">
-                                                Pre-order
+                                {order.items.map(i => {
+                                    const isAddon = Boolean(i.isCheckoutAddon);
+                                    const isBlanket = !i.collection || i.collection === 'Blankets' || i.collection.toLowerCase().includes('blanket') || (i.category && i.category.toLowerCase().includes('blanket'));
+                                    const itemCollection = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
+                                    return (
+                                        <div key={i.id} className="mb-1.5 flex items-center gap-1 flex-wrap">
+                                            <span>{i.quantity}x {i.name}</span>
+                                            <span className={`text-[8px] font-sans font-bold uppercase px-1.5 py-0.5 rounded border whitespace-nowrap ${
+                                                isAddon 
+                                                    ? 'bg-gray-100 text-gray-500 border-gray-200' 
+                                                    : isBlanket 
+                                                        ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/20' 
+                                                        : 'bg-brand-flamingo/10 text-brand-flamingo border-brand-flamingo/20'
+                                            }`}>
+                                                {itemCollection}
                                             </span>
-                                        )}
-                                    </div>
-                                ))}
+                                            {i.isPreOrder && (
+                                                <span className="text-[9px] font-bold text-brand-gold bg-brand-gold/10 px-1 rounded uppercase tracking-wider whitespace-nowrap">
+                                                    Pre-order
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </td>
                         <td className="p-4">
@@ -563,24 +577,37 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                 <div className="flex-1">
                                     <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-4">Order Items</h4>
                                     <div className="space-y-4">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex gap-4 items-center bg-white p-3 rounded-[2px] border border-brand-latte/20">
-                                            <img src={item.image} className="w-12 h-16 object-cover bg-gray-100" />
-                                            <div className="flex-1">
-                                                <p className="font-serif text-gray-900">{item.name}</p>
-                                                <p className="text-xs text-gray-500 mb-1">{item.collection || 'Blankets'}</p>
-                                                {item.isPreOrder && (
-                                                    <span className="text-[10px] font-bold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/20 uppercase tracking-wider flex items-center gap-1 w-fit">
-                                                        <Clock size={10} /> Pre-order
+                                    {order.items.map((item, idx) => {
+                                        const isAddon = Boolean(item.isCheckoutAddon);
+                                        const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+                                        const itemCollection = isAddon ? 'Add-on' : (isBlanket ? 'Blanket Collection' : 'Swaddle Collection');
+                                        return (
+                                            <div key={idx} className="flex gap-4 items-center bg-white p-3 rounded-[2px] border border-brand-latte/20">
+                                                <img src={item.image} className="w-12 h-16 object-cover bg-gray-100" />
+                                                <div className="flex-1">
+                                                    <p className="font-serif text-gray-900 mb-1">{item.name}</p>
+                                                    <span className={`inline-block text-[9px] font-sans font-bold uppercase px-2 py-0.5 rounded border mb-1 tracking-wider ${
+                                                        isAddon 
+                                                            ? 'bg-gray-100 text-gray-500 border-gray-200' 
+                                                            : isBlanket 
+                                                                ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/20' 
+                                                                : 'bg-brand-flamingo/10 text-brand-flamingo border-brand-flamingo/20'
+                                                    }`}>
+                                                        {itemCollection}
                                                     </span>
-                                                )}
+                                                    {item.isPreOrder && (
+                                                        <span className="text-[10px] font-bold text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/20 uppercase tracking-wider flex items-center gap-1 w-fit">
+                                                            <Clock size={10} /> Pre-order
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                                                    <p className="font-bold text-gray-900">RM {item.price}</p>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                                                <p className="font-bold text-gray-900">RM {item.price}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     </div>
                                     <div className="mt-4 text-right">
                                     <span className="text-xs uppercase tracking-widest text-gray-500 mr-4">Total Amount</span>

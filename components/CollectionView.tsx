@@ -3,7 +3,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
-import { AlertCircle, Star } from 'lucide-react';
+import { AlertCircle, Star, Sparkles, Instagram } from 'lucide-react';
 
 interface CollectionViewProps {
   products: Product[];
@@ -56,7 +56,48 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
        </div>
 
        <div className="container mx-auto px-6 max-w-6xl">
-          {filteredProducts.length === 0 ? (
+          {filteredProducts.length === 0 ? collectionName === 'Swaddle' ? (
+             <div className="text-center max-w-2xl mx-auto py-16 px-6 sm:px-10 bg-brand-pink/5 rounded-3xl border border-brand-latte/20 relative overflow-hidden shadow-sm animate-fade-in">
+               <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-bl from-brand-gold/10 to-transparent rounded-full pointer-events-none" />
+               <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-gradient-to-tr from-brand-pink/10 to-transparent rounded-full pointer-events-none" />
+               
+               <div className="relative z-10 flex flex-col items-center gap-4">
+                 <div className="p-3 bg-brand-gold/10 text-brand-gold rounded-full mb-2">
+                   <Sparkles size={24} />
+                 </div>
+                 
+                 <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-brand-flamingo animate-pulse">
+                   Coming Soon
+                 </span>
+                 
+                 <h2 className="font-serif text-2xl sm:text-3xl text-gray-900 mt-1 max-w-md leading-snug">
+                   The All-New Premium Swaddle Collection
+                 </h2>
+                 
+                 <p className="font-serif italic text-base text-gray-600 mt-2 max-w-lg leading-relaxed">
+                   A beautiful canvas for their earliest chapters. Spun for silky, breathable softness, these generous wraps gracefully cocoon your newborn in peaceful dreams.
+                 </p>
+                 
+                 <div className="mt-4 px-5 py-2.5 rounded-full bg-brand-gold/15 text-brand-gold text-xs font-bold tracking-wider uppercase border border-brand-gold/20">
+                    Available on the evening of 27 June
+                 </div>
+                 
+                 <p className="font-sans text-xs text-gray-500 mt-6 max-w-sm leading-relaxed text-center">
+                   We are putting the final loving touches on this collection. Be sure to follow us on Instagram to receive launch updates and sneak peeks!
+                 </p>
+                 
+                 <a 
+                   href="https://www.instagram.com/onceuponbysyahirah"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-brand-flamingo hover:bg-brand-gold text-white font-sans text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
+                 >
+                   <Instagram size={14} />
+                   Follow Us @onceuponbysyahirah
+                 </a>
+               </div>
+             </div>
+           ) : (
              <div className="text-center text-gray-400 font-sans text-sm italic py-20 bg-brand-grey/5 rounded-lg border border-dashed border-brand-latte/30">
                <div className="flex flex-col items-center gap-2">
                  <AlertCircle className="text-brand-latte" />

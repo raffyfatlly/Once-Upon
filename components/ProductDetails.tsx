@@ -124,7 +124,11 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
 
   const galleryImages = [product.image, ...(product.additionalImages || [])];
   const stock = product.stock || 0;
-  const isPreOrder = stock <= 0;
+  const productGroup = (!product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket'))) ? 'Blankets' : 'Swaddle';
+  const isBlanket = productGroup === 'Blankets';
+
+  const isPreOrder = stock <= 0 && isBlanket;
+  const isSoldOut = stock <= 0 && !isBlanket;
   const isLowStock = stock > 0 && stock <= 5;
   
   // If pre-order, quantity is effectively unlimited (or reasonable max), else capped by stock
@@ -143,7 +147,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
             <div className="relative aspect-[3/4] bg-brand-grey/5 rounded-[2px] overflow-hidden group border border-brand-latte/10">
                {/* Removed grayscale here */}
                <img src={activeImage || product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-               {isPreOrder && (
+               {isPreOrder ? (
                   // Made smaller on mobile (px-3 py-1.5 text-xs) and larger on desktop (md:px-6 md:py-3 md:text-xl)
                   <div className="absolute top-4 right-4 pointer-events-none">
                     <div className="px-3 py-1.5 md:px-6 md:py-3 bg-white/95 border border-brand-gold/30 rounded-full shadow-sm">
@@ -152,7 +156,15 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                       </span>
                     </div>
                   </div>
-               )}
+               ) : isSoldOut ? (
+                  <div className="absolute top-4 right-4 pointer-events-none">
+                    <div className="px-3 py-1.5 md:px-6 md:py-3 bg-white/95 border border-red-200 rounded-full shadow-sm">
+                      <span className="font-serif text-xs md:text-xl text-red-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle size={14} className="md:w-5 md:h-5" /> Sold Out
+                      </span>
+                    </div>
+                  </div>
+               ) : null}
             </div>
             {galleryImages.length > 1 && (
               <div className="grid grid-cols-4 gap-4">
@@ -213,12 +225,12 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
             <div className="flex flex-col gap-4 mb-12">
                <div className="flex flex-col sm:flex-row gap-4">
                  <div className="flex items-center border border-brand-latte/30 rounded-full h-12 w-full sm:w-32 px-4 justify-between bg-white">
-                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30"><Minus size={14}/></button>
-                   <span className="font-sans font-bold text-sm text-gray-900">{quantity}</span>
-                   <button onClick={() => setQuantity(Math.min(maxQty, quantity + 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30" disabled={quantity >= maxQty}><Plus size={14}/></button>
+                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isSoldOut} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30"><Minus size={14}/></button>
+                   <span className="font-sans font-bold text-sm text-gray-900">{isSoldOut ? 0 : quantity}</span>
+                   <button onClick={() => setQuantity(Math.min(maxQty, quantity + 1))} className="text-gray-400 hover:text-brand-flamingo disabled:opacity-30" disabled={isSoldOut || quantity >= maxQty}><Plus size={14}/></button>
                  </div>
-                 <button onClick={handleAddToCart} disabled={addState !== 'idle'} className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg ${addState === 'success' ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' : isPreOrder ? 'bg-brand-gold text-white hover:bg-brand-flamingo shadow-brand-gold/20' : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'}`}>
-                   {addState === 'loading' ? (<Loader2 size={16} className="animate-spin" />) : addState === 'success' ? (<><Check size={16} />Added</>) : isPreOrder ? (<><Clock size={16} strokeWidth={1.5} />Pre-order Item</>) : (<><ShoppingBag size={16} strokeWidth={1.5} />Add to Bag</>)}
+                 <button onClick={handleAddToCart} disabled={addState !== 'idle' || isSoldOut} className={`w-full sm:flex-1 h-12 rounded-full flex items-center justify-center gap-3 transition-all duration-300 font-sans text-[11px] uppercase tracking-[0.2em] font-bold shadow-lg ${addState === 'success' ? 'bg-brand-green text-white hover:bg-brand-green/90 shadow-brand-green/20' : isPreOrder ? 'bg-brand-gold text-white hover:bg-brand-flamingo shadow-brand-gold/20' : isSoldOut ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-brand-flamingo text-white hover:bg-brand-gold shadow-brand-flamingo/20'}`}>
+                   {addState === 'loading' ? (<Loader2 size={16} className="animate-spin" />) : addState === 'success' ? (<><Check size={16} />Added</>) : isPreOrder ? (<><Clock size={16} strokeWidth={1.5} />Pre-order Item</>) : isSoldOut ? (<>Sold Out</>) : (<><ShoppingBag size={16} strokeWidth={1.5} />Add to Bag</>)}
                  </button>
                </div>
                
@@ -228,6 +240,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
                    <div>
                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Item Sold Out</p>
                      <p className="font-serif italic text-sm text-gray-600">This item is available for <strong>pre-order</strong>. It is currently crafting and will ship in approximately <strong>2 weeks</strong>.</p>
+                   </div>
+                 </div>
+               ) : isSoldOut ? (
+                 <div className="flex items-start gap-3 text-red-500 bg-red-50/50 p-4 rounded-[2px] border border-red-200">
+                   <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-500" />
+                   <div>
+                     <p className="font-bold text-xs uppercase tracking-wider mb-1 text-red-700">Currently Sold Out</p>
+                     <p className="font-serif italic text-sm text-gray-600">This item is out of stock and we are currently not accepting pre-orders for it. Please subscribe to our newsletter to receive stock restock alerts!</p>
                    </div>
                  </div>
                ) : isLowStock && (

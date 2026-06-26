@@ -14,7 +14,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   const [addState, setAddState] = useState<'idle' | 'loading' | 'success'>('idle');
 
   const stock = product.stock || 0;
-  const isPreOrder = stock <= 0;
+  const productGroup = (!product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket'))) ? 'Blankets' : 'Swaddle';
+  const isBlanket = productGroup === 'Blankets';
+  
+  const isPreOrder = stock <= 0 && isBlanket;
+  const isSoldOut = stock <= 0 && !isBlanket;
   const isLowStock = stock > 0 && stock <= 5;
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -53,6 +57,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                       </span>
                     </div>
                   </div>
+                ) : isSoldOut ? (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <div className="px-3 py-1.5 bg-white/90 backdrop-blur-[2px] border border-red-200 rounded-full shadow-sm">
+                      <span className="font-serif text-[10px] text-red-500 font-bold uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap">
+                         Sold Out
+                      </span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
                 )}
@@ -60,8 +72,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
            </div>
            
            <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 z-30 transform transition-all duration-300 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100">
-             <button onClick={handleAddToCart} disabled={addState !== 'idle'} className={`p-3 md:p-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center group/btn ${addState === 'success' ? 'bg-brand-green text-white' : isPreOrder ? 'bg-brand-gold text-white hover:bg-brand-flamingo' : 'bg-brand-flamingo text-white md:hover:bg-brand-gold'}`} aria-label={isPreOrder ? "Pre-order now" : "Add to cart"}>
-               {addState === 'loading' ? (<Loader2 size={18} className="animate-spin" />) : addState === 'success' ? (<Check size={18} strokeWidth={2} />) : (<ShoppingBag size={18} strokeWidth={1.5} className="md:group-hover/btn:animate-bounce" />)}
+             <button onClick={handleAddToCart} disabled={addState !== 'idle' || isSoldOut} className={`p-3 md:p-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center group/btn ${addState === 'success' ? 'bg-brand-green text-white' : isPreOrder ? 'bg-brand-gold text-white hover:bg-brand-flamingo' : isSoldOut ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-brand-flamingo text-white md:hover:bg-brand-gold'}`} aria-label={isPreOrder ? "Pre-order now" : isSoldOut ? "Sold out" : "Add to cart"}>
+               {addState === 'loading' ? (<Loader2 size={18} className="animate-spin" />) : addState === 'success' ? (<Check size={18} strokeWidth={2} />) : isSoldOut ? (<span className="text-[10px] font-bold px-1 text-gray-400">SOLD OUT</span>) : (<ShoppingBag size={18} strokeWidth={1.5} className="md:group-hover/btn:animate-bounce" />)}
              </button>
            </div>
         </div>
@@ -83,6 +95,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           {isPreOrder ? (
             <span className="font-serif italic text-[10px] md:text-xs text-brand-gold mt-1 font-medium">
               Sold Out • Pre-order ships in 2 weeks
+            </span>
+          ) : isSoldOut ? (
+            <span className="font-serif italic text-[10px] md:text-xs text-red-500 mt-1 font-medium">
+              Temporarily Sold Out
             </span>
           ) : isLowStock && (
             <span className="font-serif italic text-xs text-brand-flamingo mt-1 animate-pulse">

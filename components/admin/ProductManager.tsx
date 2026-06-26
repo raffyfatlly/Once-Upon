@@ -516,37 +516,53 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
                 </div>
               </div>
           )}
-          {safeProducts.map(product => (
-            <div key={product.id} className="bg-white border border-brand-latte/20 p-4 flex gap-4 items-center group rounded-[2px] shadow-sm">
-              <img src={product.image} alt={product.name} className="w-16 h-16 md:w-20 md:h-20 object-cover bg-gray-100 rounded-[2px]" />
-              <div className="flex-1 min-w-0">
-                <h4 className="font-serif text-base md:text-lg text-gray-900 leading-tight mb-1 truncate">{product.name}</h4>
-                <div className="flex flex-col">
-                  <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
-                  <div className="flex items-center gap-3 mt-1 flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <Box size={10} className="text-gray-400" />
-                      <span className={`text-[10px] font-bold uppercase tracking-wide ${ (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500' }`}>
-                        Stock: {product.stock || 0}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${product.isLive !== false ? 'bg-green-500' : 'bg-gray-300'}`} />
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
-                        {product.isLive !== false ? 'Live' : 'Hidden'}
-                      </span>
+          {safeProducts.map(product => {
+            const isAddon = Boolean(product.isCheckoutAddon);
+            const isBlanket = !product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket'));
+            const collectionTag = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
+            return (
+              <div key={product.id} className="bg-white border border-brand-latte/20 p-4 flex gap-4 items-center group rounded-[2px] shadow-sm">
+                <img src={product.image} alt={product.name} className="w-16 h-16 md:w-20 md:h-20 object-cover bg-gray-100 rounded-[2px]" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h4 className="font-serif text-base md:text-lg text-gray-900 leading-tight truncate">{product.name}</h4>
+                    <span className={`text-[9px] font-sans font-bold uppercase px-1.5 py-0.5 rounded tracking-wider border ${
+                      isAddon 
+                        ? 'bg-gray-100 text-gray-500 border-gray-200' 
+                        : isBlanket 
+                          ? 'bg-brand-gold/10 text-brand-gold border-brand-gold/20' 
+                          : 'bg-brand-flamingo/10 text-brand-flamingo border-brand-flamingo/20'
+                    }`}>
+                      {collectionTag}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="text-brand-gold font-script text-base md:text-lg">RM {product.price}</p>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Box size={10} className="text-gray-400" />
+                        <span className={`text-[10px] font-bold uppercase tracking-wide ${ (product.stock || 0) <= 5 ? 'text-red-500' : 'text-gray-500' }`}>
+                          Stock: {product.stock || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${product.isLive !== false ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                          {product.isLive !== false ? 'Live' : 'Hidden'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <div className="flex flex-col gap-2">
+                  <button onClick={() => handleEdit(product)} className="text-gray-400 hover:text-brand-flamingo p-1"><Edit2 size={16} /></button>
+                  <button onClick={() => handleDeleteClick(product.id)} disabled={deletingId === product.id} className={`p-1 transition-all rounded ${ deleteConfirmation === product.id ? 'text-red-500 bg-red-50 w-full text-[10px] font-bold uppercase flex items-center justify-center gap-1 p-2' : 'text-gray-400 hover:text-red-400' }`} title={deleteConfirmation === product.id ? "Click to Confirm" : "Delete"}>
+                    {deletingId === product.id ? (<Loader2 size={16} className="animate-spin" />) : deleteConfirmation === product.id ? (<>Confirm?</>) : (<Trash2 size={16} />)}
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <button onClick={() => handleEdit(product)} className="text-gray-400 hover:text-brand-flamingo p-1"><Edit2 size={16} /></button>
-                <button onClick={() => handleDeleteClick(product.id)} disabled={deletingId === product.id} className={`p-1 transition-all rounded ${ deleteConfirmation === product.id ? 'text-red-500 bg-red-50 w-full text-[10px] font-bold uppercase flex items-center justify-center gap-1 p-2' : 'text-gray-400 hover:text-red-400' }`} title={deleteConfirmation === product.id ? "Click to Confirm" : "Delete"}>
-                  {deletingId === product.id ? (<Loader2 size={16} className="animate-spin" />) : deleteConfirmation === product.id ? (<>Confirm?</>) : (<Trash2 size={16} />)}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

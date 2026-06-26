@@ -28,6 +28,19 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);
   const packagingCount = mainItemsCount;
 
+  // Swaddle & Blanket counts
+  const swaddleCount = cart.reduce((sum, item) => {
+    if (isAddonProduct(item)) return sum;
+    const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+    return isBlanket ? sum : sum + item.quantity;
+  }, 0);
+
+  const blanketCount = cart.reduce((sum, item) => {
+    if (isAddonProduct(item)) return sum;
+    const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+    return isBlanket ? sum + item.quantity : sum;
+  }, 0);
+
   // Form Data
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -579,24 +592,32 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
               <Sparkles size={12} /> The Unboxing Experience
             </h4>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
-                          <Gift size={12} />
-                      </div>
-                      <p className="font-serif text-sm text-gray-900">Signature Keepsake Box</p>
-                  </div>
-                  <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
-                          <PenTool size={12} />
-                      </div>
-                      <p className="font-serif text-sm text-gray-900">Gift Card</p>
-                  </div>
-                  <span className="font-serif text-sm text-brand-gold italic">x {packagingCount}</span>
-              </div>
+              {swaddleCount > 0 && (
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                            <Gift size={12} />
+                        </div>
+                        <div>
+                            <p className="font-serif text-sm text-gray-900">Once Upon 1st Edition Box</p>
+                            <p className="text-[10px] text-brand-gold italic">Free with Swaddles</p>
+                        </div>
+                    </div>
+                    <span className="font-serif text-sm text-brand-gold italic">x {swaddleCount}</span>
+                </div>
+              )}
+
+              {(swaddleCount + blanketCount) > 0 && (
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-brand-grey/10 flex items-center justify-center text-gray-400">
+                            <PenTool size={12} />
+                        </div>
+                        <p className="font-serif text-sm text-gray-900">Gift Card</p>
+                    </div>
+                    <span className="font-serif text-sm text-brand-gold italic">x {swaddleCount + blanketCount}</span>
+                </div>
+              )}
             </div>
           </div>
 
