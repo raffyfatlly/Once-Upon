@@ -22,7 +22,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
   const additionalFileInputRef = useRef<HTMLInputElement>(null);
   const [newAdditionalUrl, setNewAdditionalUrl] = useState('');
 
-  const safeProducts = Array.isArray(products) ? products : [];
+  const isPerfumeOrHairOil = (p: Product) => {
+    const name = (p.name || '').toLowerCase();
+    return name.includes('perfume') || name.includes('hair oil') || name.includes('oil');
+  };
+  const isAddonProduct = (p: Product) => Boolean(p.isCheckoutAddon);
+  const isBlanketProduct = (p: Product) => !p.collection || p.collection === 'Blankets' || p.collection.toLowerCase().includes('blanket') || (p.category && p.category.toLowerCase().includes('blanket'));
+
+  const rawProducts = Array.isArray(products) ? products : [];
+  const safeProducts = [...rawProducts].sort((a, b) => {
+    const aIsPerfumeOrOil = isPerfumeOrHairOil(a);
+    const bIsPerfumeOrOil = isPerfumeOrHairOil(b);
+    const aIsAddon = isAddonProduct(a);
+    const bIsAddon = isAddonProduct(b);
+    const aIsBlanket = isBlanketProduct(a);
+    const bIsBlanket = isBlanketProduct(b);
+
+    const aGroup = aIsPerfumeOrOil ? 3 : (aIsAddon ? 2 : (aIsBlanket ? 1 : 0));
+    const bGroup = bIsPerfumeOrOil ? 3 : (bIsAddon ? 2 : (bIsBlanket ? 1 : 0));
+
+    if (aGroup !== bGroup) {
+      return aGroup - bGroup;
+    }
+
+    return (a.name || '').localeCompare(b.name || '');
+  });
   const existingCollections = Array.from(new Set(safeProducts.map(p => p.collection || 'Blankets'))).sort();
   const existingCategories = Array.from(new Set(safeProducts.map(p => p.category).filter(Boolean))).sort() as string[];
 

@@ -41,7 +41,7 @@ export interface Order {
   customerPhone: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled';
+  status: 'pending' | 'paid' | 'packed' | 'shipped' | 'delivered' | 'failed' | 'cancelled';
   date: string;
   shippingAddress: string;
   isGift?: boolean;

@@ -79,7 +79,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   const [lastCleanup, setLastCleanup] = useState<Date>(new Date());
   const [cleanupMessage, setCleanupMessage] = useState<string>('');
 
-  const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'failed', 'cancelled'];
+  const ORDER_STATUSES = ['pending', 'paid', 'packed', 'shipped', 'delivered', 'failed', 'cancelled'];
 
   // Extract unique product names from all orders
   const uniqueProducts = Array.from(new Set(orders.flatMap(o => o.items.map(i => i.name)))).sort();
@@ -351,9 +351,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
   };
 
   // --- ANALYTICS CALCULATION ---
-  // Only consider 'paid', 'shipped', 'delivered' as valid sales for revenue calculation
+  // Only consider 'paid', 'packed', 'shipped', 'delivered' as valid sales for revenue calculation
   const analytics = filteredOrders.reduce((acc, order) => {
-    const isSale = ['paid', 'shipped', 'delivered'].includes(order.status);
+    const isSale = ['paid', 'packed', 'shipped', 'delivered'].includes(order.status);
     
     if (isSale) {
       acc.totalRevenue += order.total;
@@ -554,7 +554,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                             <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-widest">{order.paymentMethod.replace('_', ' ')}</div>
                           )}
                         </td>
-                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
+                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'packed' ? 'bg-purple-50 border-purple-200 text-purple-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
                             <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Print Packing Slip"><Printer size={16} /></button>

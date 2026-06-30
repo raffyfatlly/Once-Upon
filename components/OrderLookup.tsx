@@ -23,14 +23,16 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
 
   const steps = [
     { id: 'paid', label: 'Order Paid', icon: CreditCard },
+    { id: 'packed', label: 'Packed', icon: Package },
     { id: 'shipped', label: 'Shipped', icon: Truck },
     { id: 'delivered', label: 'Delivered', icon: CheckCircle },
   ];
 
   let activeIndex = -1;
   if (status === 'paid') activeIndex = 0;
-  if (status === 'shipped') activeIndex = 1;
-  if (status === 'delivered') activeIndex = 2;
+  if (status === 'packed') activeIndex = 1;
+  if (status === 'shipped') activeIndex = 2;
+  if (status === 'delivered') activeIndex = 3;
 
   // Handle pending or other states
   if (activeIndex === -1 && status !== 'pending') activeIndex = -1;
@@ -73,6 +75,7 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
        <div className="text-center mt-6">
           {status === 'pending' && <p className="text-xs text-gray-500 font-serif italic">Payment processing...</p>}
           {status === 'paid' && <p className="text-xs text-gray-500 font-serif italic">We are preparing your package.</p>}
+          {status === 'packed' && <p className="text-xs text-gray-500 font-serif italic">Your order has been packed and is ready for courier pickup.</p>}
           {status === 'shipped' && <p className="text-xs text-gray-500 font-serif italic">Your order is on its way to you.</p>}
           {status === 'delivered' && <p className="text-xs text-gray-500 font-serif italic">We hope you love your new treasures.</p>}
        </div>

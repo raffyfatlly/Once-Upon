@@ -16,16 +16,23 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'qr'>('bank_transfer');
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isShippingPreOrder, setIsShippingPreOrder] = useState(false);
+  const [shippingDetails, setShippingDetails] = useState({
+    address: '',
+    postcode: '',
+    city: '',
+    region: 'west' as 'west' | 'east' | 'sg'
+  });
 
   // Sizing option modal state
   const [selectedSizeProduct, setSelectedSizeProduct] = useState<Product | null>(null);
 
-  // Bundle selection modal states
-  const [selectedBundleType, setSelectedBundleType] = useState<'two_swaddles' | 'blanket_swaddle' | 'adult_baby_blanket' | null>(null);
-  const [bundleItem1, setBundleItem1] = useState<string>('');
-  const [bundleItem2, setBundleItem2] = useState<string>('');
+  // Category selection / filter state
+  const [activeCategory, setActiveCategory] = useState<'all' | 'swaddles' | 'blankets' | 'addons'>('all');
 
-  // Discount states
+  // Promo and Discount states
+  const [isAutoPromoDeleted, setIsAutoPromoDeleted] = useState(false);
+  const [isFreeShippingPromoDeleted, setIsFreeShippingPromoDeleted] = useState(false);
   const [posDiscount, setPosDiscount] = useState<{ type: 'percent' | 'flat'; value: number; label: string } | null>(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [customDiscountName, setCustomDiscountName] = useState("Tomorrow's Sale");
@@ -33,28 +40,53 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
   const [customDiscountValue, setCustomDiscountValue] = useState(10);
 
   // Category helpers
+  const isPerfumeOrHairOil = (p: Product) => {
+    const name = (p.name || '').toLowerCase();
+    return name.includes('perfume') || name.includes('hair oil') || name.includes('oil');
+  };
   const isAddonProduct = (p: Product) => Boolean(p.isCheckoutAddon);
   const isBlanketProduct = (p: Product) => !p.collection || p.collection === 'Blankets' || p.collection.toLowerCase().includes('blanket') || (p.category && p.category.toLowerCase().includes('blanket'));
 
-  const swaddles = products.filter(p => !isAddonProduct(p) && !isBlanketProduct(p) && p.isLive !== false);
-  const blankets = products.filter(p => !isAddonProduct(p) && isBlanketProduct(p) && p.isLive !== false);
+  const swaddles = products.filter(p => !isAddonProduct(p) && !isBlanketProduct(p) && !isPerfumeOrHairOil(p) && p.isLive !== false);
+  const blankets = products.filter(p => !isAddonProduct(p) && isBlanketProduct(p) && !isPerfumeOrHairOil(p) && p.isLive !== false);
 
-  // Sort POS products: First Swaddles (not addon, not blanket), then Blankets (not addon, is blanket), then Add-ons (is addon)
+  // Category counts
+  const swaddlesCount = products.filter(p => !isAddonProduct(p) && !isBlanketProduct(p) && !isPerfumeOrHairOil(p) && p.isLive !== false).length;
+  const blanketsCount = products.filter(p => !isAddonProduct(p) && isBlanketProduct(p) && !isPerfumeOrHairOil(p) && p.isLive !== false).length;
+  const addonsCount = products.filter(p => (isAddonProduct(p) || isPerfumeOrHairOil(p)) && p.isLive !== false).length;
+
+  // Sort POS products: First Swaddles (not addon, not blanket), then Blankets (not addon, is blanket), then Add-ons (is addon), then Perfume/Hair Oil (absolutely last)
   // Each group sorted alphabetically A-Z (top to bottom) by name
   const sortedProducts = [...products].sort((a, b) => {
+    const aIsPerfumeOrOil = isPerfumeOrHairOil(a);
+    const bIsPerfumeOrOil = isPerfumeOrHairOil(b);
     const aIsAddon = isAddonProduct(a);
     const bIsAddon = isAddonProduct(b);
     const aIsBlanket = isBlanketProduct(a);
     const bIsBlanket = isBlanketProduct(b);
 
-    const aGroup = aIsAddon ? 2 : (aIsBlanket ? 1 : 0);
-    const bGroup = bIsAddon ? 2 : (bIsBlanket ? 1 : 0);
+    const aGroup = aIsPerfumeOrOil ? 3 : (aIsAddon ? 2 : (aIsBlanket ? 1 : 0));
+    const bGroup = bIsPerfumeOrOil ? 3 : (bIsAddon ? 2 : (bIsBlanket ? 1 : 0));
 
     if (aGroup !== bGroup) {
       return aGroup - bGroup;
     }
 
     return a.name.localeCompare(b.name);
+  });
+
+  // Filter products by active category
+  const displayedProducts = sortedProducts.filter(p => {
+    if (activeCategory === 'swaddles') {
+      return !isAddonProduct(p) && !isBlanketProduct(p) && !isPerfumeOrHairOil(p);
+    }
+    if (activeCategory === 'blankets') {
+      return !isAddonProduct(p) && isBlanketProduct(p) && !isPerfumeOrHairOil(p);
+    }
+    if (activeCategory === 'addons') {
+      return isAddonProduct(p) || isPerfumeOrHairOil(p);
+    }
+    return true; // 'all'
   });
 
   const handleAddToCart = (product: Product) => {
@@ -93,112 +125,6 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
     setSelectedSizeProduct(null);
   };
 
-  const handleAddBundleToCart = () => {
-    if (!selectedBundleType) return;
-    
-    const timestamp = Date.now();
-    let item1Obj: Product | undefined;
-    let item2Obj: Product | undefined;
-
-    if (selectedBundleType === 'two_swaddles') {
-      item1Obj = swaddles.find(p => p.id === bundleItem1);
-      item2Obj = swaddles.find(p => p.id === bundleItem2);
-      
-      if (!item1Obj || !item2Obj) {
-        alert('Please select both swaddles');
-        return;
-      }
-
-      const cart1: CartItem = {
-        ...item1Obj,
-        id: `${bundleItem1}-bundle1-${timestamp}`,
-        baseProductId: bundleItem1,
-        name: `${item1Obj.name} (Bundle Swaddle 1)`,
-        price: 120, // 240 split in half
-        quantity: 1
-      };
-      
-      const cart2: CartItem = {
-        ...item2Obj,
-        id: `${bundleItem2}-bundle2-${timestamp}`,
-        baseProductId: bundleItem2,
-        name: `${item2Obj.name} (Bundle Swaddle 2)`,
-        price: 120,
-        quantity: 1
-      };
-
-      setCart(prev => [...prev, cart1, cart2]);
-
-    } else if (selectedBundleType === 'blanket_swaddle') {
-      item1Obj = blankets.find(p => p.id === bundleItem1);
-      item2Obj = swaddles.find(p => p.id === bundleItem2);
-      
-      if (!item1Obj || !item2Obj) {
-        alert('Please select a blanket and a swaddle');
-        return;
-      }
-
-      const cart1: CartItem = {
-        ...item1Obj,
-        id: `${bundleItem1}-baby-bundle-${timestamp}`,
-        baseProductId: bundleItem1,
-        name: `${item1Obj.name} (Baby Blanket - Bundle Item)`,
-        price: 120, // RM 120 blanket + RM 80 swaddle = RM 200
-        size: item1Obj.babySizeDesc || '70 cm x 100 cm',
-        sizeOption: 'baby',
-        quantity: 1
-      };
-      
-      const cart2: CartItem = {
-        ...item2Obj,
-        id: `${bundleItem2}-bundle-${timestamp}`,
-        baseProductId: bundleItem2,
-        name: `${item2Obj.name} (Swaddle - Bundle Item)`,
-        price: 80,
-        quantity: 1
-      };
-
-      setCart(prev => [...prev, cart1, cart2]);
-
-    } else if (selectedBundleType === 'adult_baby_blanket') {
-      item1Obj = blankets.find(p => p.id === bundleItem1);
-      item2Obj = blankets.find(p => p.id === bundleItem2);
-      
-      if (!item1Obj || !item2Obj) {
-        alert('Please select both blankets');
-        return;
-      }
-
-      const cart1: CartItem = {
-        ...item1Obj,
-        id: `${bundleItem1}-adult-bundle-${timestamp}`,
-        baseProductId: bundleItem1,
-        name: `${item1Obj.name} (Adult Blanket - Bundle Item)`,
-        price: 110, // RM 110 adult + RM 80 baby = RM 190
-        size: item1Obj.adultSizeDesc || '150 cm x 100 cm',
-        sizeOption: 'adult',
-        quantity: 1
-      };
-      
-      const cart2: CartItem = {
-        ...item2Obj,
-        id: `${bundleItem2}-baby-bundle-${timestamp}`,
-        baseProductId: bundleItem2,
-        name: `${item2Obj.name} (Baby Blanket - Bundle Item)`,
-        price: 80,
-        size: item2Obj.babySizeDesc || '70 cm x 100 cm',
-        sizeOption: 'baby',
-        quantity: 1
-      };
-
-      setCart(prev => [...prev, cart1, cart2]);
-    }
-
-    setSelectedBundleType(null);
-    setBundleItem1('');
-    setBundleItem2('');
-  };
-
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
@@ -214,33 +140,89 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
 
   // Calculations
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountAmount = posDiscount 
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Auto RM 8 discount for each blanket or swaddle (not addon, not perfume or hair oil)
+  const autoPromoDiscountAmount = isAutoPromoDeleted 
+    ? 0 
+    : cart.reduce((sum, item) => {
+        if (!isAddonProduct(item) && !isPerfumeOrHairOil(item)) {
+          return sum + (8 * item.quantity);
+        }
+        return sum;
+      }, 0);
+
+  // Shipping cost if shipping pre-order
+  const getStandardShippingCost = () => {
+    if (!isShippingPreOrder) return 0;
+    const region = shippingDetails.region;
+    if (region === 'sg') {
+      if (totalItems === 1) return 30;
+      if (totalItems <= 3) return 45;
+      if (totalItems <= 6) return 65;
+      return 65 + Math.ceil((totalItems - 6) / 3) * 15;
+    } else if (region === 'east') {
+      if (totalItems === 1) return 15;
+      if (totalItems <= 3) return 18;
+      if (totalItems <= 6) return 20;
+      return 20 + Math.ceil((totalItems - 6) / 3) * 5;
+    } else {
+      if (totalItems === 1) return 8;
+      if (totalItems <= 3) return 10;
+      if (totalItems <= 6) return 12;
+      return 12 + Math.ceil((totalItems - 6) / 3) * 2;
+    }
+  };
+
+  const standardShippingCost = getStandardShippingCost();
+  const freeShippingDiscountAmount = (isShippingPreOrder && !isFreeShippingPromoDeleted) ? standardShippingCost : 0;
+  const actualShippingCost = isShippingPreOrder ? (standardShippingCost - freeShippingDiscountAmount) : 0;
+
+  const customDiscountAmount = posDiscount 
     ? (posDiscount.type === 'percent' ? (subtotal * posDiscount.value / 100) : posDiscount.value)
     : 0;
-  const total = Math.max(0, subtotal - discountAmount);
+
+  const total = Math.max(0, subtotal + actualShippingCost - autoPromoDiscountAmount - customDiscountAmount);
 
   const handleConfirmOrder = async () => {
     setIsProcessing(true);
     try {
-      const discountNote = posDiscount 
-        ? `[POS Discount Applied: ${posDiscount.label} (${posDiscount.type === 'percent' ? `${posDiscount.value}%` : `RM ${posDiscount.value}`} off - Saved RM ${discountAmount.toFixed(2)})]`
-        : '';
+      let promoNotes = [];
+      if (isShippingPreOrder) {
+        promoNotes.push('[Pre-Order Shipping]');
+        if (!isFreeShippingPromoDeleted) {
+          promoNotes.push(`[Free Shipping Promo applied - Saved RM ${standardShippingCost.toFixed(2)}]`);
+        }
+      }
+      if (!isAutoPromoDeleted && autoPromoDiscountAmount > 0) {
+        promoNotes.push(`[Auto Blanket/Swaddle Promo applied - Saved RM ${autoPromoDiscountAmount.toFixed(2)}]`);
+      }
+      if (posDiscount) {
+        promoNotes.push(`[POS Discount Applied: ${posDiscount.label} (${posDiscount.type === 'percent' ? `${posDiscount.value}%` : `RM ${posDiscount.value}`} off - Saved RM ${customDiscountAmount.toFixed(2)})]`);
+      }
+
+      const formattedShippingAddress = isShippingPreOrder
+        ? `${shippingDetails.address}, ${shippingDetails.postcode} ${shippingDetails.city}, ${shippingDetails.region === 'sg' ? 'Singapore' : shippingDetails.region === 'east' ? 'East Malaysia' : 'West Malaysia'}`
+        : 'In-Store';
 
       const orderData: Omit<Order, 'id'> = {
         customerName: customerInfo.name || 'POS Customer',
         customerEmail: customerInfo.email || 'pos@store.local',
         customerPhone: customerInfo.phone || '0000000000',
-        items: cart,
+        items: cart.map(item => ({
+          ...item,
+          isPreOrder: isShippingPreOrder ? true : item.isPreOrder
+        })),
         total,
         status: 'paid',
         date: new Date().toISOString(),
-        shippingAddress: 'In-Store',
+        shippingAddress: formattedShippingAddress,
         source: 'pos',
         paymentMethod: paymentMethod
       };
 
-      if (discountNote) {
-        orderData.adminNotes = discountNote;
+      if (promoNotes.length > 0) {
+        orderData.adminNotes = promoNotes.join(' ');
       }
 
       await createOrderInDb(orderData);
@@ -248,6 +230,10 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
       setCart([]);
       setPosDiscount(null);
       setCustomerInfo({ name: '', phone: '', email: '' });
+      setIsShippingPreOrder(false);
+      setShippingDetails({ address: '', postcode: '', city: '', region: 'west' });
+      setIsAutoPromoDeleted(false);
+      setIsFreeShippingPromoDeleted(false);
     } catch (error: any) {
       alert("Failed to process order: " + error.message);
     } finally {
@@ -384,11 +370,35 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
               <span className="font-bold text-gray-400 uppercase tracking-widest text-xs">Subtotal</span>
               <span className="font-mono text-gray-600">RM {subtotal.toFixed(2)}</span>
             </div>
+
+            {/* Auto RM 8 discount for blankets/swaddles */}
+            {!isAutoPromoDeleted && autoPromoDiscountAmount > 0 && (
+              <div className="flex justify-between items-center text-sm text-brand-flamingo">
+                <span className="font-bold uppercase tracking-widest text-xs">🏷️ RM 8 Auto Promo</span>
+                <span className="font-mono">- RM {autoPromoDiscountAmount.toFixed(2)}</span>
+              </div>
+            )}
+
+            {/* Pre-Order Shipping and Free Shipping Discount */}
+            {isShippingPreOrder && (
+              <>
+                <div className="flex justify-between items-center text-sm text-gray-500">
+                  <span className="font-bold uppercase tracking-widest text-xs">Shipping</span>
+                  <span className="font-mono">RM {standardShippingCost.toFixed(2)}</span>
+                </div>
+                {!isFreeShippingPromoDeleted && freeShippingDiscountAmount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-green-600">
+                    <span className="font-bold uppercase tracking-widest text-xs">📦 Free Shipping</span>
+                    <span className="font-mono">- RM {freeShippingDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
             
             {posDiscount && (
               <div className="flex justify-between items-center text-sm text-brand-flamingo">
                 <span className="font-bold uppercase tracking-widest text-xs">🏷️ Discount ({posDiscount.label})</span>
-                <span className="font-mono">- RM {discountAmount.toFixed(2)}</span>
+                <span className="font-mono">- RM {customDiscountAmount.toFixed(2)}</span>
               </div>
             )}
             
@@ -403,8 +413,8 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         <div className="flex-1 p-6 md:p-8 bg-brand-grey/5">
           <h2 className="font-serif text-2xl mb-6">Checkout Details</h2>
           
-          <div className="mb-8">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Customer Info (Optional)</label>
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Customer Info {isShippingPreOrder ? '(Required for Shipping)' : '(Optional)'}</label>
             <div className="space-y-3">
               <input 
                 type="text" 
@@ -430,6 +440,67 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
             </div>
           </div>
 
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Delivery Option</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                type="button"
+                onClick={() => setIsShippingPreOrder(false)}
+                className={`p-3.5 border text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${!isShippingPreOrder ? 'border-brand-flamingo bg-brand-flamingo/5 text-brand-flamingo' : 'border-brand-latte/30 bg-white hover:border-gray-300 text-gray-500'}`}
+              >
+                In-Store Pickup
+              </button>
+              <button 
+                type="button"
+                onClick={() => setIsShippingPreOrder(true)}
+                className={`p-3.5 border text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${isShippingPreOrder ? 'border-brand-flamingo bg-brand-flamingo/5 text-brand-flamingo' : 'border-brand-latte/30 bg-white hover:border-gray-300 text-gray-500'}`}
+              >
+                Pre-Order Shipping
+              </button>
+            </div>
+
+            {isShippingPreOrder && (
+              <div className="mt-4 space-y-3 bg-white p-4 border border-brand-latte/20 rounded animate-fade-in text-left">
+                <span className="block text-[10px] font-bold text-brand-gold uppercase tracking-widest mb-1">📦 Delivery Details</span>
+                <input 
+                  type="text" 
+                  placeholder="Street Address" 
+                  className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white"
+                  value={shippingDetails.address}
+                  onChange={e => setShippingDetails({...shippingDetails, address: e.target.value})}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    type="text" 
+                    placeholder="Postcode" 
+                    className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white"
+                    value={shippingDetails.postcode}
+                    onChange={e => setShippingDetails({...shippingDetails, postcode: e.target.value})}
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="City" 
+                    className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white"
+                    value={shippingDetails.city}
+                    onChange={e => setShippingDetails({...shippingDetails, city: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Region</label>
+                  <select 
+                    className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white"
+                    value={shippingDetails.region}
+                    onChange={e => setShippingDetails({...shippingDetails, region: e.target.value as any})}
+                  >
+                    <option value="west">West Malaysia</option>
+                    <option value="east">East Malaysia</option>
+                    <option value="sg">Singapore</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="mb-8">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Payment Method</label>
             <div className="grid grid-cols-2 gap-4">
@@ -451,7 +522,19 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
           </div>
 
           <button 
-            onClick={() => setView('customer_payment')}
+            onClick={() => {
+              if (isShippingPreOrder) {
+                if (!customerInfo.name.trim() || !customerInfo.phone.trim() || !customerInfo.email.trim()) {
+                  alert("Customer Name, Phone, and Email are required for Pre-Order Shipping!");
+                  return;
+                }
+                if (!shippingDetails.address.trim() || !shippingDetails.postcode.trim() || !shippingDetails.city.trim()) {
+                  alert("Please enter full shipping address details (Address, Postcode, City)!");
+                  return;
+                }
+              }
+              setView('customer_payment');
+            }}
             className="w-full bg-gray-900 text-white py-4 font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand-flamingo transition-colors"
           >
             Pass iPad to Customer <ChevronLeft size={16} className="rotate-180" />
@@ -467,102 +550,98 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
       {/* Products Grid Column */}
       <div className="flex-[2] bg-white border border-brand-latte/20 rounded shadow-sm overflow-y-auto p-6">
         
-        {/* SECTION 2: SPECIAL LAUNCH BUNDLES (Framed with organic hand-drawn borders) */}
+        {/* AUTO PROMO BANNER */}
         <div 
-          className="border-2 border-dashed border-brand-gold/50 bg-[#fffdf9] p-5 mb-8 relative hover:border-brand-flamingo/40 transition-colors"
+          className="border border-dashed border-brand-flamingo/50 bg-[#fffdfa] p-4 mb-6 relative"
           style={{ 
-            borderRadius: '255px 15px 225px 15px/15px 225px 15px 255px',
-            boxShadow: '2px 8px 12px -4px rgba(220,175,106,0.08)'
+            borderRadius: '12px',
+            boxShadow: '0 4px 10px rgba(230,120,110,0.04)'
           }}
         >
-          <div className="absolute top-2.5 right-4 text-[9px] font-sans font-bold uppercase tracking-widest bg-brand-gold text-white px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Sparkles size={8} /> SPECIAL PROMO
+          <div className="absolute top-2.5 right-4 text-[9px] font-sans font-bold uppercase tracking-widest bg-brand-flamingo text-white px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
+            <Sparkles size={8} /> Active Promo
           </div>
           
-          <h3 className="font-serif text-lg text-gray-900 mb-4 flex items-center gap-2 tracking-wide font-medium">
-            ✨ SPECIAL LAUNCH BUNDLES
+          <h3 className="font-serif text-base text-gray-900 mb-1 flex items-center gap-1.5 tracking-wide font-semibold">
+            🎁 Auto POS Discount Active
           </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Bundle Option 1 */}
-            <div className="bg-white border border-brand-latte/20 p-4 rounded-[3px] hover:border-brand-gold transition-all flex flex-col justify-between h-full group">
-              <div>
-                <div className="flex justify-between items-start">
-                  <h4 className="font-serif text-sm font-bold text-gray-900 leading-tight">Two Swaddles</h4>
-                  <span className="text-[8px] font-sans font-bold bg-green-50 text-green-600 border border-green-100 px-1 py-0.5 rounded uppercase">Save RM 24</span>
-                </div>
-                <p className="text-[10px] text-gray-500 font-sans mt-2 leading-relaxed">Choose any two signature organic cotton swaddle designs.</p>
-              </div>
-              <div className="flex justify-between items-center mt-5 pt-2 border-t border-brand-latte/10">
-                <div className="font-mono font-bold text-brand-flamingo text-sm">RM 240</div>
-                <button 
-                  onClick={() => {
-                    setSelectedBundleType('two_swaddles');
-                    setBundleItem1(swaddles[0]?.id || '');
-                    setBundleItem2(swaddles[1]?.id || swaddles[0]?.id || '');
-                  }}
-                  className="bg-brand-flamingo/10 text-brand-flamingo hover:bg-brand-flamingo hover:text-white px-3 py-1.5 rounded-[2px] text-[9px] font-bold uppercase tracking-wider transition-all"
-                >
-                  Configure
-                </button>
-              </div>
-            </div>
-
-            {/* Bundle Option 2 */}
-            <div className="bg-white border border-brand-latte/20 p-4 rounded-[3px] hover:border-brand-gold transition-all flex flex-col justify-between h-full group">
-              <div>
-                <div className="flex justify-between items-start">
-                  <h4 className="font-serif text-sm font-bold text-gray-900 leading-tight">Baby Blanket & Swaddle</h4>
-                  <span className="text-[8px] font-sans font-bold bg-green-50 text-green-600 border border-green-100 px-1 py-0.5 rounded uppercase">Save RM 32</span>
-                </div>
-                <p className="text-[10px] text-gray-500 font-sans mt-2 leading-relaxed">Combine one magical baby blanket with one bamboo swaddle.</p>
-              </div>
-              <div className="flex justify-between items-center mt-5 pt-2 border-t border-brand-latte/10">
-                <div className="font-mono font-bold text-brand-flamingo text-sm">RM 200</div>
-                <button 
-                  onClick={() => {
-                    setSelectedBundleType('blanket_swaddle');
-                    setBundleItem1(blankets[0]?.id || '');
-                    setBundleItem2(swaddles[0]?.id || '');
-                  }}
-                  className="bg-brand-flamingo/10 text-brand-flamingo hover:bg-brand-flamingo hover:text-white px-3 py-1.5 rounded-[2px] text-[9px] font-bold uppercase tracking-wider transition-all"
-                >
-                  Configure
-                </button>
-              </div>
-            </div>
-
-            {/* Bundle Option 3 */}
-            <div className="bg-white border border-brand-latte/20 p-4 rounded-[3px] hover:border-brand-gold transition-all flex flex-col justify-between h-full group">
-              <div>
-                <div className="flex justify-between items-start">
-                  <h4 className="font-serif text-sm font-bold text-gray-900 leading-tight">Adult & Baby Blanket</h4>
-                  <span className="text-[8px] font-sans font-bold bg-green-50 text-green-600 border border-green-100 px-1 py-0.5 rounded uppercase">Save RM 6</span>
-                </div>
-                <p className="text-[10px] text-gray-500 font-sans mt-2 leading-relaxed">Select one luxurious Adult blanket and one Baby blanket size.</p>
-              </div>
-              <div className="flex justify-between items-center mt-5 pt-2 border-t border-brand-latte/10">
-                <div className="font-mono font-bold text-brand-flamingo text-sm">RM 190</div>
-                <button 
-                  onClick={() => {
-                    setSelectedBundleType('adult_baby_blanket');
-                    setBundleItem1(blankets[0]?.id || '');
-                    setBundleItem2(blankets[1]?.id || blankets[0]?.id || '');
-                  }}
-                  className="bg-brand-flamingo/10 text-brand-flamingo hover:bg-brand-flamingo hover:text-white px-3 py-1.5 rounded-[2px] text-[9px] font-bold uppercase tracking-wider transition-all"
-                >
-                  Configure
-                </button>
-              </div>
-            </div>
-          </div>
+          <p className="text-xs text-gray-600 font-sans leading-relaxed">
+            Every swaddle and blanket added to the order automatically receives an <strong className="text-brand-flamingo">RM 8.00 discount each</strong>. 
+            Pre-order shipping options also automatically receive <strong className="text-brand-gold">Free Shipping</strong>.
+          </p>
         </div>
 
         {/* SECTION 1: STANDARD PRODUCTS MENU */}
-        <h2 className="font-serif text-2xl mb-6 text-gray-900 tracking-wide font-medium">POS Menu</h2>
+        <div id="pos-menu-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h2 className="font-serif text-2xl text-gray-900 tracking-wide font-medium">POS Menu</h2>
+        </div>
+
+        {/* CATEGORY CARD SELECTORS */}
+        <div id="pos-category-selector" className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <button
+            id="pos-cat-swaddles"
+            type="button"
+            onClick={() => setActiveCategory('swaddles')}
+            className={`p-3 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+              activeCategory === 'swaddles'
+                ? 'border-brand-flamingo bg-brand-flamingo/5 text-brand-flamingo shadow-sm scale-[1.02] ring-1 ring-brand-flamingo/50'
+                : 'border-brand-latte/20 bg-white hover:border-brand-flamingo/40 text-gray-700 hover:bg-gray-50/50'
+            }`}
+          >
+            <span className="text-lg mb-1">🌸</span>
+            <span className="font-serif text-xs font-semibold">Swaddles</span>
+            <span className="text-[9px] font-mono mt-1 opacity-70 bg-brand-flamingo/10 text-brand-flamingo px-2 py-0.5 rounded-full">{swaddlesCount} Designs</span>
+          </button>
+          
+          <button
+            id="pos-cat-blankets"
+            type="button"
+            onClick={() => setActiveCategory('blankets')}
+            className={`p-3 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+              activeCategory === 'blankets'
+                ? 'border-brand-gold bg-brand-gold/5 text-brand-gold shadow-sm scale-[1.02] ring-1 ring-brand-gold/50'
+                : 'border-brand-latte/20 bg-white hover:border-brand-gold/40 text-gray-700 hover:bg-gray-50/50'
+            }`}
+          >
+            <span className="text-lg mb-1">🧸</span>
+            <span className="font-serif text-xs font-semibold">Blankets</span>
+            <span className="text-[9px] font-mono mt-1 opacity-70 bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded-full">{blanketsCount} Designs</span>
+          </button>
+
+          <button
+            id="pos-cat-addons"
+            type="button"
+            onClick={() => setActiveCategory('addons')}
+            className={`p-3 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+              activeCategory === 'addons'
+                ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-sm scale-[1.02] ring-1 ring-purple-500/50'
+                : 'border-brand-latte/20 bg-white hover:border-purple-300 text-gray-700 hover:bg-gray-50/50'
+            }`}
+          >
+            <span className="text-lg mb-1">💝</span>
+            <span className="font-serif text-xs font-semibold">Add-ons & Wellness</span>
+            <span className="text-[9px] font-mono mt-1 opacity-70 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{addonsCount} Items</span>
+          </button>
+
+          <button
+            id="pos-cat-all"
+            type="button"
+            onClick={() => setActiveCategory('all')}
+            className={`p-3 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+              activeCategory === 'all'
+                ? 'border-gray-900 bg-gray-50 text-gray-900 shadow-sm scale-[1.02] ring-1 ring-gray-900/50'
+                : 'border-brand-latte/20 bg-white hover:border-gray-400 text-gray-700 hover:bg-gray-50/50'
+            }`}
+          >
+            <span className="text-lg mb-1">✨</span>
+            <span className="font-serif text-xs font-semibold">All Products</span>
+            <span className="text-[9px] font-mono mt-1 opacity-70 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{products.length} Total</span>
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {sortedProducts.map(product => {
-            const isAddon = isAddonProduct(product);
+          {displayedProducts.map(product => {
+            const isAddon = isAddonProduct(product) || isPerfumeOrHairOil(product);
             const isBlanket = isBlanketProduct(product);
             const collectionTag = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
             return (
@@ -612,8 +691,8 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
               </button>
             );
           })}
-          {products.length === 0 && (
-             <div className="col-span-full py-12 text-center text-gray-400 italic">No products available.</div>
+          {displayedProducts.length === 0 && (
+             <div className="col-span-full py-12 text-center text-gray-400 italic">No products available in this category.</div>
           )}
         </div>
       </div>
@@ -629,7 +708,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
             <div className="text-center text-gray-400 italic text-sm mt-12">Cart is empty. Tap products to add.</div>
           ) : (
             cart.map(item => {
-              const isAddon = isAddonProduct(item);
+              const isAddon = isAddonProduct(item) || isPerfumeOrHairOil(item);
               const isBlanket = isBlanketProduct(item);
               const itemTag = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
               return (
@@ -676,6 +755,46 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
               <span className="font-mono">RM {subtotal.toFixed(2)}</span>
             </div>
 
+            {/* Auto RM 8 discount for blankets/swaddles */}
+            {!isAutoPromoDeleted && autoPromoDiscountAmount > 0 && (
+              <div className="flex justify-between items-center text-brand-flamingo text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase bg-brand-flamingo/10 px-1.5 py-0.5 rounded tracking-wider">🏷️ RM 8 Auto Promo</span>
+                  <button 
+                    onClick={() => setIsAutoPromoDeleted(true)}
+                    className="text-[10px] text-red-500 hover:underline font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    [Delete]
+                  </button>
+                </div>
+                <span className="font-mono font-bold">- RM {autoPromoDiscountAmount.toFixed(2)}</span>
+              </div>
+            )}
+
+            {/* Pre-Order Shipping and Free Shipping Discount */}
+            {isShippingPreOrder && (
+              <>
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span className="font-bold uppercase tracking-widest text-[10px]">Shipping</span>
+                  <span className="font-mono">RM {standardShippingCost.toFixed(2)}</span>
+                </div>
+                {!isFreeShippingPromoDeleted && freeShippingDiscountAmount > 0 && (
+                  <div className="flex justify-between items-center text-green-600 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase bg-green-50 border border-green-200 px-1.5 py-0.5 rounded tracking-wider">📦 Free Shipping</span>
+                      <button 
+                        onClick={() => setIsFreeShippingPromoDeleted(true)}
+                        className="text-[10px] text-red-500 hover:underline font-bold uppercase tracking-wider cursor-pointer"
+                      >
+                        [Delete]
+                      </button>
+                    </div>
+                    <span className="font-mono font-bold">- RM {freeShippingDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
             {posDiscount && (
               <div className="flex justify-between items-center text-brand-flamingo text-xs">
                 <div className="flex items-center gap-1.5">
@@ -687,7 +806,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                     [Delete]
                   </button>
                 </div>
-                <span className="font-mono font-bold">- RM {discountAmount.toFixed(2)}</span>
+                <span className="font-mono font-bold">- RM {customDiscountAmount.toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -697,15 +816,36 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
             <span className="font-script text-2xl text-brand-flamingo">RM {total.toFixed(2)}</span>
           </div>
 
-          {/* Discount Trigger Button */}
-          {!posDiscount && (
-            <button 
-              onClick={() => setShowDiscountModal(true)}
-              className="w-full mb-3 bg-white border border-brand-flamingo/30 text-brand-flamingo py-2 font-bold uppercase tracking-widest text-[10px] rounded hover:bg-brand-flamingo/5 transition-colors cursor-pointer flex items-center justify-center gap-1"
-            >
-              <Percent size={10} /> Apply Custom/Promo Discount
-            </button>
-          )}
+          {/* Promo Re-apply & Discount Buttons */}
+          <div className="space-y-1.5 mb-3">
+            {(isAutoPromoDeleted && autoPromoDiscountAmount > 0) && (
+              <button 
+                type="button"
+                onClick={() => setIsAutoPromoDeleted(false)}
+                className="w-full bg-brand-flamingo/5 border border-brand-flamingo/20 text-brand-flamingo py-2 font-bold uppercase tracking-widest text-[10px] rounded hover:bg-brand-flamingo/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Tag size={10} /> Re-apply RM 8 Auto Promo
+              </button>
+            )}
+            {(isShippingPreOrder && isFreeShippingPromoDeleted && standardShippingCost > 0) && (
+              <button 
+                type="button"
+                onClick={() => setIsFreeShippingPromoDeleted(false)}
+                className="w-full bg-green-50 border border-green-200 text-green-700 py-2 font-bold uppercase tracking-widest text-[10px] rounded hover:bg-green-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Box size={10} /> Re-apply Free Shipping Promo
+              </button>
+            )}
+            {!posDiscount && (
+              <button 
+                type="button"
+                onClick={() => setShowDiscountModal(true)}
+                className="w-full bg-white border border-brand-flamingo/30 text-brand-flamingo py-2 font-bold uppercase tracking-widest text-[10px] rounded hover:bg-brand-flamingo/5 transition-colors cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Percent size={10} /> Apply Custom/Promo Discount
+              </button>
+            )}
+          </div>
 
           <button 
             onClick={() => setView('checkout')}
@@ -763,92 +903,6 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                 className="border border-brand-latte/30 px-4 py-2 rounded text-xs uppercase font-bold tracking-wider text-gray-500 hover:bg-gray-50 cursor-pointer"
               >
                 Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- POPUP MODAL 2: SPECIAL LAUNCH BUNDLE CONFIGURATOR --- */}
-      {selectedBundleType && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded max-w-lg w-full p-6 border border-brand-latte/30 shadow-xl relative">
-            <button 
-              onClick={() => setSelectedBundleType(null)} 
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-            
-            <h3 className="font-serif text-xl text-gray-900 mb-1 font-medium">Configure Promotional Bundle</h3>
-            <span className="text-xs font-sans font-bold bg-brand-gold/10 text-brand-gold px-2.5 py-0.5 rounded uppercase tracking-wider inline-block mb-6">
-              {selectedBundleType === 'two_swaddles' && 'Two Swaddles Promo — RM 240 (Save RM 24)'}
-              {selectedBundleType === 'blanket_swaddle' && 'Baby Blanket & Swaddle Promo — RM 200 (Save RM 32)'}
-              {selectedBundleType === 'adult_baby_blanket' && 'Adult Blanket & Baby Blanket Promo — RM 190 (Save RM 6)'}
-            </span>
-            
-            <div className="space-y-4 mb-8">
-              {/* SELECTION ITEM 1 */}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  {selectedBundleType === 'two_swaddles' && 'Select Swaddle 1'}
-                  {selectedBundleType === 'blanket_swaddle' && 'Select Baby Blanket'}
-                  {selectedBundleType === 'adult_baby_blanket' && 'Select Adult Blanket'}
-                </label>
-                <select 
-                  className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white font-serif"
-                  value={bundleItem1}
-                  onChange={e => setBundleItem1(e.target.value)}
-                >
-                  <option value="">-- Choose Design --</option>
-                  {selectedBundleType === 'two_swaddles' && swaddles.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (In stock: {p.stock || 0})</option>
-                  ))}
-                  {(selectedBundleType === 'blanket_swaddle' || selectedBundleType === 'adult_baby_blanket') && blankets.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (In stock: {p.stock || 0})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SELECTION ITEM 2 */}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  {selectedBundleType === 'two_swaddles' && 'Select Swaddle 2'}
-                  {selectedBundleType === 'blanket_swaddle' && 'Select Swaddle'}
-                  {selectedBundleType === 'adult_baby_blanket' && 'Select Baby Blanket'}
-                </label>
-                <select 
-                  className="w-full border p-3 text-sm focus:border-brand-flamingo outline-none bg-white font-serif"
-                  value={bundleItem2}
-                  onChange={e => setBundleItem2(e.target.value)}
-                >
-                  <option value="">-- Choose Design --</option>
-                  {selectedBundleType === 'two_swaddles' && swaddles.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (In stock: {p.stock || 0})</option>
-                  ))}
-                  {selectedBundleType === 'blanket_swaddle' && swaddles.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (In stock: {p.stock || 0})</option>
-                  ))}
-                  {selectedBundleType === 'adult_baby_blanket' && blankets.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (In stock: {p.stock || 0})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setSelectedBundleType(null)}
-                className="border border-brand-latte/30 px-4 py-2.5 rounded text-xs uppercase font-bold tracking-wider text-gray-500 hover:bg-gray-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleAddBundleToCart}
-                disabled={!bundleItem1 || !bundleItem2}
-                className="bg-brand-flamingo text-white px-5 py-2.5 rounded text-xs uppercase font-bold tracking-wider disabled:opacity-50 cursor-pointer"
-              >
-                Add Bundle to Order
               </button>
             </div>
           </div>

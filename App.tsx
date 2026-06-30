@@ -477,6 +477,7 @@ const App: React.FC = () => {
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
 
   // --- FIREBASE SUBSCRIPTIONS ---
   useEffect(() => {
@@ -728,7 +729,10 @@ const App: React.FC = () => {
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={
-          <AdminLogin onLogin={() => setIsAuthenticated(true)} />
+          <AdminLogin onLogin={(email) => {
+            setIsAuthenticated(true);
+            setAdminEmail(email);
+          }} />
         } />
         
         <Route path="/admin/dashboard" element={
@@ -740,11 +744,18 @@ const App: React.FC = () => {
               onUpdateProducts={setProducts}
               onUpdateSiteConfig={setSiteConfig}
               onUpdateOrders={setOrders}
-              onLogout={() => setIsAuthenticated(false)}
+              onLogout={() => {
+                setIsAuthenticated(false);
+                setAdminEmail('');
+              }}
               installPrompt={deferredPrompt}
+              adminEmail={adminEmail}
             />
           ) : (
-            <AdminLogin onLogin={() => setIsAuthenticated(true)} />
+            <AdminLogin onLogin={(email) => {
+              setIsAuthenticated(true);
+              setAdminEmail(email);
+            }} />
           )
         } />
 

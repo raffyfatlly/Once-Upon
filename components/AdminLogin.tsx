@@ -15,7 +15,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Simple mock authentication
-    if (email === 'user@admin.com') {
+    if (email === 'user@admin.com' || email === 'cashier@admin.com') {
       onLogin(email);
       navigate('/admin/dashboard');
     } else {
