@@ -40,6 +40,66 @@ const getKLDateFromIso = (isoString: string) => {
    return `${year}-${month}-${day}`;
 };
 
+const getNormalizedProductInfo = (item: { name: string; collection?: string; category?: string }) => {
+  const collection = item.collection || '';
+  const category = item.category || '';
+  let name = item.name.trim();
+
+  // Determine if it is a blanket
+  const isBlanket = collection === 'Blankets' || 
+                    collection.toLowerCase().includes('blanket') ||
+                    category.toLowerCase().includes('blanket') ||
+                    // fallback if collection is empty but name suggests it
+                    (!collection && !category && (name.toLowerCase().includes('blanket') || name.toLowerCase().includes('castle') || name.toLowerCase().includes('flight')));
+
+  if (isBlanket) {
+    if (name.includes('(Adult)')) {
+      const baseName = name.replace('(Adult)', '').trim();
+      return {
+        key: `${baseName}|Adult|Blankets`,
+        displayLabel: `${baseName} (Adult Blanket)`,
+        group: 'blanket'
+      };
+    } else if (name.includes('(Baby)')) {
+      const baseName = name.replace('(Baby)', '').trim();
+      return {
+        key: `${baseName}|Baby|Blankets`,
+        displayLabel: `${baseName} (Baby Blanket)`,
+        group: 'blanket'
+      };
+    } else {
+      // Default to Baby Blanket if no size is specified
+      return {
+        key: `${name}|Baby|Blankets`,
+        displayLabel: `${name} (Baby Blanket)`,
+        group: 'blanket'
+      };
+    }
+  }
+
+  // Determine if it is a swaddle
+  const isSwaddle = collection === 'Swaddle' || 
+                    collection === 'Swaddles' || 
+                    collection.toLowerCase().includes('swaddle') ||
+                    category.toLowerCase().includes('swaddle');
+
+  if (isSwaddle) {
+    const baseName = name.replace('(Swaddle)', '').trim();
+    return {
+      key: `${baseName}|Swaddle`,
+      displayLabel: `${baseName} (Swaddle)`,
+      group: 'swaddle'
+    };
+  }
+
+  // Fallback
+  return {
+    key: name,
+    displayLabel: name,
+    group: 'other'
+  };
+};
+
 interface SalesManagerProps {
   orders: Order[];
 }
@@ -81,8 +141,28 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
 
   const ORDER_STATUSES = ['pending', 'paid', 'packed', 'shipped', 'delivered', 'failed', 'cancelled'];
 
-  // Extract unique product names from all orders
-  const uniqueProducts = Array.from(new Set(orders.flatMap(o => o.items.map(i => i.name)))).sort();
+  // Extract unique product options with name and collection normalized
+  const uniqueProducts = React.useMemo(() => {
+    const itemsMap = new Map<string, { key: string; displayLabel: string; group: string }>();
+    orders.forEach(o => {
+      if (o.items) {
+        o.items.forEach(i => {
+          const info = getNormalizedProductInfo(i);
+          if (!itemsMap.has(info.key)) {
+            itemsMap.set(info.key, info);
+          }
+        });
+      }
+    });
+    return Array.from(itemsMap.values()).sort((a, b) => {
+      const weightA = a.group === 'swaddle' ? 1 : a.group === 'blanket' ? 2 : 3;
+      const weightB = b.group === 'swaddle' ? 1 : b.group === 'blanket' ? 2 : 3;
+      if (weightA !== weightB) {
+        return weightA - weightB;
+      }
+      return a.displayLabel.localeCompare(b.displayLabel);
+    });
+  }, [orders]);
 
   // --- AUTOMATED STALE ORDER CLEANUP ---
   // Runs on mount and every 60 seconds
@@ -293,7 +373,10 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
       order.id.includes(searchQuery) ||
       (order.customerPhone && order.customerPhone.includes(searchQuery));
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
-    const matchesProduct = filterProduct === 'all' || order.items.some(item => item.name === filterProduct);
+    const matchesProduct = filterProduct === 'all' || order.items.some(item => {
+      const info = getNormalizedProductInfo(item);
+      return info.key === filterProduct;
+    });
 
     let matchesDate = true;
     if (startDate || endDate) {
@@ -425,7 +508,13 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                 <div className="relative">
                 <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full md:w-32 truncate">
                     <option value="all">All Products</option>
-                    {uniqueProducts.map(p => (<option key={p} value={p}>{p}</option>))}
+                    {uniqueProducts.map(p => {
+                      return (
+                        <option key={p.key} value={p.key}>
+                          {p.displayLabel}
+                        </option>
+                      );
+                    })}
                 </select>
                 <Tag size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
