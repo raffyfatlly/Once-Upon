@@ -26,7 +26,20 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
     const name = (p.name || '').toLowerCase();
     return name.includes('perfume') || name.includes('hair oil') || name.includes('oil');
   };
-  const isAddonProduct = (p: Product) => Boolean(p.isCheckoutAddon);
+  const isAddonProduct = (p: Product) => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const collection = (p.collection || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    return Boolean(p.isCheckoutAddon) || 
+           name.includes('perfume') || 
+           name.includes('hair oil') || 
+           name.includes('oil') || 
+           collection.includes('add-on') || 
+           collection.includes('addon') || 
+           category.includes('add-on') || 
+           category.includes('addon');
+  };
   const isBlanketProduct = (p: Product) => !p.collection || p.collection === 'Blankets' || p.collection.toLowerCase().includes('blanket') || (p.category && p.category.toLowerCase().includes('blanket'));
 
   const rawProducts = Array.isArray(products) ? products : [];
@@ -541,8 +554,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
               </div>
           )}
           {safeProducts.map(product => {
-            const isAddon = Boolean(product.isCheckoutAddon);
-            const isBlanket = !product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket'));
+            const isAddon = isAddonProduct(product);
+            const isBlanket = !isAddon && (!product.collection || product.collection === 'Blankets' || product.collection.toLowerCase().includes('blanket') || (product.category && product.category.toLowerCase().includes('blanket')));
             const collectionTag = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
             return (
               <div key={product.id} className="bg-white border border-brand-latte/20 p-4 flex gap-4 items-center group rounded-[2px] shadow-sm">

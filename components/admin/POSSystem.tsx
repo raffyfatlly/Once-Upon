@@ -44,7 +44,20 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
     const name = (p.name || '').toLowerCase();
     return name.includes('perfume') || name.includes('hair oil') || name.includes('oil');
   };
-  const isAddonProduct = (p: Product) => Boolean(p.isCheckoutAddon);
+  const isAddonProduct = (p: Product) => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const collection = (p.collection || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    return Boolean(p.isCheckoutAddon) || 
+           name.includes('perfume') || 
+           name.includes('hair oil') || 
+           name.includes('oil') || 
+           collection.includes('add-on') || 
+           collection.includes('addon') || 
+           category.includes('add-on') || 
+           category.includes('addon');
+  };
   const isBlanketProduct = (p: Product) => !p.collection || p.collection === 'Blankets' || p.collection.toLowerCase().includes('blanket') || (p.category && p.category.toLowerCase().includes('blanket'));
 
   const swaddles = products.filter(p => !isAddonProduct(p) && !isBlanketProduct(p) && !isPerfumeOrHairOil(p) && p.isLive !== false);

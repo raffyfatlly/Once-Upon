@@ -40,10 +40,30 @@ const getKLDateFromIso = (isoString: string) => {
    return `${year}-${month}-${day}`;
 };
 
-const getNormalizedProductInfo = (item: { name: string; collection?: string; category?: string }) => {
+const getNormalizedProductInfo = (item: { name: string; collection?: string; category?: string; isCheckoutAddon?: boolean }) => {
   const collection = item.collection || '';
   const category = item.category || '';
   let name = item.name.trim();
+
+  // Determine if it is an Add-on product
+  const isAddon = Boolean(item.isCheckoutAddon) || 
+                  collection.toLowerCase().includes('add-on') || 
+                  collection.toLowerCase().includes('addon') || 
+                  category.toLowerCase().includes('add-on') || 
+                  category.toLowerCase().includes('addon') ||
+                  name.toLowerCase().includes('perfume') || 
+                  name.toLowerCase().includes('hair oil') || 
+                  name.toLowerCase().includes('oil') ||
+                  name.toLowerCase().includes('gift box') ||
+                  name.toLowerCase().includes('tote');
+
+  if (isAddon) {
+    return {
+      key: name,
+      displayLabel: name,
+      group: 'other'
+    };
+  }
 
   // Determine if it is a blanket
   const isBlanket = collection === 'Blankets' || 

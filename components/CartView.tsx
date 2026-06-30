@@ -27,7 +27,20 @@ export const CartView: React.FC<CartViewProps> = ({
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
   // Custom logic to identify addons
-  const isAddonProduct = (p: CartItem | Product) => Boolean(p.isCheckoutAddon);
+  const isAddonProduct = (p: CartItem | Product) => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const collection = (p.collection || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    return Boolean(p.isCheckoutAddon) || 
+           name.includes('perfume') || 
+           name.includes('hair oil') || 
+           name.includes('oil') || 
+           collection.includes('add-on') || 
+           collection.includes('addon') || 
+           category.includes('add-on') || 
+           category.includes('addon');
+  };
 
   // Packaging Logic: 1 set for every 1 main item
   const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);

@@ -22,7 +22,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   
-  const isAddonProduct = (p: CartItem) => Boolean(p.isCheckoutAddon);
+  const isAddonProduct = (p: CartItem) => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const collection = (p.collection || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    return Boolean(p.isCheckoutAddon) || 
+           name.includes('perfume') || 
+           name.includes('hair oil') || 
+           name.includes('oil') || 
+           collection.includes('add-on') || 
+           collection.includes('addon') || 
+           category.includes('add-on') || 
+           category.includes('addon');
+  };
 
   // Packaging Logic: 1 set for every 1 main item
   const mainItemsCount = cart.reduce((sum, item) => isAddonProduct(item) ? sum : sum + item.quantity, 0);

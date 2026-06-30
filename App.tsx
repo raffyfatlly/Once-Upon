@@ -527,7 +527,20 @@ const App: React.FC = () => {
   }, [pathname]);
 
   // Cart Handlers
-  const isAddonProduct = (p: Product | CartItem) => Boolean(p.isCheckoutAddon);
+  const isAddonProduct = (p: Product | CartItem) => {
+    if (!p) return false;
+    const name = (p.name || '').toLowerCase();
+    const collection = (p.collection || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    return Boolean(p.isCheckoutAddon) || 
+           name.includes('perfume') || 
+           name.includes('hair oil') || 
+           name.includes('oil') || 
+           collection.includes('add-on') || 
+           collection.includes('addon') || 
+           category.includes('add-on') || 
+           category.includes('addon');
+  };
 
   const handleAddToCart = (product: Product, quantity: number = 1) => {
     // Prevent adding out-of-stock add-ons unconditionally
