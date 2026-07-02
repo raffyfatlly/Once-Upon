@@ -181,7 +181,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         collection: 'Blankets',
         size: '120cm x 120cm',
         additionalImages: [],
-        stock: 50
+        stock: 50,
+        hasSizes: true,
+        babyPrice: 185,
+        babySizeDesc: '120 cm x 120 cm',
+        adultPrice: 225,
+        adultSizeDesc: '150 cm x 150 cm'
       },
       {
         name: 'The Parisian Flight',
@@ -193,7 +198,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products }) => {
         collection: 'Blankets',
         size: '110cm x 110cm',
         additionalImages: [],
-        stock: 50
+        stock: 50,
+        hasSizes: true,
+        babyPrice: 145,
+        babySizeDesc: '110 cm x 110 cm',
+        adultPrice: 185,
+        adultSizeDesc: '150 cm x 150 cm'
       }
     ];
 

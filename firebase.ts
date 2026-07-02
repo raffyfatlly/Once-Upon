@@ -162,8 +162,10 @@ export const createOrderInDb = async (orderData: Omit<Order, 'id'>) => {
     transaction.set(counterRef, { current: nextId });
 
     // D. Create Order
+    // Sanitize to remove undefined values which crash Firestore
+    const sanitizedOrderData = JSON.parse(JSON.stringify(orderData));
     transaction.set(newOrderRef, {
-      ...orderData,
+      ...sanitizedOrderData,
       id: newOrderId, // Store ID inside document as well for easier fetching
       statusHistory: [{ status: 'pending', timestamp: new Date().toISOString() }]
     });
