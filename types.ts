@@ -28,6 +28,7 @@ export interface CartItem extends Product {
   isPreOrder?: boolean;
   baseProductId?: string; // used for stock deduction if id is modified for variants
   sizeOption?: string;
+  isPickedUp?: boolean; // POS-specific: customer already collected this item in store
 }
 
 export interface SiteConfig {

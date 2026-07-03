@@ -387,11 +387,12 @@ export const generateReceiptHtml = (order: Order): string => {
               const isAddon = Boolean(item.isCheckoutAddon);
               const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
               const itemCollection = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
+              const fulfillmentStatus = item.isPickedUp !== false ? 'Handed Over In-store' : 'To Pack & Ship';
               return `
                 <tr>
                   <td>
                     <div class="item-desc">${item.name}</div>
-                    <div class="item-sub">${itemCollection} ${item.isPreOrder ? '(Pre-Order)' : ''}</div>
+                    <div class="item-sub">${itemCollection} ${item.isPreOrder ? '(Pre-Order)' : ''} • Status: ${fulfillmentStatus}</div>
                   </td>
                   <td class="item-qty">${item.quantity}</td>
                   <td class="item-amount">RM ${(item.price * item.quantity).toFixed(2)}</td>
@@ -529,7 +530,8 @@ export const generateReceiptText = (order: Order): string => {
   let itemsText = '';
   order.items.forEach(item => {
     const itemTotal = (item.price * item.quantity).toFixed(2);
-    itemsText += `${item.name}\n  Qty: ${item.quantity} x RM ${Number(item.price).toFixed(2)} = RM ${itemTotal}\n\n`;
+    const fulfillmentStatus = item.isPickedUp !== false ? 'Handed Over' : 'To Pack & Ship';
+    itemsText += `${item.name} (${fulfillmentStatus})\n  Qty: ${item.quantity} x RM ${Number(item.price).toFixed(2)} = RM ${itemTotal}\n\n`;
   });
 
   let promoSection = '';
@@ -625,6 +627,15 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
     region: 'west' as 'west' | 'east' | 'sg'
   });
 
+  const toggleItemPickedUp = (id: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, isPickedUp: !item.isPickedUp };
+      }
+      return item;
+    }));
+  };
+
   // Sizing option modal state
   const [selectedSizeProduct, setSelectedSizeProduct] = useState<Product | null>(null);
 
@@ -713,7 +724,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
       if (existing) {
         return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1, isPickedUp: false }];
     });
   };
 
@@ -737,7 +748,8 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         price: finalPrice,
         size: finalSizeDesc,
         sizeOption: size,
-        quantity: 1
+        quantity: 1,
+        isPickedUp: false
       }];
     });
     setSelectedSizeProduct(null);
@@ -827,10 +839,14 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         customerName: customerInfo.name || 'POS Customer',
         customerEmail: customerInfo.email || 'pos@store.local',
         customerPhone: customerInfo.phone || '0000000000',
-        items: cart.map(item => ({
-          ...item,
-          isPreOrder: isShippingPreOrder ? true : item.isPreOrder
-        })),
+        items: cart.map(item => {
+          const isItemPickedUp = item.isPickedUp !== false;
+          return {
+            ...item,
+            isPreOrder: isItemPickedUp ? false : (isShippingPreOrder ? true : item.isPreOrder),
+            isPickedUp: isItemPickedUp
+          };
+        }),
         total,
         status: 'paid',
         date: new Date().toISOString(),
@@ -839,16 +855,8 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         paymentMethod: paymentMethod
       };
 
-      let adminNotesParts = [];
       if (cashierRemark.trim()) {
-        adminNotesParts.push(cashierRemark.trim());
-      }
-      if (promoNotes.length > 0) {
-        adminNotesParts.push(promoNotes.join(' '));
-      }
-
-      if (adminNotesParts.length > 0) {
-        orderData.adminNotes = adminNotesParts.join('\n\n');
+        orderData.adminNotes = cashierRemark.trim();
       }
 
       const orderDocRef = await createOrderInDb(orderData);
@@ -1045,7 +1053,20 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                           {itemTag}
                         </span>
                       </div>
-                      <p className="text-[10px] md:text-xs text-gray-500 font-mono mt-0.5">RM {item.price.toFixed(2)} x {item.quantity}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-[10px] md:text-xs text-gray-500 font-mono">RM {item.price.toFixed(2)} x {item.quantity}</p>
+                        <button
+                          type="button"
+                          onClick={() => toggleItemPickedUp(item.id)}
+                          className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border transition-all cursor-pointer flex items-center gap-0.5 ${
+                            item.isPickedUp !== false
+                              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                              : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                          }`}
+                        >
+                          {item.isPickedUp !== false ? '🤝 Handed Over' : '📦 To Pack'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="font-bold font-mono text-xs md:text-sm">
@@ -1502,6 +1523,20 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                         <span className="text-xs font-bold w-4 text-center select-none">{item.quantity}</span>
                         <button onClick={() => updateQuantity(item.id, 1)} className="text-gray-500 p-1 hover:text-brand-flamingo cursor-pointer flex items-center justify-center"><Plus size={12} /></button>
                       </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-brand-latte/10">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">POS Pickup:</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleItemPickedUp(item.id)}
+                        className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded border transition-all cursor-pointer flex items-center gap-1 ${
+                          item.isPickedUp !== false
+                            ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                            : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                        }`}
+                      >
+                        {item.isPickedUp !== false ? '🤝 Taken In-store' : '📦 Pack & Ship'}
+                      </button>
                     </div>
                   </div>
                 );

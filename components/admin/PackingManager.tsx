@@ -70,7 +70,10 @@ export const PackingManager: React.FC<PackingManagerProps> = ({ orders }) => {
     // Address:
     // Items:
     const text = selected.map(order => {
-      const itemsList = order.items.map(i => `${i.name} (x${i.quantity})`).join(', ');
+      const itemsToPack = order.items.filter(i => i.isPickedUp !== true);
+      const itemsList = itemsToPack.length > 0
+        ? itemsToPack.map(i => `${i.name} (x${i.quantity})`).join(', ')
+        : 'None - All items collected in-store';
 
       return `
 Order No: ${order.id}
@@ -287,6 +290,34 @@ Items: ${itemsList}
                                <div className="mt-0.5 text-gray-400"><Truck size={14} /></div>
                                <div>
                                    <div className="text-sm font-bold text-gray-900 mb-1">{order.customerName}</div>
+                                    {/* Items checklist */}
+                                    <div className="mt-3.5 mb-2 pt-3 border-t border-brand-latte/10">
+                                      <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Items in this Order:</div>
+                                      <div className="space-y-1.5">
+                                        {order.items.map((item, idx) => {
+                                          const isCollected = item.isPickedUp === true;
+                                          return (
+                                            <div key={idx} className="flex flex-wrap items-center justify-between gap-2 text-xs py-1.5 bg-white border border-brand-latte/10 px-2 rounded-[2px] max-w-md">
+                                              <div className="flex items-center gap-1.5 font-sans">
+                                                <span className="font-bold text-gray-900 bg-brand-grey/15 px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>
+                                                <span className="text-gray-700 font-medium">{item.name}</span>
+                                              </div>
+                                              <div>
+                                                {isCollected ? (
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 font-sans" title="Customer already collected this item in-store. Do NOT pack!">
+                                                    🤝 Already Taken (Do Not Pack)
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 font-sans">
+                                                    📦 Need to Pack
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                    <div className="text-xs text-gray-600 mb-1 leading-relaxed max-w-md">
                                      {order.shippingAddress}
                                    </div>

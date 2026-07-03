@@ -5,7 +5,7 @@ import {
   LineChart, Line, Legend
 } from 'recharts';
 import { format, parseISO, isValid, startOfMonth, startOfDay } from 'date-fns';
-import { Calendar, Filter, Tag, ChevronDown, Check, Search, X } from 'lucide-react';
+import { Calendar, Filter, Tag, ChevronDown, Check, Search, X, Clock } from 'lucide-react';
 
 interface AnalyticsManagerProps {
   orders: Order[];
@@ -109,11 +109,57 @@ const getNormalizedProductInfo = (item: { name: string; collection?: string; cat
   };
 };
 
+const getKLDateString = (offsetDays: number = 0) => {
+   const d = new Date();
+   const klTime = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+   klTime.setDate(klTime.getDate() + offsetDays);
+   const year = klTime.getFullYear();
+   const month = String(klTime.getMonth() + 1).padStart(2, '0');
+   const day = String(klTime.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+};
+
+const getKLDateFromIso = (isoString: string) => {
+   const klTime = new Date(new Date(isoString).toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' }));
+   const year = klTime.getFullYear();
+   const month = String(klTime.getMonth() + 1).padStart(2, '0');
+   const day = String(klTime.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+};
+
 export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) => {
   const [filterYear, setFilterYear] = useState<string>('All');
   const [filterMonth, setFilterMonth] = useState<string>('All');
+  const [filterDay, setFilterDay] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>('all_valid');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [activeCategoryBreakdown, setActiveCategoryBreakdown] = useState<'babyBlanket' | 'adultBlanket' | 'swaddle' | null>(null);
   const isAllProducts = selectedProducts.length === 0 || selectedProducts.includes('All');
+
+  const setQuickDate = (range: 'today' | 'week' | 'month' | 'clear') => {
+    if (range === 'clear') {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    const endStr = getKLDateString(0);
+    let startStr = endStr;
+
+    if (range === 'week') {
+      startStr = getKLDateString(-7);
+    } else if (range === 'month') {
+      startStr = getKLDateString(-30);
+    }
+    setStartDate(startStr);
+    setEndDate(endStr);
+    
+    // Clear legacy dropdown filters when using custom dates
+    setFilterYear('All');
+    setFilterMonth('All');
+    setFilterDay('All');
+  };
 
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -167,6 +213,21 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
     return Array.from(months).sort();
   }, [orders, filterYear]);
 
+  const availableDays = useMemo(() => {
+    if (filterYear === 'All' || filterMonth === 'All') return [];
+    const days = new Set<string>();
+    const prefix = `${filterYear}-${filterMonth}`;
+    orders.forEach(o => {
+      if (o.date && o.date.startsWith(prefix)) {
+        const dayPart = o.date.substring(8, 10);
+        if (dayPart && /^\d+$/.test(dayPart)) {
+          days.add(dayPart);
+        }
+      }
+    });
+    return Array.from(days).sort();
+  }, [orders, filterYear, filterMonth]);
+
   const availableProducts = useMemo(() => {
     const itemsMap = new Map<string, { key: string; displayLabel: string; group: string }>();
     orders.forEach(o => {
@@ -200,31 +261,81 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
     );
   }, [availableProducts, productSearchQuery]);
 
-  // Reset month when year changes
+  // Reset month and day when year changes
   useEffect(() => {
     setFilterMonth('All');
+    setFilterDay('All');
   }, [filterYear]);
 
-  const { chartData, chartType, summary } = useMemo(() => {
-    // Filter out unpaid/failed
-    let validOrders = orders.filter(o => !['failed', 'cancelled'].includes(o.status));
+  // Reset day when month changes
+  useEffect(() => {
+    setFilterDay('All');
+  }, [filterMonth]);
 
-    if (filterYear !== 'All') {
-      validOrders = validOrders.filter(o => o.date?.startsWith(filterYear));
+  const { chartData, chartType, summary } = useMemo(() => {
+    // Filter based on selected status
+    let validOrders = orders;
+    if (filterStatus === 'all_valid') {
+      validOrders = orders.filter(o => !['failed', 'cancelled'].includes(o.status));
+    } else if (filterStatus !== 'all') {
+      validOrders = orders.filter(o => o.status === filterStatus);
     }
 
-    if (filterYear !== 'All' && filterMonth !== 'All') {
-      validOrders = validOrders.filter(o => o.date?.startsWith(`${filterYear}-${filterMonth}`));
+    // Filter based on custom date range
+    if (startDate || endDate) {
+      validOrders = validOrders.filter(o => {
+        if (!o.date) return false;
+        let orderDate = '';
+        try {
+          orderDate = getKLDateFromIso(o.date);
+        } catch (e) {
+          orderDate = o.date.split('T')[0];
+        }
+        let matches = true;
+        if (startDate) matches = matches && orderDate >= startDate;
+        if (endDate) matches = matches && orderDate <= endDate;
+        return matches;
+      });
+    } else {
+      if (filterYear !== 'All') {
+        validOrders = validOrders.filter(o => o.date?.startsWith(filterYear));
+      }
+  
+      if (filterYear !== 'All' && filterMonth !== 'All') {
+        validOrders = validOrders.filter(o => o.date?.startsWith(`${filterYear}-${filterMonth}`));
+      }
+  
+      if (filterYear !== 'All' && filterMonth !== 'All' && filterDay !== 'All') {
+        validOrders = validOrders.filter(o => o.date?.startsWith(`${filterYear}-${filterMonth}-${filterDay}`));
+      }
     }
 
     let totalSales = 0;
     let totalOrdersCount = 0;
+    let totalBabyBlanketQty = 0;
+    let totalBabyBlanketRevenue = 0;
+    let totalAdultBlanketQty = 0;
+    let totalAdultBlanketRevenue = 0;
+    let totalSwaddleQty = 0;
+    let totalSwaddleRevenue = 0;
 
     const dateDataMap = new Map<string, { total: number; productSales: Record<string, number> }>();
     const topProductsByDate = new Map<string, Map<string, { name: string, qty: number, revenue: number }>>();
     const overallProducts = new Map<string, { name: string, key: string, qty: number, revenue: number }>();
+    const babyBlanketsMap = new Map<string, { name: string; qty: number; revenue: number }>();
+    const adultBlanketsMap = new Map<string, { name: string; qty: number; revenue: number }>();
+    const swaddlesMap = new Map<string, { name: string; qty: number; revenue: number }>();
     
-    const isDaily = filterYear !== 'All' && filterMonth !== 'All';
+    const hasCustomRange = !!(startDate || endDate);
+    const isHourly = !hasCustomRange && filterYear !== 'All' && filterMonth !== 'All' && filterDay !== 'All';
+    const isDaily = hasCustomRange || (filterYear !== 'All' && filterMonth !== 'All' && filterDay === 'All');
+
+    if (isHourly) {
+      for (let h = 0; h < 24; h++) {
+        const hStr = h.toString().padStart(2, '0') + ':00';
+        dateDataMap.set(hStr, { total: 0, productSales: {} });
+      }
+    }
 
     validOrders.forEach(order => {
       if (!order.date) return;
@@ -258,12 +369,52 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
           return;
         }
 
+        // Compute Category Counts for Filtered Orders
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            if (!item || !item.name) return;
+            const info = getNormalizedProductInfo(item);
+            const qty = item.quantity || 0;
+            const rev = (item.price || 0) * qty;
+
+            if (info.group === 'swaddle') {
+              totalSwaddleQty += qty;
+              totalSwaddleRevenue += rev;
+
+              const existing = swaddlesMap.get(info.key) || { name: info.displayLabel, qty: 0, revenue: 0 };
+              existing.qty += qty;
+              existing.revenue += rev;
+              swaddlesMap.set(info.key, existing);
+            } else if (info.group === 'blanket') {
+              if (info.key.includes('|Adult|')) {
+                totalAdultBlanketQty += qty;
+                totalAdultBlanketRevenue += rev;
+
+                const existing = adultBlanketsMap.get(info.key) || { name: info.displayLabel, qty: 0, revenue: 0 };
+                existing.qty += qty;
+                existing.revenue += rev;
+                adultBlanketsMap.set(info.key, existing);
+              } else {
+                totalBabyBlanketQty += qty;
+                totalBabyBlanketRevenue += rev;
+
+                const existing = babyBlanketsMap.get(info.key) || { name: info.displayLabel, qty: 0, revenue: 0 };
+                existing.qty += qty;
+                existing.revenue += rev;
+                babyBlanketsMap.set(info.key, existing);
+              }
+            }
+          });
+        }
+
         // Use actual order total if 'All' products are selected, else use specific product total
         const finalSalesVal = isAllProducts ? (Number(order.total) || 0) : orderTotal;
 
-        const key = isDaily 
-          ? format(startOfDay(d), 'yyyy-MM-dd') 
-          : format(startOfMonth(d), 'yyyy-MM');
+        const key = isHourly
+          ? format(d, 'HH:00')
+          : isDaily 
+            ? format(startOfDay(d), 'yyyy-MM-dd') 
+            : format(startOfMonth(d), 'yyyy-MM');
 
         const existingDateData = dateDataMap.get(key) || { total: 0, productSales: {} };
         existingDateData.total += finalSalesVal;
@@ -327,9 +478,11 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(item => ({ 
         ...item, 
-        displayDate: isDaily 
-          ? format(parseISO(item.date), 'MMM dd') 
-          : format(parseISO(`${item.date}-01`), 'MMM yyyy') 
+        displayDate: isHourly
+          ? item.date
+          : isDaily 
+            ? format(parseISO(item.date), 'MMM dd') 
+            : format(parseISO(`${item.date}-01`), 'MMM yyyy') 
       }));
 
     const topOverallProducts = Array.from(overallProducts.values())
@@ -338,15 +491,30 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
 
     return {
       chartData: dataArray,
-      chartType: isDaily ? 'daily' : 'monthly',
+      chartType: isHourly ? 'hourly' : (isDaily ? 'daily' : 'monthly'),
       summary: {
         totalSales,
         totalOrdersCount,
         averageOrderValue: totalOrdersCount > 0 ? totalSales / totalOrdersCount : 0,
-        topProducts: topOverallProducts
+        topProducts: topOverallProducts,
+        babyBlanket: { 
+          qty: totalBabyBlanketQty, 
+          revenue: totalBabyBlanketRevenue,
+          products: Array.from(babyBlanketsMap.values()).sort((a, b) => b.qty - a.qty)
+        },
+        adultBlanket: { 
+          qty: totalAdultBlanketQty, 
+          revenue: totalAdultBlanketRevenue,
+          products: Array.from(adultBlanketsMap.values()).sort((a, b) => b.qty - a.qty)
+        },
+        swaddle: { 
+          qty: totalSwaddleQty, 
+          revenue: totalSwaddleRevenue,
+          products: Array.from(swaddlesMap.values()).sort((a, b) => b.qty - a.qty)
+        }
       }
     };
-  }, [orders, filterYear, filterMonth, selectedProducts, isAllProducts]);
+  }, [orders, filterYear, filterMonth, filterDay, selectedProducts, isAllProducts, filterStatus, startDate, endDate]);
 
   const monthNames: Record<string, string> = {
     '01': 'January', '02': 'February', '03': 'March', '04': 'April',
@@ -538,6 +706,51 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px] self-start w-full md:w-auto overflow-x-auto">
+              <div className="flex gap-2 items-center px-2 text-gray-400 shrink-0"><Clock size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">Date Range</span></div>
+              <div className="flex gap-1 shrink-0">
+                  <button onClick={() => setQuickDate('today')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">Today</button>
+                  <button onClick={() => setQuickDate('week')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">7 Days</button>
+                  <button onClick={() => setQuickDate('month')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">30 Days</button>
+                  {(startDate || endDate) && (<button onClick={() => setQuickDate('clear')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:bg-red-50 rounded-[2px] transition-colors">Clear</button>)}
+              </div>
+              <div className="h-6 w-[1px] bg-brand-latte/20 hidden sm:block shrink-0"></div>
+              <div className="flex gap-2 items-center flex-1 w-full sm:w-auto min-w-[200px]">
+                  <div className="relative w-full sm:w-auto group">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors"><Calendar size={14} /></div>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} onClick={(e) => (e.currentTarget as any).showPicker()} className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden" />
+                  </div>
+                  <span className="text-gray-300">-</span>
+                  <div className="relative w-full sm:w-auto group">
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-brand-latte group-hover:text-brand-flamingo transition-colors"><Calendar size={14} /></div>
+                      <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} onClick={(e) => (e.currentTarget as any).showPicker()} className="pl-3 pr-8 py-1.5 bg-brand-grey/5 hover:bg-white border border-transparent hover:border-brand-latte/30 rounded-[2px] text-[10px] font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-brand-flamingo w-full sm:w-auto cursor-pointer transition-all [&::-webkit-calendar-picker-indicator]:hidden" />
+                  </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <select 
+                  value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)} 
+                className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full sm:w-44"
+              >
+                <option value="all_valid">Valid Sales</option>
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+                <option value="packed">Packed</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
 
             <div className="relative">
               <select 
@@ -567,10 +780,25 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
               </select>
               <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+
+            <div className="relative">
+              <select 
+                value={filterDay} 
+                onChange={(e) => setFilterDay(e.target.value)} 
+                disabled={filterMonth === 'All'}
+                className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo disabled:bg-gray-50 disabled:text-gray-400 text-gray-600 w-full sm:w-32"
+              >
+                <option value="All">All Days</option>
+                {availableDays.map(day => (
+                  <option key={day} value={day}>{day}</option>
+                ))}
+              </select>
+              <Filter size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-5 rounded-[2px] shadow-sm border border-brand-latte/20 relative overflow-hidden">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Valid Sales</h3>
             <p className="font-serif text-2xl text-gray-900">RM {summary.totalSales.toLocaleString('en-MY')}</p>
@@ -596,10 +824,115 @@ export const AnalyticsManager: React.FC<AnalyticsManagerProps> = ({ orders }) =>
           </div>
         </div>
 
+        {/* Product Category Breakdown Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div 
+            onClick={() => setActiveCategoryBreakdown(activeCategoryBreakdown === 'babyBlanket' ? null : 'babyBlanket')}
+            className={`p-5 rounded-[2px] shadow-sm border transition-all duration-200 relative overflow-hidden cursor-pointer select-none ${
+              activeCategoryBreakdown === 'babyBlanket'
+                ? 'bg-brand-flamingo/5 border-brand-flamingo ring-1 ring-brand-flamingo/25'
+                : 'bg-white border-brand-latte/20 hover:border-brand-flamingo/40 hover:shadow-md'
+            }`}
+          >
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Baby Blankets</h3>
+            <p className="font-serif text-2xl text-gray-900">{summary.babyBlanket.qty} <span className="text-xs font-sans text-gray-500 font-normal">sold</span></p>
+            <p className="text-xs text-gray-500 mt-1">Revenue: RM {summary.babyBlanket.revenue.toLocaleString('en-MY')}</p>
+            <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-brand-flamingo flex items-center gap-1">
+              <span>{activeCategoryBreakdown === 'babyBlanket' ? 'Hide Details' : 'Click for specifics'}</span>
+              <span className="text-xs">→</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => setActiveCategoryBreakdown(activeCategoryBreakdown === 'adultBlanket' ? null : 'adultBlanket')}
+            className={`p-5 rounded-[2px] shadow-sm border transition-all duration-200 relative overflow-hidden cursor-pointer select-none ${
+              activeCategoryBreakdown === 'adultBlanket'
+                ? 'bg-brand-flamingo/5 border-brand-flamingo ring-1 ring-brand-flamingo/25'
+                : 'bg-white border-brand-latte/20 hover:border-brand-flamingo/40 hover:shadow-md'
+            }`}
+          >
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Adult Blankets</h3>
+            <p className="font-serif text-2xl text-gray-900">{summary.adultBlanket.qty} <span className="text-xs font-sans text-gray-500 font-normal">sold</span></p>
+            <p className="text-xs text-gray-500 mt-1">Revenue: RM {summary.adultBlanket.revenue.toLocaleString('en-MY')}</p>
+            <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-brand-flamingo flex items-center gap-1">
+              <span>{activeCategoryBreakdown === 'adultBlanket' ? 'Hide Details' : 'Click for specifics'}</span>
+              <span className="text-xs">→</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => setActiveCategoryBreakdown(activeCategoryBreakdown === 'swaddle' ? null : 'swaddle')}
+            className={`p-5 rounded-[2px] shadow-sm border transition-all duration-200 relative overflow-hidden cursor-pointer select-none ${
+              activeCategoryBreakdown === 'swaddle'
+                ? 'bg-brand-flamingo/5 border-brand-flamingo ring-1 ring-brand-flamingo/25'
+                : 'bg-white border-brand-latte/20 hover:border-brand-flamingo/40 hover:shadow-md'
+            }`}
+          >
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Swaddles</h3>
+            <p className="font-serif text-2xl text-gray-900">{summary.swaddle.qty} <span className="text-xs font-sans text-gray-500 font-normal">sold</span></p>
+            <p className="text-xs text-gray-500 mt-1">Revenue: RM {summary.swaddle.revenue.toLocaleString('en-MY')}</p>
+            <div className="mt-2 text-[10px] font-bold uppercase tracking-wider text-brand-flamingo flex items-center gap-1">
+              <span>{activeCategoryBreakdown === 'swaddle' ? 'Hide Details' : 'Click for specifics'}</span>
+              <span className="text-xs">→</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Specifics Products Breakdown List */}
+        {activeCategoryBreakdown && summary[activeCategoryBreakdown] && (
+          <div className="bg-[#FAF8F5] p-5 rounded-[2px] border border-brand-latte/30 mb-8 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-brand-latte/10">
+              <div>
+                <h4 className="font-serif text-base text-gray-900">
+                  {activeCategoryBreakdown === 'babyBlanket' && 'Baby Blanket Specifics'}
+                  {activeCategoryBreakdown === 'adultBlanket' && 'Adult Blanket Specifics'}
+                  {activeCategoryBreakdown === 'swaddle' && 'Swaddle Specifics'}
+                </h4>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">
+                  Detailed product contribution for this period
+                </p>
+              </div>
+              <button 
+                onClick={() => setActiveCategoryBreakdown(null)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 animate-pulse"
+                title="Close specifics"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {summary[activeCategoryBreakdown].products && summary[activeCategoryBreakdown].products.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {summary[activeCategoryBreakdown].products.map((p: any) => (
+                  <div key={p.name} className="bg-white p-3.5 rounded-[2px] border border-brand-latte/10 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <p className="font-sans text-xs font-semibold text-gray-800 line-clamp-2 leading-snug" title={p.name}>
+                        {p.name}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-50">
+                      <p className="text-xs text-gray-500">
+                        <strong className="text-gray-900 font-semibold">{p.qty}</strong> sold
+                      </p>
+                      <p className="text-xs font-bold text-brand-flamingo font-mono">
+                        RM {p.revenue.toLocaleString('en-MY')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-xs text-gray-400 font-sans">
+                No individual product sales found for this category in the selected filter period.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-8">
           <div className="bg-white p-6 rounded-[2px] shadow-sm border border-brand-latte/20">
             <h3 className="font-serif text-xl text-gray-900 mb-6">
-              {chartType === 'daily' ? 'Daily Sales Trend' : 'Monthly Sales Trend'}
+              {chartType === 'hourly' ? 'Hourly Sales Trend' : (chartType === 'daily' ? 'Daily Sales Trend' : 'Monthly Sales Trend')}
             </h3>
             <div className="w-full h-80">
               {chartData.length > 0 ? (

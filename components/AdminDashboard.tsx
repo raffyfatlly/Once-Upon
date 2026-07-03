@@ -115,7 +115,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 max-w-6xl">
         {currentTab === 'pos' && <POSSystem products={products} />}
         {currentTab === 'products' && <ProductManager products={products} />}
-        {currentTab === 'sales' && <SalesManager orders={orders} />}
+        {currentTab === 'sales' && <SalesManager orders={orders} products={products} />}
         {currentTab === 'analytics' && <AnalyticsManager orders={orders} />}
         {currentTab === 'packing' && <PackingManager orders={orders} />}
         {currentTab === 'club' && <MumsClub />}

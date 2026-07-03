@@ -360,6 +360,12 @@ export const updateOrderNotesInDb = async (id: string, adminNotes: string) => {
   await updateDoc(docRef, { adminNotes });
 };
 
+export const updateOrderInDb = async (id: string, updates: Partial<Order>) => {
+  if (!db) throw new Error("Database not connected.");
+  const docRef = doc(db, 'orders', id);
+  await updateDoc(docRef, updates as any);
+};
+
 export const deleteOrderFromDb = async (id: string) => {
   if (!db) throw new Error("Database not connected.");
   await deleteDoc(doc(db, 'orders', id));

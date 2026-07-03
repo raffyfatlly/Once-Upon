@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Order } from '../../types';
-import { Search, User, Users, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, Receipt, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Globe, Store } from 'lucide-react';
-import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders, updateOrderNotesInDb } from '../../firebase';
+import { Order, Product, CartItem } from '../../types';
+import { Search, User, Users, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, Receipt, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Globe, Store, Edit, Plus, Minus, X, Save } from 'lucide-react';
+import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders, updateOrderNotesInDb, updateOrderInDb } from '../../firebase';
 import { generateReceiptHtml, generateReceiptText } from './POSSystem';
 
 const formatKLDate = (dateString: string) => {
@@ -21,6 +21,27 @@ const formatKLTime = (dateString: string) => {
       minute: '2-digit',
       hour12: true
   });
+};
+
+const hasManualNote = (order: Order) => {
+  if (order.giftMessage && order.giftMessage.trim().length > 0) {
+    return true;
+  }
+  if (!order.adminNotes || !order.adminNotes.trim()) {
+    return false;
+  }
+  if (order.source === 'pos') {
+    const blocks = order.adminNotes.split('\n\n').map(b => b.trim()).filter(Boolean);
+    return blocks.some(block => {
+      const isAuto = block.startsWith('[Pre-Order Shipping]') || 
+                     block.startsWith('[Free Shipping Promo applied') || 
+                     block.startsWith('[Auto Blanket/Swaddle Promo applied') || 
+                     block.startsWith('[POS Discount Applied:') ||
+                     (block.startsWith('[') && block.endsWith(']') && (block.includes('Promo') || block.includes('applied') || block.includes('Discount') || block.includes('Shipping')));
+      return !isAuto;
+    });
+  }
+  return true;
 };
 
 const getKLDateString = (offsetDays: number = 0) => {
@@ -123,10 +144,177 @@ const getNormalizedProductInfo = (item: { name: string; collection?: string; cat
 
 interface SalesManagerProps {
   orders: Order[];
+  products?: Product[];
 }
 
-export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
+export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Order Editing States
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
+  const [selectedSizeToAdd, setSelectedSizeToAdd] = useState<'Baby' | 'Adult'>('Baby');
+  const [addQty, setAddQty] = useState<number>(1);
+  const [isSavingOrder, setIsSavingOrder] = useState<boolean>(false);
+
+  const handleStartEditOrder = (order: Order) => {
+    // Clone the order to avoid mutating the live state during edits
+    setEditingOrder(JSON.parse(JSON.stringify(order)));
+    setSelectedProductToAdd('');
+    setSelectedSizeToAdd('Baby');
+    setAddQty(1);
+  };
+
+  const handleUpdateEditingCustomerField = (field: keyof Order, value: any) => {
+    if (!editingOrder) return;
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        [field]: value
+      };
+    });
+  };
+
+  const handleUpdateEditingItemQty = (index: number, change: number) => {
+    if (!editingOrder) return;
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      const updatedItems = [...prev.items];
+      const newQty = Math.max(1, updatedItems[index].quantity + change);
+      updatedItems[index] = { ...updatedItems[index], quantity: newQty };
+      
+      // Auto recalculate total
+      const newTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      return {
+        ...prev,
+        items: updatedItems,
+        total: parseFloat(newTotal.toFixed(2))
+      };
+    });
+  };
+
+  const handleRemoveEditingItem = (index: number) => {
+    if (!editingOrder) return;
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      const updatedItems = prev.items.filter((_, idx) => idx !== index);
+      
+      // Auto recalculate total
+      const newTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      return {
+        ...prev,
+        items: updatedItems,
+        total: parseFloat(newTotal.toFixed(2))
+      };
+    });
+  };
+
+  const handleToggleItemPickedUp = (index: number) => {
+    if (!editingOrder) return;
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      const updatedItems = [...prev.items];
+      const nextPickedUp = !updatedItems[index].isPickedUp;
+      updatedItems[index] = { 
+        ...updatedItems[index], 
+        isPickedUp: nextPickedUp,
+        isPreOrder: nextPickedUp ? false : updatedItems[index].isPreOrder
+      };
+      return {
+        ...prev,
+        items: updatedItems
+      };
+    });
+  };
+
+  const handleToggleItemPreOrder = (index: number) => {
+    if (!editingOrder) return;
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      const updatedItems = [...prev.items];
+      updatedItems[index] = { ...updatedItems[index], isPreOrder: !updatedItems[index].isPreOrder };
+      return {
+        ...prev,
+        items: updatedItems
+      };
+    });
+  };
+
+  const handleAddItemToEditingOrder = () => {
+    if (!editingOrder || !selectedProductToAdd) return;
+    const prod = products?.find(p => p.id === selectedProductToAdd);
+    if (!prod) return;
+
+    let itemPrice = prod.price;
+    let itemName = prod.name;
+    let sizeOption: string | undefined = undefined;
+
+    if (prod.hasSizes) {
+      sizeOption = selectedSizeToAdd;
+      itemPrice = selectedSizeToAdd === 'Adult' ? (prod.adultPrice || prod.price) : (prod.babyPrice || prod.price);
+      itemName = `${prod.name} (${selectedSizeToAdd})`;
+    }
+
+    const itemId = prod.id + (sizeOption ? `-${sizeOption}` : '');
+
+    setEditingOrder(prev => {
+      if (!prev) return null;
+      const updatedItems = [...prev.items];
+      const existingIndex = updatedItems.findIndex(i => i.id === itemId);
+
+      if (existingIndex > -1) {
+        updatedItems[existingIndex] = {
+          ...updatedItems[existingIndex],
+          quantity: updatedItems[existingIndex].quantity + addQty
+        };
+      } else {
+        const newItem: CartItem = {
+          ...prod,
+          id: itemId,
+          name: itemName,
+          price: itemPrice,
+          quantity: addQty,
+          sizeOption: sizeOption,
+          isPreOrder: false,
+          isPickedUp: false,
+          baseProductId: prod.id,
+        };
+        updatedItems.push(newItem);
+      }
+
+      // Auto recalculate total
+      const newTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      return {
+        ...prev,
+        items: updatedItems,
+        total: parseFloat(newTotal.toFixed(2))
+      };
+    });
+
+    // Reset fields
+    setSelectedProductToAdd('');
+    setSelectedSizeToAdd('Baby');
+    setAddQty(1);
+  };
+
+  const handleSaveEditedOrder = async () => {
+    if (!editingOrder) return;
+    setIsSavingOrder(true);
+    try {
+      const { id, ...updates } = editingOrder;
+      await updateOrderInDb(id, updates);
+      alert('Order updated successfully!');
+      setEditingOrder(null);
+    } catch (error: any) {
+      alert('Failed to save order changes: ' + error.message);
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterProduct, setFilterProduct] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
@@ -1300,7 +1488,17 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                     >
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><button onClick={() => toggleOrderSelection(order.id)} className="text-gray-400 hover:text-brand-flamingo">{selectedOrders.has(order.id) ? (<CheckSquare size={16} className="text-brand-flamingo" />) : (<Square size={16} />)}</button></td>
                         <td className="p-4">
-                            <div className="font-mono text-xs text-gray-400" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <div className="font-mono text-xs text-gray-400 font-bold" title={order.id}>{order.id.length > 8 ? `#${order.id.substring(0,6)}...` : `#${order.id}`}</div>
+                                {hasManualNote(order) && (
+                                    <span 
+                                        className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded animate-pulse shadow-sm"
+                                        title={order.adminNotes || order.giftMessage}
+                                    >
+                                        <AlertTriangle size={10} className="text-amber-500" /> HAS NOTE
+                                    </span>
+                                )}
+                            </div>
                             <div className="flex flex-col mt-1.5 gap-0.5">
                                 <div className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar size={12} /> {formatKLDate(order.date)}</div>
                                 <div className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={12} /> {formatKLTime(order.date)}</div>
@@ -1325,6 +1523,15 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                     return (
                                         <div key={i.id} className="mb-1.5 flex items-center gap-1 flex-wrap">
                                             <span>{i.quantity}x {i.name}</span>
+                                            {i.isPickedUp === true ? (
+                                                <span className="text-[8px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 uppercase tracking-wider whitespace-nowrap">
+                                                    🤝 Handed Over
+                                                </span>
+                                            ) : order.source === 'pos' ? (
+                                                <span className="text-[8px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 uppercase tracking-wider whitespace-nowrap">
+                                                    📦 To Pack
+                                                </span>
+                                            ) : null}
                                             <span className={`text-[8px] font-sans font-bold uppercase px-1.5 py-0.5 rounded border whitespace-nowrap ${
                                                 isAddon 
                                                     ? 'bg-gray-100 text-gray-500 border-gray-200' 
@@ -1388,7 +1595,16 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                             <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8">
                                 {/* Left: Items */}
                                 <div className="flex-1">
-                                    <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900 mb-4">Order Items</h4>
+                                    <div className="flex justify-between items-center mb-4 gap-4">
+                                        <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-gray-900">Order Items</h4>
+                                        <button 
+                                            onClick={() => handleStartEditOrder(order)}
+                                            className="bg-brand-flamingo hover:bg-brand-flamingo/90 text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 rounded-[2px]"
+                                            title="Edit items, customer info, gift message, or manual price override for this order"
+                                        >
+                                            <Edit size={12} /> Edit Order
+                                        </button>
+                                    </div>
                                     <div className="space-y-4">
                                     {order.items.map((item, idx) => {
                                         const isAddon = Boolean(item.isCheckoutAddon);
@@ -1413,6 +1629,15 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
                                                             <Clock size={10} /> Pre-order
                                                         </span>
                                                     )}
+                                                    {item.isPickedUp === true ? (
+                                                        <span className="mt-1 text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 uppercase tracking-wider flex items-center gap-1 w-fit" title="Handed over in-store at the time of purchase. Do NOT pack!">
+                                                            🤝 Handed Over In-store
+                                                        </span>
+                                                    ) : order.source === 'pos' ? (
+                                                        <span className="mt-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 uppercase tracking-wider flex items-center gap-1 w-fit">
+                                                            📦 To Pack & Ship
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
@@ -1623,6 +1848,315 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders }) => {
             )}
         </div>
         )}
-    </div>
+
+        {/* EDIT ORDER MODAL */}
+        {editingOrder && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-[2px] border border-brand-latte/30 shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col animate-fade-in text-left">
+              {/* Header */}
+              <div className="p-6 border-b border-brand-latte/10 flex justify-between items-center bg-brand-grey/10">
+                <div>
+                  <h3 className="font-serif text-lg md:text-xl text-gray-900 font-bold">Edit Order #{editingOrder.id.substring(0, 8).toUpperCase()}</h3>
+                  <p className="text-xs text-gray-400 uppercase tracking-widest mt-0.5">Modify items, prices, shipping, and notes</p>
+                </div>
+                <button 
+                  onClick={() => setEditingOrder(null)}
+                  className="text-gray-400 hover:text-brand-flamingo p-2 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Content (Scrollable) */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column: Customer & Shipping Details */}
+                  <div className="space-y-4">
+                    <h4 className="font-serif text-xs font-bold uppercase tracking-widest text-brand-gold border-b border-brand-latte/10 pb-1">Customer & Shipping Information</h4>
+                    
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Customer Name</label>
+                      <input 
+                        type="text"
+                        value={editingOrder.customerName || ''}
+                        onChange={(e) => handleUpdateEditingCustomerField('customerName', e.target.value)}
+                        className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-sm rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Customer Email</label>
+                        <input 
+                          type="email"
+                          value={editingOrder.customerEmail || ''}
+                          onChange={(e) => handleUpdateEditingCustomerField('customerEmail', e.target.value)}
+                          className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-sm rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Customer Phone</label>
+                        <input 
+                          type="text"
+                          value={editingOrder.customerPhone || ''}
+                          onChange={(e) => handleUpdateEditingCustomerField('customerPhone', e.target.value)}
+                          className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-sm rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Shipping Address</label>
+                      <textarea 
+                        rows={3}
+                        value={editingOrder.shippingAddress || ''}
+                        onChange={(e) => handleUpdateEditingCustomerField('shippingAddress', e.target.value)}
+                        className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-sm rounded-[2px] focus:outline-none focus:border-brand-flamingo resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Admin Notes</label>
+                      <textarea 
+                        rows={2}
+                        placeholder="Private notes about this order..."
+                        value={editingOrder.adminNotes || ''}
+                        onChange={(e) => handleUpdateEditingCustomerField('adminNotes', e.target.value)}
+                        className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-sm rounded-[2px] focus:outline-none focus:border-brand-flamingo resize-none"
+                      />
+                    </div>
+
+                    {/* Gift Settings */}
+                    <div className="bg-brand-grey/5 p-4 rounded border border-brand-latte/20 space-y-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={!!editingOrder.isGift}
+                          onChange={(e) => handleUpdateEditingCustomerField('isGift', e.target.checked)}
+                          className="text-brand-flamingo focus:ring-brand-flamingo rounded"
+                        />
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1">
+                          <Gift size={14} className="text-brand-gold" /> This is a Gift
+                        </span>
+                      </label>
+
+                      {editingOrder.isGift && (
+                        <div className="space-y-3 pt-2 border-t border-brand-latte/10">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Gift To</label>
+                              <input 
+                                type="text"
+                                value={editingOrder.giftTo || ''}
+                                onChange={(e) => handleUpdateEditingCustomerField('giftTo', e.target.value)}
+                                className="w-full bg-white border border-brand-latte/30 px-2 py-1.5 text-xs rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Gift From</label>
+                              <input 
+                                type="text"
+                                value={editingOrder.giftFrom || ''}
+                                onChange={(e) => handleUpdateEditingCustomerField('giftFrom', e.target.value)}
+                                className="w-full bg-white border border-brand-latte/30 px-2 py-1.5 text-xs rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1">Gift Message</label>
+                            <textarea 
+                              rows={2}
+                              value={editingOrder.giftMessage || ''}
+                              onChange={(e) => handleUpdateEditingCustomerField('giftMessage', e.target.value)}
+                              className="w-full bg-white border border-brand-latte/30 px-2 py-1.5 text-xs rounded-[2px] focus:outline-none focus:border-brand-flamingo resize-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Order Items & Pricing */}
+                  <div className="space-y-4 flex flex-col">
+                    <h4 className="font-serif text-xs font-bold uppercase tracking-widest text-brand-gold border-b border-brand-latte/10 pb-1">Order Items</h4>
+                    
+                    {/* Items List */}
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 flex-1">
+                      {editingOrder.items.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic py-4 text-center">No items in this order. Add items below.</p>
+                      ) : (
+                        editingOrder.items.map((item, idx) => (
+                          <div key={idx} className="flex gap-3 items-center bg-brand-grey/5 p-3 rounded border border-brand-latte/10 text-xs text-left">
+                            <img src={item.image} className="w-10 h-14 object-cover bg-gray-100 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-serif text-gray-900 font-bold truncate">{item.name}</p>
+                              <p className="text-[10px] text-gray-500 font-semibold">RM {item.price}</p>
+                              
+                              {/* Special item toggles */}
+                              <div className="flex gap-2 mt-1.5 flex-wrap">
+                                <label className="flex items-center gap-1 cursor-pointer select-none">
+                                  <input 
+                                    type="checkbox"
+                                    checked={!!item.isPickedUp}
+                                    onChange={() => handleToggleItemPickedUp(idx)}
+                                    className="rounded text-brand-flamingo focus:ring-brand-flamingo w-3 h-3"
+                                  />
+                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tight">Handed over</span>
+                                </label>
+
+                                <label className="flex items-center gap-1 cursor-pointer select-none">
+                                  <input 
+                                    type="checkbox"
+                                    checked={!!item.isPreOrder}
+                                    onChange={() => handleToggleItemPreOrder(idx)}
+                                    className="rounded text-brand-flamingo focus:ring-brand-flamingo w-3 h-3"
+                                  />
+                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tight">Pre-order</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Qty & Delete */}
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="flex items-center border border-brand-latte/30 rounded bg-white">
+                                <button 
+                                  type="button"
+                                  onClick={() => handleUpdateEditingItemQty(idx, -1)}
+                                  className="p-1 text-gray-500 hover:text-brand-flamingo hover:bg-brand-grey/5 transition-colors"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="px-2 font-bold text-gray-800 text-xs min-w-[20px] text-center">{item.quantity}</span>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleUpdateEditingItemQty(idx, 1)}
+                                  className="p-1 text-gray-500 hover:text-brand-flamingo hover:bg-brand-grey/5 transition-colors"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => handleRemoveEditingItem(idx)}
+                                className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                title="Remove product"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Add Product Form */}
+                    <div className="bg-brand-grey/5 p-4 rounded border border-brand-latte/20 space-y-3">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Add Product to Order</label>
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={selectedProductToAdd}
+                          onChange={(e) => {
+                            setSelectedProductToAdd(e.target.value);
+                            const prod = products?.find(p => p.id === e.target.value);
+                            if (prod && !prod.hasSizes) {
+                              setSelectedSizeToAdd('Baby');
+                            }
+                          }}
+                          className="w-full bg-white border border-brand-latte/30 px-3 py-2 text-xs rounded-[2px] focus:outline-none focus:border-brand-flamingo"
+                        >
+                          <option value="">-- Select a product to add --</option>
+                          {products?.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (RM {p.price})</option>
+                          ))}
+                        </select>
+
+                        {/* Variant Selection if product has sizes */}
+                        {products?.find(p => p.id === selectedProductToAdd)?.hasSizes && (
+                          <div className="flex gap-2 items-center">
+                            <span className="text-[10px] font-bold uppercase text-gray-400">Size:</span>
+                            <select
+                              value={selectedSizeToAdd}
+                              onChange={(e) => setSelectedSizeToAdd(e.target.value as 'Baby' | 'Adult')}
+                              className="flex-1 bg-white border border-brand-latte/30 px-2 py-1.5 text-xs rounded-[2px] focus:outline-none"
+                            >
+                              <option value="Baby">Baby Blanket</option>
+                              <option value="Adult">Adult Blanket</option>
+                            </select>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <div className="flex items-center border border-brand-latte/30 rounded bg-white w-24">
+                            <button 
+                              type="button"
+                              onClick={() => setAddQty(prev => Math.max(1, prev - 1))}
+                              className="p-1.5 text-gray-500 hover:text-brand-flamingo"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <span className="flex-1 text-center font-bold text-xs">{addQty}</span>
+                            <button 
+                              type="button"
+                              onClick={() => setAddQty(prev => prev + 1)}
+                              className="p-1.5 text-gray-500 hover:text-brand-flamingo"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleAddItemToEditingOrder}
+                            disabled={!selectedProductToAdd}
+                            className="flex-1 bg-brand-gold hover:bg-brand-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[10px] font-bold uppercase tracking-wider py-2 rounded transition-colors flex items-center justify-center gap-1"
+                          >
+                            <Plus size={14} /> Add Item
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing Overrides */}
+                    <div className="border-t border-brand-latte/15 pt-3 flex items-center justify-between gap-4">
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Order Total Amount</span>
+                        <p className="text-[10px] text-gray-400">Editable for custom discounts or manual shipping overrides</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-700 text-sm">RM</span>
+                        <input 
+                          type="number"
+                          step="0.01"
+                          value={editingOrder.total}
+                          onChange={(e) => handleUpdateEditingCustomerField('total', parseFloat(parseFloat(e.target.value || '0').toFixed(2)))}
+                          className="w-24 bg-white border border-brand-latte/30 px-2 py-1.5 text-sm rounded font-bold text-gray-900 focus:outline-none focus:border-brand-flamingo text-right"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-brand-latte/10 flex justify-end gap-3 bg-brand-grey/10">
+                <button 
+                  onClick={() => setEditingOrder(null)}
+                  className="px-4 py-2 border border-brand-latte/30 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:bg-brand-grey/5 transition-colors rounded-[2px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveEditedOrder}
+                  disabled={isSavingOrder}
+                  className="bg-brand-flamingo hover:bg-brand-flamingo/90 text-white px-5 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 rounded-[2px] flex items-center gap-1.5"
+                >
+                  {isSavingOrder ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
   );
 };
