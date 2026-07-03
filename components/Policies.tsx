@@ -51,6 +51,13 @@ export const RefundPolicy: React.FC = () => (
     </section>
 
     <section>
+      <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Complimentary Gift Boxes</h3>
+      <p>
+        For orders that include a complimentary gift box, please note that the box is provided as beautiful, protective packaging to ensure your items arrive safely. Because the box is a free promotional inclusion, <strong>we cannot offer refunds, returns, or replacements if the box is damaged during shipping</strong>. Our return policy applies exclusively to the actual purchased products nestled inside.
+      </p>
+    </section>
+
+    <section>
       <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-gray-900 mb-3">Custom Orders</h3>
       <p>
         Custom or personalized items (such as those with specific embroidery requests) are <strong>final sale</strong>. We cannot offer returns or refunds on these pieces as they are made uniquely for you.

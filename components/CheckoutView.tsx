@@ -79,6 +79,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
   // Payment Status
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [agreeToPolicies, setAgreeToPolicies] = useState(false);
 
   // --- SECURITY CHECK ---
   // Redirect to cart if empty to prevent paying for just shipping
@@ -169,6 +170,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     } else if (step === 2) {
       if (firstName && lastName && address && postcode && city) setStep(3);
     } else if (step === 3) {
+      if (!agreeToPolicies) {
+        setError("Please read and agree to our Refund & Return and Shipping policies to place your order.");
+        return;
+      }
       handleSubmit();
     }
   };
@@ -177,6 +182,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     if (cart.length === 0) {
       setError("Your shopping bag is empty.");
       navigate('/cart');
+      return;
+    }
+
+    if (!agreeToPolicies) {
+      setError("Please read and agree to our Refund & Return and Shipping policies to place your order.");
       return;
     }
 
@@ -530,6 +540,40 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                           {voucherMessage.text}
                         </p>
                     )}
+                 </div>
+
+                 {/* Policy Consent Box */}
+                 <div className="bg-brand-grey/5 p-6 rounded-[2px] border border-brand-latte/10">
+                    <div className="flex items-start gap-3">
+                       <input 
+                          id="agreeToPolicies"
+                          type="checkbox"
+                          required
+                          checked={agreeToPolicies}
+                          onChange={(e) => setAgreeToPolicies(e.target.checked)}
+                          className="w-4 h-4 text-brand-flamingo rounded border-gray-300 focus:ring-brand-flamingo accent-brand-flamingo mt-0.5 cursor-pointer"
+                       />
+                       <label htmlFor="agreeToPolicies" className="font-sans text-xs text-gray-600 cursor-pointer select-none leading-relaxed">
+                         I have read and agree to the{' '}
+                         <a 
+                           href="/#/policies/refund" 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           className="text-brand-flamingo hover:text-brand-gold font-bold underline transition-colors"
+                         >
+                           Refund & Return Policy
+                         </a>{' '}
+                         and{' '}
+                         <a 
+                           href="/#/policies/shipping" 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           className="text-brand-flamingo hover:text-brand-gold font-bold underline transition-colors"
+                         >
+                           Shipping & Delivery Policy
+                         </a>.
+                       </label>
+                    </div>
                  </div>
 
                  {/* Error Display */}
