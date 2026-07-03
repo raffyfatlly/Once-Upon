@@ -30,6 +30,8 @@ const formatKLTime = (dateString: string) => {
 
 export const generateReceiptHtml = (order: Order): string => {
 
+  const cleanNotes = order.adminNotes ? order.adminNotes.replace(/\[.*?\]/g, '').trim() : '';
+
   // Calculate subtotal from items
   const itemsSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
@@ -441,6 +443,13 @@ export const generateReceiptHtml = (order: Order): string => {
             <span class="totals-val">RM ${Number(order.total).toFixed(2)}</span>
           </div>
         </div>
+
+        ${cleanNotes ? `
+        <div style="margin: 15px 0; padding: 10px; border: 1px dashed #e2e8f0; background-color: #fafaf9; border-radius: 4px; text-align: left; font-family: 'Lato', sans-serif;">
+          <div style="font-size: 10px; font-weight: bold; color: #71717a; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">Remark / Note:</div>
+          <div style="font-size: 11px; color: #18181b; line-height: 1.4; white-space: pre-wrap;">${cleanNotes}</div>
+        </div>
+        ` : ''}
         
         <div class="footer-section">
           <div class="brand-motto">Where every design tells a story.</div>
@@ -503,6 +512,7 @@ export const generateReceiptHtml = (order: Order): string => {
 };
 
 export const generateReceiptText = (order: Order): string => {
+  const cleanNotes = order.adminNotes ? order.adminNotes.replace(/\[.*?\]/g, '').trim() : '';
   const itemsSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
   let autoPromoDiscount = 0;
@@ -552,6 +562,11 @@ Payment Mode: ${(order.paymentMethod || 'cash').replace('_', ' ').toUpperCase()}
 ----------------------------------------
 TOTAL PAID: RM ${Number(order.total).toFixed(2)}
 ----------------------------------------
+${cleanNotes ? `
+REMARK / NOTE:
+${cleanNotes}
+----------------------------------------
+` : ''}
 
 Where every design tells a story.
 Thank you for shopping at Once Upon.
@@ -574,6 +589,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
   const [lastCreatedOrder, setLastCreatedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'qr'>('bank_transfer');
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' });
+  const [cashierRemark, setCashierRemark] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [emailInput, setEmailInput] = useState('');
@@ -823,8 +839,16 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         paymentMethod: paymentMethod
       };
 
+      let adminNotesParts = [];
+      if (cashierRemark.trim()) {
+        adminNotesParts.push(cashierRemark.trim());
+      }
       if (promoNotes.length > 0) {
-        orderData.adminNotes = promoNotes.join(' ');
+        adminNotesParts.push(promoNotes.join(' '));
+      }
+
+      if (adminNotesParts.length > 0) {
+        orderData.adminNotes = adminNotesParts.join('\n\n');
       }
 
       const orderDocRef = await createOrderInDb(orderData);
@@ -838,6 +862,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
       setCart([]);
       setPosDiscount(null);
       setCustomerInfo({ name: '', phone: '', email: '' });
+      setCashierRemark('');
       setIsShippingPreOrder(false);
       setShippingDetails({ address: '', postcode: '', city: '', region: 'west' });
       setIsAutoPromoDeleted(false);
@@ -1185,6 +1210,16 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                 <span className="text-[10px] font-bold uppercase tracking-widest">DuitNow QR</span>
               </button>
             </div>
+          </div>
+
+          <div className="mb-8 text-left">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Cashier Remark / Note</label>
+            <textarea
+              placeholder="Add notes, customer requests, or special remarks about this order..."
+              className="w-full bg-white border border-brand-latte/30 px-4 py-3 rounded text-sm focus:outline-none focus:border-brand-flamingo min-h-[90px] resize-none"
+              value={cashierRemark}
+              onChange={e => setCashierRemark(e.target.value)}
+            />
           </div>
 
           <button 
