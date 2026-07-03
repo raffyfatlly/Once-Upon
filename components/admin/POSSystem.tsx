@@ -3,19 +3,604 @@ import { Product, CartItem, Order } from '../../types';
 import { createOrderInDb } from '../../firebase';
 import { 
   Plus, Minus, Trash2, CreditCard, QrCode, CheckCircle, ChevronLeft, 
-  Tag, Percent, Sparkles, X, Box, Gift, Flame
+  Tag, Percent, Sparkles, X, Box, Gift, Flame, Printer, Mail, Loader2
 } from 'lucide-react';
 
 interface POSSystemProps {
   products: Product[];
 }
 
+const formatKLDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit'
+  });
+};
+
+const formatKLTime = (dateString: string) => {
+  return new Date(dateString).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+  });
+};
+
+export const generateReceiptHtml = (order: Order): string => {
+
+  // Calculate subtotal from items
+  const itemsSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Parse discounts from adminNotes
+  let autoPromoDiscount = 0;
+  let posDiscountAmount = 0;
+  let freeShippingSaved = 0;
+
+  if (order.adminNotes) {
+    const autoPromoMatch = order.adminNotes.match(/Auto Blanket\/Swaddle Promo applied - Saved RM ([\d\.]+)/i);
+    if (autoPromoMatch) {
+      autoPromoDiscount = parseFloat(autoPromoMatch[1]);
+    }
+    
+    const posDiscountMatch = order.adminNotes.match(/POS Discount Applied: .*? - Saved RM ([\d\.]+)/i);
+    if (posDiscountMatch) {
+      posDiscountAmount = parseFloat(posDiscountMatch[1]);
+    }
+
+    const freeShippingMatch = order.adminNotes.match(/Free Shipping Promo applied - Saved RM ([\d\.]+)/i);
+    if (freeShippingMatch) {
+      freeShippingSaved = parseFloat(freeShippingMatch[1]);
+    }
+  }
+
+  const totalDiscount = autoPromoDiscount + posDiscountAmount;
+  
+  // Calculate if any shipping was paid
+  const shippingPaid = Math.max(0, order.total - itemsSubtotal + totalDiscount);
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Receipt_#${order.id}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Pinyon+Script&display=swap" rel="stylesheet">
+      <style>
+        @media print {
+          body {
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .receipt-container {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 auto !important;
+            padding: 10px 0 !important;
+            max-width: 100% !important;
+            background: transparent !important;
+          }
+        }
+        body {
+          background-color: #F8F6F4;
+          font-family: 'Lato', sans-serif;
+          color: #333333;
+          margin: 0;
+          padding: 40px 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          -webkit-print-color-adjust: exact;
+        }
+        .no-print-bar {
+          width: 100%;
+          max-width: 380px;
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .btn {
+          flex: 1;
+          padding: 12px 16px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+          text-align: center;
+          text-decoration: none;
+        }
+        .btn-print {
+          background-color: #4A5D4F;
+          color: white;
+        }
+        .btn-print:hover {
+          background-color: #3b4b40;
+        }
+        .btn-close {
+          background-color: #E2DDD5;
+          color: #555;
+        }
+        .btn-close:hover {
+          background-color: #d5cfc5;
+        }
+        .receipt-container {
+          background: #FFFFFF;
+          width: 100%;
+          max-width: 380px;
+          box-sizing: border-box;
+          padding: 35px 30px;
+          border: 1px solid #E5DFD9;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+          position: relative;
+        }
+        .scallop-top {
+          position: absolute;
+          top: -6px;
+          left: 0;
+          width: 100%;
+          height: 6px;
+          background-image: radial-gradient(circle at 6px 0, transparent 5px, #FFFFFF 6px);
+          background-size: 12px 6px;
+          background-repeat: repeat-x;
+        }
+        .scallop-bottom {
+          position: absolute;
+          bottom: -6px;
+          left: 0;
+          width: 100%;
+          height: 6px;
+          background-image: radial-gradient(circle at 6px 6px, transparent 5px, #FFFFFF 6px);
+          background-size: 12px 6px;
+          background-repeat: repeat-x;
+        }
+        .brand-header {
+          text-align: center;
+          margin-bottom: 25px;
+        }
+        .brand-name {
+          font-family: 'Playfair Display', serif;
+          font-size: 26px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #1A1A1A;
+          margin: 0 0 4px 0;
+        }
+        .brand-subtitle {
+          font-family: 'Pinyon Script', cursive;
+          font-size: 22px;
+          color: #C5A992;
+          margin: 0;
+          line-height: 1;
+        }
+        .store-info {
+          text-align: center;
+          font-size: 10px;
+          color: #777777;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          margin-top: 6px;
+          line-height: 1.5;
+        }
+        .receipt-title {
+          text-align: center;
+          font-size: 11px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: #4A5D4F;
+          margin: 20px 0 15px 0;
+          border-top: 1px dashed #D9C4B8;
+          border-bottom: 1px dashed #D9C4B8;
+          padding: 6px 0;
+        }
+        .meta-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          row-gap: 6px;
+          font-size: 11px;
+          color: #555555;
+          margin-bottom: 20px;
+        }
+        .meta-label {
+          font-weight: bold;
+          text-transform: uppercase;
+          font-size: 9px;
+          letter-spacing: 0.08em;
+          color: #888888;
+        }
+        .meta-value {
+          text-align: right;
+          font-family: 'Courier New', Courier, monospace;
+          font-weight: 600;
+        }
+        .meta-value.customer {
+          font-family: inherit;
+          font-weight: normal;
+        }
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
+        }
+        .items-table th {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: #888888;
+          border-bottom: 1px solid #F0F2F2;
+          padding-bottom: 6px;
+          text-align: left;
+        }
+        .items-table th.qty { text-align: center; width: 40px; }
+        .items-table th.amount { text-align: right; width: 80px; }
+        .items-table td {
+          padding: 10px 0;
+          border-bottom: 1px solid #F8F6F4;
+          font-size: 12px;
+          vertical-align: top;
+        }
+        .item-desc {
+          font-family: 'Playfair Display', serif;
+          font-weight: 600;
+          color: #1A1A1A;
+        }
+        .item-sub {
+          font-size: 10px;
+          color: #888888;
+          margin-top: 2px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .item-qty {
+          text-align: center;
+          font-weight: bold;
+          color: #555;
+        }
+        .item-amount {
+          text-align: right;
+          font-weight: bold;
+          color: #1A1A1A;
+        }
+        .totals-section {
+          border-top: 1px dashed #D9C4B8;
+          padding-top: 12px;
+          margin-bottom: 25px;
+        }
+        .totals-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 12px;
+          color: #555555;
+          margin-bottom: 6px;
+        }
+        .totals-row.grand-total {
+          font-size: 16px;
+          font-weight: 900;
+          color: #1A1A1A;
+          border-top: 1px solid #1A1A1A;
+          padding-top: 10px;
+          margin-top: 10px;
+        }
+        .totals-label {
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .totals-val {
+          font-weight: bold;
+        }
+        .footer-section {
+          text-align: center;
+          margin-top: 30px;
+        }
+        .brand-motto {
+          font-family: 'Playfair Display', serif;
+          font-style: italic;
+          font-size: 13px;
+          color: #C5A992;
+          margin-bottom: 8px;
+        }
+        .thank-you-msg {
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: #777777;
+          line-height: 1.4;
+        }
+        .barcode-container {
+          margin-top: 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          text-align: center;
+        }
+        .barcode {
+          width: 160px;
+          height: 40px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print-bar no-print">
+        <button class="btn btn-close" onclick="window.close()">Close</button>
+        <button class="btn btn-print" onclick="window.print()">Print / Save PDF</button>
+      </div>
+      
+      <div class="receipt-container">
+        <div class="scallop-top"></div>
+        <div class="scallop-bottom"></div>
+        
+        <div class="brand-header">
+          <div class="brand-name">Once Upon</div>
+          <div class="brand-subtitle">Kuala Lumpur</div>
+          <div class="store-info">
+            Swaddle & Blankets<br>
+            Kuala Lumpur
+          </div>
+        </div>
+        
+        <div class="receipt-title">POS Transaction Receipt</div>
+        
+        <div class="meta-grid">
+          <div class="meta-label">Receipt No:</div>
+          <div class="meta-value">#POS-${order.id.toUpperCase().substring(0, 8)}</div>
+          
+          <div class="meta-label">Date:</div>
+          <div class="meta-value">${formatKLDate(order.date)}</div>
+          
+          <div class="meta-label">Time:</div>
+          <div class="meta-value">${formatKLTime(order.date)}</div>
+          
+          <div class="meta-label">Register:</div>
+          <div class="meta-value">TERM-01</div>
+          
+          <div class="meta-label">Cashier:</div>
+          <div class="meta-value">ADMIN</div>
+          
+          <div class="meta-label">Customer:</div>
+          <div class="meta-value customer" style="text-align: right;">${order.customerName}</div>
+        </div>
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Item Description</th>
+              <th class="qty">Qty</th>
+              <th class="amount">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(item => {
+              const isAddon = Boolean(item.isCheckoutAddon);
+              const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+              const itemCollection = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
+              return `
+                <tr>
+                  <td>
+                    <div class="item-desc">${item.name}</div>
+                    <div class="item-sub">${itemCollection} ${item.isPreOrder ? '(Pre-Order)' : ''}</div>
+                  </td>
+                  <td class="item-qty">${item.quantity}</td>
+                  <td class="item-amount">RM ${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        
+        <div class="totals-section">
+          <div class="totals-row">
+            <span class="totals-label">Subtotal</span>
+            <span class="totals-val">RM ${itemsSubtotal.toFixed(2)}</span>
+          </div>
+          ${shippingPaid > 0 ? `
+          <div class="totals-row">
+            <span class="totals-label">Shipping</span>
+            <span class="totals-val">RM ${shippingPaid.toFixed(2)}</span>
+          </div>
+          ` : ''}
+          ${autoPromoDiscount > 0 ? `
+          <div class="totals-row" style="color: #4A5D4F;">
+            <span class="totals-label">Promo Discount (RM 8/item)</span>
+            <span class="totals-val">-RM ${autoPromoDiscount.toFixed(2)}</span>
+          </div>
+          ` : ''}
+          ${posDiscountAmount > 0 ? `
+          <div class="totals-row" style="color: #4A5D4F;">
+            <span class="totals-label">POS Discount</span>
+            <span class="totals-val">-RM ${posDiscountAmount.toFixed(2)}</span>
+          </div>
+          ` : ''}
+          ${totalDiscount > 0 && autoPromoDiscount === 0 && posDiscountAmount === 0 ? `
+          <div class="totals-row" style="color: #4A5D4F;">
+            <span class="totals-label">Discount</span>
+            <span class="totals-val">-RM ${totalDiscount.toFixed(2)}</span>
+          </div>
+          ` : ''}
+          <div class="totals-row">
+            <span class="totals-label">SST (6%)</span>
+            <span class="totals-val">RM 0.00</span>
+          </div>
+          <div class="totals-row">
+            <span class="totals-label">Payment Mode</span>
+            <span class="totals-val" style="text-transform: uppercase;">${(order.paymentMethod || 'cash').replace('_', ' ')}</span>
+          </div>
+          <div class="totals-row grand-total">
+            <span class="totals-label">Total Paid</span>
+            <span class="totals-val">RM ${Number(order.total).toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div class="footer-section">
+          <div class="brand-motto">Where every design tells a story.</div>
+          <div class="thank-you-msg">
+            Thank you for shopping at Once Upon.<br>
+            Please keep this receipt as proof of purchase.<br>
+            Follow us on Instagram @onceuponbysyahirah
+          </div>
+          
+          <div class="barcode-container">
+            <svg class="barcode" viewBox="0 0 100 25" preserveAspectRatio="none">
+              <g fill="#000000">
+                <rect x="0" y="0" width="1" height="20" />
+                <rect x="2" y="0" width="1" height="20" />
+                <rect x="4" y="0" width="2" height="20" />
+                <rect x="7" y="0" width="1" height="20" />
+                <rect x="9" y="0" width="3" height="20" />
+                <rect x="13" y="0" width="1" height="20" />
+                <rect x="15" y="0" width="2" height="20" />
+                <rect x="18" y="0" width="1" height="20" />
+                <rect x="20" y="0" width="2" height="20" />
+                <rect x="23" y="0" width="4" height="20" />
+                <rect x="28" y="0" width="1" height="20" />
+                <rect x="30" y="0" width="1" height="20" />
+                <rect x="32" y="0" width="3" height="20" />
+                <rect x="36" y="0" width="2" height="20" />
+                <rect x="39" y="0" width="1" height="20" />
+                <rect x="41" y="0" width="2" height="20" />
+                <rect x="44" y="0" width="4" height="20" />
+                <rect x="49" y="0" width="1" height="20" />
+                <rect x="51" y="0" width="2" height="20" />
+                <rect x="54" y="0" width="1" height="20" />
+                <rect x="56" y="0" width="3" height="20" />
+                <rect x="60" y="0" width="1" height="20" />
+                <rect x="62" y="0" width="1" height="20" />
+                <rect x="64" y="0" width="2" height="20" />
+                <rect x="67" y="0" width="3" height="20" />
+                <rect x="71" y="0" width="1" height="20" />
+                <rect x="73" y="0" width="2" height="20" />
+                <rect x="76" y="0" width="1" height="20" />
+                <rect x="78" y="0" width="1" height="20" />
+                <rect x="80" y="0" width="4" height="20" />
+                <rect x="85" y="0" width="1" height="20" />
+                <rect x="87" y="0" width="2" height="20" />
+                <rect x="90" y="0" width="1" height="20" />
+                <rect x="92" y="0" width="3" height="20" />
+                <rect x="96" y="0" width="2" height="20" />
+                <rect x="99" y="0" width="1" height="20" />
+              </g>
+            </svg>
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 8px; letter-spacing: 2px; color: #777;">#POS-${order.id.toUpperCase().substring(0, 8)}</span>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return htmlContent;
+};
+
+export const generateReceiptText = (order: Order): string => {
+  const itemsSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  let autoPromoDiscount = 0;
+  let posDiscountAmount = 0;
+  if (order.adminNotes) {
+    const autoPromoMatch = order.adminNotes.match(/Auto Blanket\/Swaddle Promo applied - Saved RM ([\d\.]+)/i);
+    if (autoPromoMatch) autoPromoDiscount = parseFloat(autoPromoMatch[1]);
+    
+    const posDiscountMatch = order.adminNotes.match(/POS Discount Applied: .*? - Saved RM ([\d\.]+)/i);
+    if (posDiscountMatch) posDiscountAmount = parseFloat(posDiscountMatch[1]);
+  }
+  const totalDiscount = autoPromoDiscount + posDiscountAmount;
+
+  let itemsText = '';
+  order.items.forEach(item => {
+    const itemTotal = (item.price * item.quantity).toFixed(2);
+    itemsText += `${item.name}\n  Qty: ${item.quantity} x RM ${Number(item.price).toFixed(2)} = RM ${itemTotal}\n\n`;
+  });
+
+  let promoSection = '';
+  if (autoPromoDiscount > 0) {
+    promoSection += `Promo Discount (RM 8/item): -RM ${autoPromoDiscount.toFixed(2)}\n`;
+  }
+  if (posDiscountAmount > 0) {
+    promoSection += `POS Discount: -RM ${posDiscountAmount.toFixed(2)}\n`;
+  }
+
+  const text = `ONCE UPON
+Kuala Lumpur
+Swaddle & Blankets
+
+POS Transaction Receipt
+----------------------------------------
+Receipt No: #POS-${order.id.toUpperCase().substring(0, 8)}
+Date: ${formatKLDate(order.date)}
+Time: ${formatKLTime(order.date)}
+Register: TERM-01
+Cashier: ADMIN
+Customer: ${order.customerName}
+----------------------------------------
+ITEMS:
+----------------------------------------
+${itemsText}----------------------------------------
+Subtotal: RM ${itemsSubtotal.toFixed(2)}
+${promoSection}SST (6%): RM 0.00
+Payment Mode: ${(order.paymentMethod || 'cash').replace('_', ' ').toUpperCase()}
+----------------------------------------
+TOTAL PAID: RM ${Number(order.total).toFixed(2)}
+----------------------------------------
+
+Where every design tells a story.
+Thank you for shopping at Once Upon.
+Follow us on Instagram @onceuponbysyahirah
+`;
+  return text;
+};
+
+export const handleDownloadReceipt = (order: Order) => {
+  const printWindow = window.open('', '_blank', 'width=450,height=800');
+  if (!printWindow) return;
+  const htmlContent = generateReceiptHtml(order);
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+};
+
 export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [view, setView] = useState<'shop' | 'checkout' | 'customer_payment' | 'success'>('shop');
+  const [lastCreatedOrder, setLastCreatedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'qr'>('bank_transfer');
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [emailInput, setEmailInput] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+
+  const handleSendReceiptEmail = () => {
+    if (!lastCreatedOrder || !emailInput) return;
+    setIsSendingEmail(true);
+    setEmailStatus({ type: null, message: '' });
+
+    try {
+      const subject = `Receipt for Order #${lastCreatedOrder.id.toUpperCase().substring(0, 8)} - Once Upon`;
+      const body = generateReceiptText(lastCreatedOrder);
+      const mailtoUrl = `mailto:${encodeURIComponent(emailInput)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      
+      // Open default mail app on device
+      window.location.href = mailtoUrl;
+
+      setEmailStatus({ type: 'success', message: 'Opened device mail client! Please click send.' });
+    } catch (error: any) {
+      setEmailStatus({ type: 'error', message: error.message || 'Failed to open mail client.' });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const [isShippingPreOrder, setIsShippingPreOrder] = useState(false);
   const [shippingDetails, setShippingDetails] = useState({
     address: '',
@@ -242,7 +827,13 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
         orderData.adminNotes = promoNotes.join(' ');
       }
 
-      await createOrderInDb(orderData);
+      const orderDocRef = await createOrderInDb(orderData);
+      setLastCreatedOrder({
+        id: orderDocRef.id,
+        ...orderData
+      });
+      setEmailInput(customerInfo.email || '');
+      setEmailStatus({ type: null, message: '' });
       setView('success');
       setCart([]);
       setPosDiscount(null);
@@ -261,12 +852,60 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
   if (view === 'success') {
     return (
       <div className="bg-white p-12 text-center rounded shadow-sm border border-brand-latte/20 flex flex-col items-center">
-        <CheckCircle className="text-green-500 w-24 h-24 mb-6" />
-        <h2 className="font-serif text-3xl mb-2">Purchase Complete!</h2>
-        <p className="text-gray-500 mb-8">The POS order has been successfully registered.</p>
+        <CheckCircle className="text-green-500 w-20 h-20 mb-6" />
+        <h2 className="font-serif text-3xl mb-2 text-gray-900">Purchase Complete!</h2>
+        <p className="text-gray-500 mb-8 max-w-sm">
+          The POS order has been successfully registered {lastCreatedOrder ? `as Order #${lastCreatedOrder.id}` : ''}.
+        </p>
+
         <button 
-          onClick={() => setView('shop')}
-          className="bg-brand-flamingo text-white px-8 py-4 font-bold uppercase tracking-widest text-sm"
+          type="button"
+          onClick={() => {
+            if (lastCreatedOrder) {
+              handleDownloadReceipt(lastCreatedOrder);
+            }
+          }}
+          disabled={!lastCreatedOrder}
+          className="w-full max-w-md bg-brand-gold text-white hover:bg-brand-gold/90 py-4 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-4 cursor-pointer"
+        >
+          <Printer size={14} /> Print Receipt
+        </button>
+
+        {/* Email Receipt Section */}
+        <div className="w-full max-w-md border border-brand-latte/20 p-4 rounded bg-brand-grey/5 mb-4 flex flex-col gap-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 text-left block">
+            Open Email Client (Pre-fill Receipt)
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input 
+              type="email"
+              placeholder="customer@example.com"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              className="flex-1 px-3 py-3 sm:py-2 bg-white border border-brand-latte/30 focus:border-brand-flamingo outline-none text-sm rounded-[2px]"
+            />
+            <button
+              type="button"
+              onClick={handleSendReceiptEmail}
+              disabled={!emailInput || !lastCreatedOrder}
+              className="bg-brand-gold hover:bg-brand-gold/90 text-white px-4 py-3 sm:py-2 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5 rounded-[2px] h-11 sm:h-auto"
+            >
+              <Mail size={14} /> Open Email
+            </button>
+          </div>
+          {emailStatus.message && (
+            <div className={`text-xs text-left ${emailStatus.type === 'success' ? 'text-green-600 font-medium' : 'text-red-500'}`}>
+              {emailStatus.message}
+            </div>
+          )}
+        </div>
+
+        <button 
+          onClick={() => {
+            setView('shop');
+            setLastCreatedOrder(null);
+          }}
+          className="w-full max-w-md bg-brand-flamingo text-white hover:bg-brand-flamingo/90 py-4 font-bold uppercase tracking-widest text-xs transition-colors cursor-pointer"
         >
           New Sale
         </button>
