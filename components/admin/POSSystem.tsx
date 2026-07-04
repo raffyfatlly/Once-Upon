@@ -387,7 +387,7 @@ export const generateReceiptHtml = (order: Order): string => {
               const isAddon = Boolean(item.isCheckoutAddon);
               const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
               const itemCollection = isAddon ? 'Add-on' : (isBlanket ? 'Blanket' : 'Swaddle');
-              const fulfillmentStatus = item.isPickedUp !== false ? 'Handed Over In-store' : 'To Pack & Ship';
+              const fulfillmentStatus = order.source === 'pos' ? (item.isPickedUp !== false ? 'Handed Over In-store' : 'To Pack & Ship') : 'To Pack & Ship';
               return `
                 <tr>
                   <td>
@@ -530,7 +530,7 @@ export const generateReceiptText = (order: Order): string => {
   let itemsText = '';
   order.items.forEach(item => {
     const itemTotal = (item.price * item.quantity).toFixed(2);
-    const fulfillmentStatus = item.isPickedUp !== false ? 'Handed Over' : 'To Pack & Ship';
+    const fulfillmentStatus = order.source === 'pos' ? (item.isPickedUp !== false ? 'Handed Over' : 'To Pack & Ship') : 'To Pack & Ship';
     itemsText += `${item.name} (${fulfillmentStatus})\n  Qty: ${item.quantity} x RM ${Number(item.price).toFixed(2)} = RM ${itemTotal}\n\n`;
   });
 

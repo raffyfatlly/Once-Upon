@@ -1560,23 +1560,19 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                         <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'packed' ? 'bg-purple-50 border-purple-200 text-purple-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
-                            {order.source === 'pos' && (
-                                <>
-                                    <button onClick={() => handleDownloadReceipt(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Download POS Receipt"><Receipt size={16} /></button>
-                                    <button 
-                                        onClick={() => {
-                                            setExpandedOrderId(order.id);
-                                            setEmailingOrderId(order.id);
-                                            setSalesEmailInput(order.customerEmail || '');
-                                            setSalesEmailStatus(null);
-                                        }} 
-                                        className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" 
-                                        title="Email POS Receipt"
-                                    >
-                                        <Mail size={16} />
-                                    </button>
-                                </>
-                            )}
+                            <button onClick={() => handleDownloadReceipt(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Download Receipt"><Receipt size={16} /></button>
+                            <button 
+                                onClick={() => {
+                                    setExpandedOrderId(order.id);
+                                    setEmailingOrderId(order.id);
+                                    setSalesEmailInput(order.customerEmail || '');
+                                    setSalesEmailStatus(null);
+                                }} 
+                                className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" 
+                                title="Email Receipt"
+                            >
+                                <Mail size={16} />
+                            </button>
                             <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Print Packing Slip"><Printer size={16} /></button>
                             <button onClick={() => handleOrderDeleteClick(order.id)} disabled={deletingOrderId === order.id} className={`p-1.5 rounded transition-all ${ deleteOrderConfirmation === order.id ? 'bg-red-50 text-red-500 ring-1 ring-red-200' : 'text-gray-300 hover:text-red-400 hover:bg-red-50' }`} title="Delete Order">{deletingOrderId === order.id ? (<Loader2 size={16} className="animate-spin" />) : deleteOrderConfirmation === order.id ? (<Check size={16} />) : (<Trash2 size={16} />)}</button>
                             <button 
@@ -1651,30 +1647,29 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                                     <span className="text-xs uppercase tracking-widest text-gray-500 mr-4">Total Amount</span>
                                     <span className="font-serif text-xl text-gray-900 font-bold">RM {order.total}</span>
                                     </div>
-                                    {order.source === 'pos' && (
-                                        <div className="mt-4 flex flex-col items-end gap-3">
-                                            <div className="flex gap-2">
-                                                <button 
-                                                    onClick={() => handleDownloadReceipt(order)} 
-                                                    className="bg-brand-green text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-green/95 transition-colors flex items-center gap-2 rounded-[2px]"
-                                                >
-                                                    <Receipt size={14} /> View & Print Receipt
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        if (emailingOrderId === order.id) {
-                                                            setEmailingOrderId(null);
-                                                        } else {
-                                                            setEmailingOrderId(order.id);
-                                                            setSalesEmailInput(order.customerEmail || '');
-                                                            setSalesEmailStatus(null);
-                                                        }
-                                                    }} 
-                                                    className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-gold/90 transition-colors flex items-center gap-2 rounded-[2px]"
-                                                >
-                                                    <Mail size={14} /> Email Receipt
-                                                </button>
-                                            </div>
+                                    <div className="mt-4 flex flex-col items-end gap-3">
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => handleDownloadReceipt(order)} 
+                                                className="bg-brand-green text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-green/95 transition-colors flex items-center gap-2 rounded-[2px]"
+                                            >
+                                                <Receipt size={14} /> View & Print Receipt
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    if (emailingOrderId === order.id) {
+                                                        setEmailingOrderId(null);
+                                                    } else {
+                                                        setEmailingOrderId(order.id);
+                                                        setSalesEmailInput(order.customerEmail || '');
+                                                        setSalesEmailStatus(null);
+                                                    }
+                                                }} 
+                                                className="bg-brand-gold text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-gold/90 transition-colors flex items-center gap-2 rounded-[2px]"
+                                            >
+                                                <Mail size={14} /> Email Receipt
+                                            </button>
+                                        </div>
 
                                             {/* Collapsible Email Input Form */}
                                             {emailingOrderId === order.id && (
@@ -1704,7 +1699,6 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                                                 </div>
                                             )}
                                         </div>
-                                    )}
                                 </div>
 
                                 {/* Right: Details */}
