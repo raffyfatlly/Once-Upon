@@ -1206,7 +1206,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                   >
                     <option value="west">West Malaysia</option>
                     <option value="east">East Malaysia</option>
-                    <option value="sg">Singapore</option>
+                    <option value="sg" disabled>Singapore (Temporarily Disabled)</option>
                   </select>
                 </div>
               </div>

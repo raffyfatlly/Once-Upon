@@ -440,7 +440,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                         >
                           <option value="west">West Malaysia (Peninsular)</option>
                           <option value="east">East Malaysia (Sabah & Sarawak)</option>
-                          <option value="sg">Singapore</option>
+                          <option value="sg" disabled>Singapore (Temporarily Disabled)</option>
                         </select>
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                           <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M5 6L0 0H10L5 6Z" /></svg>
