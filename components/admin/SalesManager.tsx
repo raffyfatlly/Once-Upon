@@ -1277,24 +1277,11 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
     
     if (ordersToCopy.length === 0) return;
 
-    const textToCopy = ordersToCopy.map(order => {
-      const itemsList = order.items
-        .map(item => `${item.quantity} x ${item.name} (${item.collection || 'Blankets'})${item.isPreOrder ? ' [PRE-ORDER]' : ''}`)
-        .join('\n');
-      
-      let entry = `ORDER #${order.id}\n${itemsList}`;
-      
-      if (order.isGift) {
-        entry += `\n\n[GIFT MESSAGE]\nTo: ${order.giftTo || ''}\nFrom: ${order.giftFrom || ''}`;
-        if (order.giftMessage) entry += `\nMessage: "${order.giftMessage}"`;
-      }
-      
-      return entry;
-    }).join('\n\n----------------------------------------\n\n');
+    const textToCopy = ordersToCopy.map(order => order.id).join('\n');
 
     try {
       await navigator.clipboard.writeText(textToCopy);
-      alert(`${ordersToCopy.length} Order(s) copied to clipboard!`);
+      alert(`${ordersToCopy.length} Order Number(s) copied to clipboard!`);
     } catch (err) {
       console.error("Copy failed", err);
       alert("Failed to copy to clipboard.");
@@ -1561,11 +1548,11 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
           </div>
         )}
 
-        {subTab === 'orders' && selectedOrders.size > 0 && (
+        {selectedOrders.size > 0 && (
         <div className="bg-brand-flamingo/5 border border-brand-flamingo/20 p-3 rounded-[2px] mb-4 flex items-center justify-between animate-fade-in">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">{selectedOrders.size} Selected</span>
             <button onClick={handleBulkCopy} className="bg-white border border-brand-flamingo/20 text-brand-flamingo px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo hover:text-white transition-colors flex items-center gap-2">
-            <ClipboardCopy size={14} /> Copy Details
+            <ClipboardCopy size={14} /> Copy Order Numbers
             </button>
         </div>
         )}
