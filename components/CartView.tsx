@@ -80,8 +80,8 @@ export const CartView: React.FC<CartViewProps> = ({
   const onlyAdultBlankets = hasAdultBlanket && !hasBabyBlanketOrSwaddle;
   if (onlyAdultBlankets) {
     visibleAddons = visibleAddons.filter(addon => {
-      const isBoxAddon = addon.name.toLowerCase().includes('box') || addon.name.toLowerCase().includes('keepsake') || addon.name.toLowerCase().includes('edition');
-      return !isBoxAddon;
+      const isSignatureBox = addon.name.toLowerCase().includes('signature') || addon.name.toLowerCase().includes('edition') || addon.name.toLowerCase().includes('keepsake');
+      return !isSignatureBox;
     });
   }
 
@@ -154,8 +154,10 @@ export const CartView: React.FC<CartViewProps> = ({
                           );
                         }
 
-                        const isBox = item.name.toLowerCase().includes('box') || item.name.toLowerCase().includes('keepsake') || item.name.toLowerCase().includes('edition');
-                        if (isBox) {
+                        const isSignatureBox = item.name.toLowerCase().includes('signature') || item.name.toLowerCase().includes('edition') || item.name.toLowerCase().includes('keepsake');
+                        const isRegularGiftBox = (item.name.toLowerCase().includes('gift box') || item.name.toLowerCase().includes('box')) && !isSignatureBox;
+
+                        if (isSignatureBox) {
                           return (
                             <div className="mt-3 flex items-start gap-2 bg-brand-gold/[0.04] border border-brand-gold/15 p-2.5 rounded-[4px] max-w-xs animate-fade-in">
                               <Gift size={14} className="text-brand-gold mt-0.5 flex-shrink-0" />
@@ -167,6 +169,20 @@ export const CartView: React.FC<CartViewProps> = ({
                                   ) : (
                                     <>Each Once Upon Signature Gift Box is designed to perfectly accommodate <strong>exactly one baby-sized blanket or swaddle</strong>.</>
                                   )}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (isRegularGiftBox) {
+                          return (
+                            <div className="mt-3 flex items-start gap-2 bg-brand-gold/[0.04] border border-brand-gold/15 p-2.5 rounded-[4px] max-w-xs animate-fade-in">
+                              <Gift size={14} className="text-brand-gold mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <span className="text-[10px] font-sans text-brand-gold font-bold uppercase tracking-widest block mb-0.5">Capacity Notice</span>
+                                <span className="text-[10px] font-sans text-gray-600 font-medium leading-relaxed block">
+                                  This gift box is designed to fit <strong>2 swaddles, 2 baby blankets, or 1 adult blanket</strong>.
                                 </span>
                               </div>
                             </div>
@@ -252,25 +268,32 @@ export const CartView: React.FC<CartViewProps> = ({
                               </button>
                             )}
                          </div>
-                         {isBoxAddon && !isSoldOut && (
-                           <div className="bg-brand-gold/[0.04] px-4 py-3.5 border-t border-brand-gold/15 text-[10px] font-sans leading-relaxed text-gray-600 space-y-1.5">
-                             {swaddleCount > 0 && (
-                               <p className="text-brand-gold font-medium italic">
-                                 Note: Swaddles already include a complimentary 1st Edition Box! Only buy this if you need an extra for a blanket.
+                         {isBoxAddon && !isSoldOut && (() => {
+                           const isSig = addon.name.toLowerCase().includes('signature') || addon.name.toLowerCase().includes('edition') || addon.name.toLowerCase().includes('keepsake');
+                           return (
+                             <div className="bg-brand-gold/[0.04] px-4 py-3.5 border-t border-brand-gold/15 text-[10px] font-sans leading-relaxed text-gray-600 space-y-1.5">
+                               {isSig && swaddleCount > 0 && (
+                                 <p className="text-brand-gold font-medium italic">
+                                   Note: Swaddles already include a complimentary 1st Edition Box! Only buy this if you need an extra for a blanket.
+                                 </p>
+                               )}
+                               <p className="flex items-start gap-1.5 font-medium">
+                                 <span className="text-brand-gold">✦</span>
+                                 <span>
+                                   {isSig ? (
+                                     hasAdultBlanket ? (
+                                       <>Fits <strong>exactly one baby-sized blanket or swaddle</strong> (Does not fit Adult-size blankets).</>
+                                     ) : (
+                                       <>Fits <strong>exactly one baby-sized blanket or swaddle</strong>.</>
+                                     )
+                                   ) : (
+                                     <>Fits up to <strong>2 swaddles, 2 baby blankets, or 1 adult blanket</strong>.</>
+                                   )}
+                                 </span>
                                </p>
-                             )}
-                             <p className="flex items-start gap-1.5 font-medium">
-                               <span className="text-brand-gold">✦</span>
-                               <span>
-                                 {hasAdultBlanket ? (
-                                   <>Fits <strong>exactly one baby-sized blanket or swaddle</strong> (Does not fit Adult-size blankets).</>
-                                 ) : (
-                                   <>Fits <strong>exactly one baby-sized blanket or swaddle</strong>.</>
-                                 )}
-                               </span>
-                             </p>
-                           </div>
-                         )}
+                             </div>
+                           );
+                         })()}
                       </div>
                    )})}
                  </div>

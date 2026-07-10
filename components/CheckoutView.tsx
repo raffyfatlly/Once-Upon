@@ -678,14 +678,33 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                 </div>
               )}
 
-              {cart.some(item => item.name.toLowerCase().includes('box') || item.name.toLowerCase().includes('keepsake') || item.name.toLowerCase().includes('edition')) && (
-                <div className="border-t border-brand-latte/15 pt-3.5 mt-2 text-[10px] font-sans text-brand-gold font-medium leading-relaxed flex items-start gap-1.5 animate-fade-in">
-                  <span>✦</span>
-                  <span>
-                    Notice: Fits exactly one baby-sized blanket or swaddle. {hasAdultBlanket && "(Note: This box does not fit Adult-size blankets)."}
-                  </span>
-                </div>
-              )}
+              {(() => {
+                const hasSigBox = cart.some(item => item.name.toLowerCase().includes('signature') || item.name.toLowerCase().includes('edition') || item.name.toLowerCase().includes('keepsake'));
+                const hasRegularBox = cart.some(item => (item.name.toLowerCase().includes('gift box') || item.name.toLowerCase().includes('box')) && !item.name.toLowerCase().includes('signature') && !item.name.toLowerCase().includes('edition') && !item.name.toLowerCase().includes('keepsake'));
+
+                if (!hasSigBox && !hasRegularBox) return null;
+
+                return (
+                  <div className="border-t border-brand-latte/15 pt-3.5 mt-2 text-[10px] font-sans text-brand-gold font-medium leading-relaxed space-y-1.5 animate-fade-in">
+                    {hasSigBox && (
+                      <p className="flex items-start gap-1.5">
+                        <span>✦</span>
+                        <span>
+                          Notice: Fits exactly one baby-sized blanket or swaddle. {hasAdultBlanket && "(Note: This box does not fit Adult-size blankets)."}
+                        </span>
+                      </p>
+                    )}
+                    {hasRegularBox && (
+                      <p className="flex items-start gap-1.5">
+                        <span>✦</span>
+                        <span>
+                          Notice: Gift Box fits up to 2 swaddles, 2 baby blankets, or 1 adult blanket.
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
