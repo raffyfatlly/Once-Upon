@@ -66,8 +66,8 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
                    <Sparkles size={24} />
                  </div>
                  
-                 <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-brand-flamingo animate-pulse">
-                   Coming Soon
+                 <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-brand-gold">
+                   Newly Released
                  </span>
                  
                  <h2 className="font-serif text-2xl sm:text-3xl text-gray-900 mt-1 max-w-md leading-snug">
@@ -79,11 +79,11 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ products, onAddT
                  </p>
                  
                  <div className="mt-4 px-5 py-2.5 rounded-full bg-brand-gold/15 text-brand-gold text-xs font-bold tracking-wider uppercase border border-brand-gold/20">
-                    Available on the evening of 27 June
+                    Now Live & Available
                  </div>
                  
                  <p className="font-sans text-xs text-gray-500 mt-6 max-w-sm leading-relaxed text-center">
-                   We are putting the final loving touches on this collection. Be sure to follow us on Instagram to receive launch updates and sneak peeks!
+                   Explore our newly released premium swaddles. Follow us on Instagram for beautiful inspiration, newborn styling tips, and new releases!
                  </p>
                  
                  <a 

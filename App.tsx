@@ -242,9 +242,9 @@ const StoreFront: React.FC<{
                     <p className="font-sans text-xs text-gray-500 max-w-full sm:max-w-[200px] md:max-w-[240px] leading-relaxed">
                       A beautiful canvas for their earliest chapters. Spun for silky, breathable softness, these generous wraps gracefully cocoon your newborn in peaceful dreams.
                     </p>
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-flamingo/15 text-brand-flamingo border border-brand-flamingo/20 text-[9px] font-bold uppercase tracking-[0.15em] mt-2.5 animate-pulse">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-gold/15 text-brand-gold border border-brand-gold/20 text-[9px] font-bold uppercase tracking-[0.15em] mt-2.5">
                       <Sparkles size={10} />
-                      <span>Available on 27 June</span>
+                      <span>Newly Released!</span>
                     </div>
                   </div>
 
@@ -283,8 +283,8 @@ const StoreFront: React.FC<{
                          ) : (
                            <>
                              <span>Gentle touch for peaceful sleep</span>
-                             <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-brand-flamingo/15 text-brand-flamingo border border-brand-flamingo/20 ml-0 md:ml-3 animate-pulse">
-                               Live 27 June!
+                             <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-brand-gold/15 text-brand-gold border border-brand-gold/20 ml-0 md:ml-3">
+                               New Release
                              </span>
                            </>
                          )}
@@ -640,6 +640,68 @@ const App: React.FC = () => {
     });
   };
 
+  const handleToggleShippingBox = (itemId: string, addBox: boolean) => {
+    setCart(prev => {
+      const itemToUpdate = prev.find(item => item.id === itemId);
+      if (!itemToUpdate) return prev;
+
+      const hasBox = itemToUpdate.id.endsWith('-protected') || !!itemToUpdate.addShippingBox;
+      if (hasBox === addBox) return prev;
+
+      let targetId = itemToUpdate.id;
+      let targetName = itemToUpdate.name;
+      let targetPrice = itemToUpdate.price;
+
+      if (addBox) {
+        // Find if base ID is already defined or derive it
+        const baseId = itemToUpdate.baseProductId || itemToUpdate.id;
+        targetId = `${baseId}-protected`;
+        if (itemToUpdate.sizeOption) {
+          targetId = `${baseId}-${itemToUpdate.sizeOption}-protected`;
+        }
+        if (!targetName.includes(' + Extra Protection Box')) {
+          targetName = `${targetName} + Extra Protection Box`;
+        }
+        targetPrice = itemToUpdate.price + 2;
+      } else {
+        // Strip out protected suffix
+        targetId = itemToUpdate.id.replace('-protected', '');
+        targetName = itemToUpdate.name.replace(' + Extra Protection Box', '');
+        targetPrice = Math.max(0, itemToUpdate.price - 2);
+      }
+
+      // Check if another item with targetId already exists in cart
+      const existingItemIndex = prev.findIndex(item => item.id === targetId);
+
+      if (existingItemIndex !== -1 && existingItemIndex !== prev.indexOf(itemToUpdate)) {
+        // Merge them!
+        return prev.map((item, idx) => {
+          if (idx === existingItemIndex) {
+            return {
+              ...item,
+              quantity: item.quantity + itemToUpdate.quantity
+            };
+          }
+          return item;
+        }).filter(item => item.id !== itemId);
+      } else {
+        // Just update the item
+        return prev.map(item => {
+          if (item.id === itemId) {
+            return {
+              ...item,
+              id: targetId,
+              name: targetName,
+              price: targetPrice,
+              addShippingBox: addBox
+            };
+          }
+          return item;
+        });
+      }
+    });
+  };
+
   const handleOrderComplete = () => {
     setCart([]);
   };
@@ -692,6 +754,7 @@ const App: React.FC = () => {
               onUpdateQuantity={handleUpdateCartQuantity}
               onRemoveItem={handleRemoveFromCart}
               onAddToCart={handleAddToCart}
+              onToggleShippingBox={handleToggleShippingBox}
             />
           </Layout>
         } />

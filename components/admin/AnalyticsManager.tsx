@@ -34,7 +34,7 @@ const COMPARISON_COLORS = [
 const getNormalizedProductInfo = (item: { name: string; collection?: string; category?: string; isCheckoutAddon?: boolean }) => {
   const collection = item.collection || '';
   const category = item.category || '';
-  let name = item.name.trim();
+  let name = item.name.trim().replace(/\s*\+\s*Extra\s+Protection\s+Box/gi, '').trim();
 
   // Determine if it is an Add-on product
   const isAddon = Boolean(item.isCheckoutAddon) || 

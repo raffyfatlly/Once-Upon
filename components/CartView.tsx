@@ -12,6 +12,7 @@ interface CartViewProps {
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
   onAddToCart: (product: Product, quantity?: number) => void;
+  onToggleShippingBox?: (id: string, checked: boolean) => void;
 }
 
 export const CartView: React.FC<CartViewProps> = ({ 
@@ -19,7 +20,8 @@ export const CartView: React.FC<CartViewProps> = ({
   products,
   onUpdateQuantity, 
   onRemoveItem,
-  onAddToCart
+  onAddToCart,
+  onToggleShippingBox
 }) => {
   const navigate = useNavigate();
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
@@ -59,8 +61,29 @@ export const CartView: React.FC<CartViewProps> = ({
     return isBlanket ? sum + item.quantity : sum;
   }, 0);
 
+  const hasAdultBlanket = cart.some(item => !isAddonProduct(item) && item.sizeOption === 'adult');
+  const hasBabyBlanketOrSwaddle = cart.some(item => {
+    if (isAddonProduct(item)) return false;
+    const isBlanket = !item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket'));
+    if (isBlanket) {
+      return item.sizeOption === 'baby';
+    }
+    // Any non-addon product that is not a blanket is a swaddle
+    return true;
+  });
+
   const checkoutAddons = products?.filter(p => isAddonProduct(p) && p.isLive !== false) || [];
-  const visibleAddons = checkoutAddons.filter(addon => !cart.some(item => item.id === addon.id));
+  let visibleAddons = checkoutAddons.filter(addon => !cart.some(item => item.id === addon.id));
+
+  // If there are ONLY adult blankets in the cart (hasAdultBlanket is true, hasBabyBlanketOrSwaddle is false), 
+  // do not show the Signature Gift Box as an add-on.
+  const onlyAdultBlankets = hasAdultBlanket && !hasBabyBlanketOrSwaddle;
+  if (onlyAdultBlankets) {
+    visibleAddons = visibleAddons.filter(addon => {
+      const isBoxAddon = addon.name.toLowerCase().includes('box') || addon.name.toLowerCase().includes('keepsake') || addon.name.toLowerCase().includes('edition');
+      return !isBoxAddon;
+    });
+  }
 
   if (cart.length === 0) {
     return (
@@ -110,6 +133,48 @@ export const CartView: React.FC<CartViewProps> = ({
                       )}
                       
                       <p className="font-sans text-sm font-bold text-gray-900">RM {item.price}</p>
+
+                      {(() => {
+                        const isSwaddle = !isAddonProduct(item) && !(!item.collection || item.collection === 'Blankets' || item.collection.toLowerCase().includes('blanket') || (item.category && item.category.toLowerCase().includes('blanket')));
+                        if (isSwaddle && onToggleShippingBox) {
+                          return (
+                            <div className="mt-3 flex items-start gap-2 bg-brand-gold/[0.04] border border-brand-gold/15 p-2.5 rounded-[4px] max-w-xs animate-fade-in">
+                              <input
+                                type="checkbox"
+                                checked={item.id.includes('-protected') || !!item.addShippingBox}
+                                onChange={(e) => onToggleShippingBox(item.id, e.target.checked)}
+                                className="accent-brand-flamingo h-4 w-4 rounded cursor-pointer mt-0.5 flex-shrink-0"
+                                id={`protect-${item.id}`}
+                              />
+                              <label htmlFor={`protect-${item.id}`} className="text-[10px] font-sans text-gray-600 font-medium cursor-pointer leading-tight select-none">
+                                Add Shipping Box for Extra Protection (+RM 2)
+                                <span className="block text-[8px] text-gray-400 font-normal mt-0.5 font-light">Protects your signature box from courier transit damage.</span>
+                              </label>
+                            </div>
+                          );
+                        }
+
+                        const isBox = item.name.toLowerCase().includes('box') || item.name.toLowerCase().includes('keepsake') || item.name.toLowerCase().includes('edition');
+                        if (isBox) {
+                          return (
+                            <div className="mt-3 flex items-start gap-2 bg-brand-gold/[0.04] border border-brand-gold/15 p-2.5 rounded-[4px] max-w-xs animate-fade-in">
+                              <Gift size={14} className="text-brand-gold mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <span className="text-[10px] font-sans text-brand-gold font-bold uppercase tracking-widest block mb-0.5">Capacity Notice</span>
+                                <span className="text-[10px] font-sans text-gray-600 font-medium leading-relaxed block">
+                                  {hasAdultBlanket ? (
+                                    <>Each Once Upon Signature Gift Box is designed to perfectly accommodate <strong>exactly one baby-sized blanket or swaddle</strong>. (Please note: This box does not fit Adult-size blankets).</>
+                                  ) : (
+                                    <>Each Once Upon Signature Gift Box is designed to perfectly accommodate <strong>exactly one baby-sized blanket or swaddle</strong>.</>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })()}
                     </div>
 
                     <div className="flex items-center justify-between md:gap-12">
@@ -187,9 +252,23 @@ export const CartView: React.FC<CartViewProps> = ({
                               </button>
                             )}
                          </div>
-                         {isBoxAddon && swaddleCount > 0 && (
-                           <div className="bg-brand-gold/10 px-4 py-3 border-t border-brand-gold/20 text-[10px] text-brand-gold font-sans font-medium italic leading-relaxed">
-                             Note: Since you are purchasing a Swaddle, you will receive a complimentary Once Upon 1st Edition I Box automatically with your swaddle! There is no need to purchase this unless you want an extra for a blanket purchase.
+                         {isBoxAddon && !isSoldOut && (
+                           <div className="bg-brand-gold/[0.04] px-4 py-3.5 border-t border-brand-gold/15 text-[10px] font-sans leading-relaxed text-gray-600 space-y-1.5">
+                             {swaddleCount > 0 && (
+                               <p className="text-brand-gold font-medium italic">
+                                 Note: Swaddles already include a complimentary 1st Edition Box! Only buy this if you need an extra for a blanket.
+                               </p>
+                             )}
+                             <p className="flex items-start gap-1.5 font-medium">
+                               <span className="text-brand-gold">✦</span>
+                               <span>
+                                 {hasAdultBlanket ? (
+                                   <>Fits <strong>exactly one baby-sized blanket or swaddle</strong> (Does not fit Adult-size blankets).</>
+                                 ) : (
+                                   <>Fits <strong>exactly one baby-sized blanket or swaddle</strong>.</>
+                                 )}
+                               </span>
+                             </p>
                            </div>
                          )}
                       </div>

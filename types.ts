@@ -21,6 +21,7 @@ export interface Product {
   isCheckoutAddon?: boolean;
   isPosOnly?: boolean;
   isLive?: boolean;
+  addShippingBox?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -29,6 +30,7 @@ export interface CartItem extends Product {
   baseProductId?: string; // used for stock deduction if id is modified for variants
   sizeOption?: string;
   isPickedUp?: boolean; // POS-specific: customer already collected this item in store
+  addShippingBox?: boolean;
 }
 
 export interface SiteConfig {

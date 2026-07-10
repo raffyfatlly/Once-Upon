@@ -75,7 +75,10 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
           price: isAdult ? (product.adultPrice || 108) : (product.babyPrice || 88),
           sizeOption: selectedSize,
           size: isAdult ? (product.adultSizeDesc || '150 cm x 100 cm') : (product.babySizeDesc || '70 cm x 100 cm')
-      } : product;
+      } : {
+          ...product,
+          baseProductId: product.id
+      };
 
       onAddToCart(tailoredProduct as any, quantity);
       setAddState('success');

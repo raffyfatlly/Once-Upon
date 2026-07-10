@@ -54,6 +54,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     return isBlanket ? sum + item.quantity : sum;
   }, 0);
 
+  const hasAdultBlanket = cart.some(item => !isAddonProduct(item) && item.sizeOption === 'adult');
+
   // Form Data
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -673,6 +675,15 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                         <p className="font-serif text-sm text-gray-900">Gift Card</p>
                     </div>
                     <span className="font-serif text-sm text-brand-gold italic">x {swaddleCount + blanketCount}</span>
+                </div>
+              )}
+
+              {cart.some(item => item.name.toLowerCase().includes('box') || item.name.toLowerCase().includes('keepsake') || item.name.toLowerCase().includes('edition')) && (
+                <div className="border-t border-brand-latte/15 pt-3.5 mt-2 text-[10px] font-sans text-brand-gold font-medium leading-relaxed flex items-start gap-1.5 animate-fade-in">
+                  <span>✦</span>
+                  <span>
+                    Notice: Fits exactly one baby-sized blanket or swaddle. {hasAdultBlanket && "(Note: This box does not fit Adult-size blankets)."}
+                  </span>
                 </div>
               )}
             </div>

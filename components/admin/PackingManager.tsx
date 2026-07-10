@@ -338,7 +338,7 @@ Items: ${itemsList}
                               order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                               order.status === 'paid' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                               order.status === 'packed' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              order.status === 'shipped' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              order.status === 'shipped' ? 'bg-sky-50 text-sky-700 border-sky-200' :
                               'bg-gray-50 text-gray-500 border-gray-200'
                             }`}>
                               {order.status}

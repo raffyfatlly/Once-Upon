@@ -1,9 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Order, Product, CartItem } from '../../types';
-import { Search, User, Users, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, Receipt, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Globe, Store, Edit, Plus, Minus, X, Save } from 'lucide-react';
+import { Search, User, Users, Package, Calendar, Loader2, Check, Filter, ClipboardCopy, Clock, Mail, MapPin, ChevronDown, ChevronUp, Gift, Phone, Trash2, Printer, Receipt, CheckSquare, Square, TrendingUp, BarChart3, Hash, CreditCard, Tag, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, Globe, Store, Edit, Plus, Minus, X, Save, ArrowUpDown } from 'lucide-react';
 import { updateOrderAndRestock, deleteOrderFromDb, autoReleaseStaleOrders, updateOrderNotesInDb, updateOrderInDb } from '../../firebase';
 import { generateReceiptHtml, generateReceiptText } from './POSSystem';
+
+const getShippedDateString = (order: Order) => {
+  if (!order.statusHistory) return null;
+  const shippedEntry = [...order.statusHistory].reverse().find(h => h.status === 'shipped');
+  return shippedEntry ? shippedEntry.timestamp : null;
+};
 
 const formatKLDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-GB', {
@@ -65,7 +71,7 @@ const getKLDateFromIso = (isoString: string) => {
 const getNormalizedProductInfo = (item: { name: string; collection?: string; category?: string; isCheckoutAddon?: boolean }) => {
   const collection = item.collection || '';
   const category = item.category || '';
-  let name = item.name.trim();
+  let name = item.name.trim().replace(/\s*\+\s*Extra\s+Protection\s+Box/gi, '').trim();
 
   // Determine if it is an Add-on product
   const isAddon = Boolean(item.isCheckoutAddon) || 
@@ -319,7 +325,10 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
   const [filterProduct, setFilterProduct] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateFilterType, setDateFilterType] = useState<'order' | 'shipped'>('order');
+  const [orderSortBy, setOrderSortBy] = useState<'date-desc' | 'date-asc' | 'shipped-desc' | 'shipped-asc' | 'id-desc' | 'id-asc'>('date-desc');
   const [filterSource, setFilterSource] = useState<string>('all');
+  const [filterCountry, setFilterCountry] = useState<string>('all');
   const [subTab, setSubTab] = useState<'orders' | 'customers'>('orders');
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -429,7 +438,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterProduct, startDate, endDate, filterSource, subTab]);
+  }, [searchQuery, filterStatus, filterProduct, startDate, endDate, dateFilterType, filterSource, filterCountry, orderSortBy, subTab]);
 
   interface CustomerData {
     email: string;
@@ -439,6 +448,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
     totalSpend: number;
     lastOrderDate: string;
     sources: Set<'pos' | 'online'>;
+    countries: Set<'malaysia' | 'singapore'>;
   }
 
   const customersList = React.useMemo(() => {
@@ -447,6 +457,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
     orders.forEach(order => {
       const key = (order.customerEmail || order.customerName || 'anonymous').toLowerCase().trim();
       const orderSource = order.source === 'pos' ? 'pos' : 'online';
+      const orderCountry = (order.shippingAddress && order.shippingAddress.toLowerCase().includes('singapore')) ? 'singapore' : 'malaysia';
       
       const existing = customerMap.get(key);
       if (existing) {
@@ -461,6 +472,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
           existing.phone = order.customerPhone || existing.phone;
         }
         existing.sources.add(orderSource);
+        existing.countries.add(orderCountry);
       } else {
         const isPaid = ['paid', 'packed', 'shipped', 'delivered'].includes(order.status);
         customerMap.set(key, {
@@ -470,7 +482,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
           totalOrders: 1,
           totalSpend: isPaid ? order.total : 0,
           lastOrderDate: order.date,
-          sources: new Set([orderSource])
+          sources: new Set([orderSource]),
+          countries: new Set([orderCountry])
         });
       }
     });
@@ -489,9 +502,11 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
         (filterSource === 'pos' && cust.sources.has('pos')) || 
         (filterSource === 'online' && cust.sources.has('online'));
         
-      return matchesSearch && matchesSource;
+      const matchesCountry = filterCountry === 'all' || cust.countries.has(filterCountry as any);
+        
+      return matchesSearch && matchesSource && matchesCountry;
     }).sort((a, b) => b.totalSpend - a.totalSpend);
-  }, [customersList, searchQuery, filterSource]);
+  }, [customersList, searchQuery, filterSource, filterCountry]);
 
   const customerAnalytics = React.useMemo(() => {
     let totalSpend = 0;
@@ -1187,16 +1202,67 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
 
     let matchesDate = true;
     if (startDate || endDate) {
-      const orderKLDateStr = getKLDateFromIso(order.date);
-      if (startDate) matchesDate = matchesDate && orderKLDateStr >= startDate;
-      if (endDate) matchesDate = matchesDate && orderKLDateStr <= endDate;
+      if (dateFilterType === 'order') {
+        const orderKLDateStr = getKLDateFromIso(order.date);
+        if (startDate) matchesDate = matchesDate && orderKLDateStr >= startDate;
+        if (endDate) matchesDate = matchesDate && orderKLDateStr <= endDate;
+      } else {
+        const shippedDateStr = getShippedDateString(order);
+        if (shippedDateStr) {
+          const shippedKLDateStr = getKLDateFromIso(shippedDateStr);
+          if (startDate) matchesDate = matchesDate && shippedKLDateStr >= startDate;
+          if (endDate) matchesDate = matchesDate && shippedKLDateStr <= endDate;
+        } else {
+          matchesDate = false;
+        }
+      }
     }
+
     const matchesSource = filterSource === 'all' || 
       (filterSource === 'pos' && order.source === 'pos') || 
       (filterSource === 'online' && order.source !== 'pos');
 
-    return matchesSearch && matchesStatus && matchesDate && matchesProduct && matchesSource;
+    const isSingapore = order.shippingAddress ? order.shippingAddress.toLowerCase().includes('singapore') : false;
+    const matchesCountry = filterCountry === 'all' || 
+      (filterCountry === 'singapore' && isSingapore) || 
+      (filterCountry === 'malaysia' && !isSingapore);
+
+    return matchesSearch && matchesStatus && matchesDate && matchesProduct && matchesSource && matchesCountry;
   });
+
+  const sortedOrders = React.useMemo(() => {
+    return [...filteredOrders].sort((a, b) => {
+      if (orderSortBy === 'date-desc') {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+      if (orderSortBy === 'date-asc') {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+      if (orderSortBy === 'shipped-desc') {
+        const dateA = getShippedDateString(a);
+        const dateB = getShippedDateString(b);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      }
+      if (orderSortBy === 'shipped-asc') {
+        const dateA = getShippedDateString(a);
+        const dateB = getShippedDateString(b);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      }
+      if (orderSortBy === 'id-desc') {
+        return Number(b.id) - Number(a.id);
+      }
+      if (orderSortBy === 'id-asc') {
+        return Number(a.id) - Number(b.id);
+      }
+      return 0;
+    });
+  }, [filteredOrders, orderSortBy]);
 
   const toggleSelectAll = () => {
     if (selectedOrders.size === filteredOrders.length && filteredOrders.length > 0) {
@@ -1267,7 +1333,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
   const activeCount = subTab === 'orders' ? filteredOrders.length : filteredCustomers.length;
   const totalPages = Math.ceil(activeCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedOrders = sortedOrders.slice(startIndex, startIndex + itemsPerPage);
   const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
 
   const goToPage = (page: number) => {
@@ -1317,8 +1383,32 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
         <div className="flex flex-col gap-4 mb-6">
           {/* Date Range Selector - Only for Orders tab */}
           {subTab === 'orders' && (
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px] self-start">
-              <div className="flex gap-2 items-center px-2 text-gray-400"><Clock size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">Date Range</span></div>
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white border border-brand-latte/20 p-2 rounded-[2px] self-start shadow-sm">
+              <div className="flex gap-1.5 items-center px-2 text-gray-500">
+                {dateFilterType === 'order' ? <Clock size={13} className="text-gray-400" /> : <Package size={13} className="text-sky-500" />}
+                <div className="relative">
+                  <select 
+                    value={dateFilterType} 
+                    onChange={(e) => {
+                      const val = e.target.value as 'order' | 'shipped';
+                      setDateFilterType(val);
+                      if (val === 'shipped') {
+                        setOrderSortBy('shipped-desc');
+                      } else {
+                        setOrderSortBy('date-desc');
+                      }
+                    }} 
+                    className="appearance-none bg-transparent hover:bg-brand-grey/5 border-0 pl-1 pr-6 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:ring-0 text-gray-700 cursor-pointer transition-colors"
+                  >
+                    <option value="order">Order Date</option>
+                    <option value="shipped">Shipped Date</option>
+                  </select>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-gray-500">
+                    <svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg>
+                  </div>
+                </div>
+              </div>
+              <div className="h-6 w-[1px] bg-brand-latte/20 hidden sm:block"></div>
               <div className="flex gap-1">
                   <button onClick={() => setQuickDate('today')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">Today</button>
                   <button onClick={() => setQuickDate('week')} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-brand-grey/10 hover:bg-brand-flamingo hover:text-white rounded-[2px] transition-colors">7 Days</button>
@@ -1366,8 +1456,31 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                     </select>
                     <Tag size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>
+
+                  {/* Order Sorting Dropdown */}
+                  <div className="relative">
+                    <select value={orderSortBy} onChange={(e) => setOrderSortBy(e.target.value as any)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full lg:w-56">
+                        <option value="date-desc">Newest First (Order)</option>
+                        <option value="date-asc">Oldest First (Order)</option>
+                        <option value="shipped-desc">Newest First (Shipped)</option>
+                        <option value="shipped-asc">Oldest First (Shipped)</option>
+                        <option value="id-desc">Order No (Highest)</option>
+                        <option value="id-asc">Order No (Lowest)</option>
+                    </select>
+                    <ArrowUpDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  </div>
                 </>
               )}
+
+              {/* Country Selector - For Both Tabs */}
+              <div className="relative">
+                <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full lg:w-44">
+                    <option value="all">All Countries</option>
+                    <option value="malaysia">Malaysia</option>
+                    <option value="singapore">Singapore</option>
+                </select>
+                <Globe size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
 
               {/* Source/Channel Selector - For Both Tabs */}
               <div className="relative">
@@ -1460,7 +1573,21 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
         <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
             <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
             <p className="text-gray-400 text-sm">No orders found matching filters.</p>
-            {(searchQuery || filterStatus !== 'all' || filterProduct !== 'all' || startDate || endDate) && (<button onClick={() => {setSearchQuery(''); setFilterStatus('all'); setFilterProduct('all'); setStartDate(''); setEndDate('');}} className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline">Clear Filters</button>)}
+            {(searchQuery || filterStatus !== 'all' || filterProduct !== 'all' || startDate || endDate || filterCountry !== 'all') && (
+              <button 
+                onClick={() => {
+                  setSearchQuery(''); 
+                  setFilterStatus('all'); 
+                  setFilterProduct('all'); 
+                  setStartDate(''); 
+                  setEndDate('');
+                  setFilterCountry('all');
+                }} 
+                className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline"
+              >
+                Clear Filters
+              </button>
+            )}
         </div>
         ) : (
         <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden">
@@ -1478,7 +1605,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-latte/10">
-                {paginatedOrders.map(order => (
+                {paginatedOrders.map(order => {
+                    const shippedDateStr = getShippedDateString(order);
+                    return (
                     <React.Fragment key={order.id}>
                     <tr 
                         className={`transition-colors cursor-pointer group ${
@@ -1500,10 +1629,17 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                                 )}
                             </div>
                             <div className="flex flex-col mt-1.5 gap-0.5">
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500"><Calendar size={12} /> {formatKLDate(order.date)}</div>
-                                <div className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={12} /> {formatKLTime(order.date)}</div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500" title="Order Date"><Calendar size={12} /> {formatKLDate(order.date)}</div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400" title="Order Time"><Clock size={12} /> {formatKLTime(order.date)}</div>
                                 {order.source === 'pos' && (
                                   <div className="mt-1 bg-brand-flamingo/10 text-brand-flamingo text-[9px] font-bold uppercase px-1.5 py-0.5 rounded w-fit tracking-widest border border-brand-flamingo/20">POS</div>
+                                )}
+                                {shippedDateStr && (
+                                  <div className="mt-1.5 pt-1.5 border-t border-dashed border-brand-latte/20">
+                                    <div className="text-[9px] uppercase tracking-widest font-bold text-blue-600">Shipped At:</div>
+                                    <div className="flex items-center gap-1.5 text-xs text-blue-700 font-medium" title="Shipped Date"><Calendar size={12} /> {formatKLDate(shippedDateStr)}</div>
+                                    <div className="flex items-center gap-1.5 text-xs text-blue-500" title="Shipped Time"><Clock size={12} /> {formatKLTime(shippedDateStr)}</div>
+                                  </div>
                                 )}
                             </div>
                             {/* Stale Warning for Pending > 60 mins */}
@@ -1557,7 +1693,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                             <div className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-widest">{order.paymentMethod.replace('_', ' ')}</div>
                           )}
                         </td>
-                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-blue-50 border-blue-200 text-blue-700' : order.status === 'packed' ? 'bg-purple-50 border-purple-200 text-purple-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
+                        <td className="p-4" onClick={(e) => e.stopPropagation()}><div className="relative inline-block"><select value={order.status} onChange={(e) => handleStatusUpdate(order.id, e.target.value, order.status)} className={`appearance-none pl-3 pr-8 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-flamingo ${ order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-700' : order.status === 'shipped' ? 'bg-sky-50 border-sky-200 text-sky-700' : order.status === 'packed' ? 'bg-purple-50 border-purple-200 text-purple-700' : order.status === 'paid' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : order.status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : order.status === 'cancelled' ? 'bg-gray-100 border-gray-300 text-gray-500' : 'bg-yellow-50 border-yellow-200 text-yellow-700' }`}>{ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50"><svg width="8" height="6" viewBox="0 0 8 6" fill="currentColor" className="text-current"><path d="M4 6L0 0H8L4 6Z" /></svg></div></div></td>
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
                             <button onClick={() => handleDownloadReceipt(order)} className="text-gray-400 hover:text-brand-flamingo p-1.5 hover:bg-brand-flamingo/5 rounded transition-colors" title="Download Receipt"><Receipt size={16} /></button>
@@ -1822,7 +1958,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                         </tr>
                     )}
                     </React.Fragment>
-                ))}
+                );
+                })}
                 </tbody>
             </table>
             </div>
