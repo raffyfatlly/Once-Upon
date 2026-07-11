@@ -148,6 +148,18 @@ const getNormalizedProductInfo = (item: { name: string; collection?: string; cat
   };
 };
 
+const renderStatusBadge = (status: string) => {
+  const baseClasses = "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border";
+  let colorClasses = "bg-yellow-50 border-yellow-200 text-yellow-700";
+  if (status === 'delivered') colorClasses = "bg-green-50 border-green-200 text-green-700";
+  else if (status === 'shipped') colorClasses = "bg-sky-50 border-sky-200 text-sky-700";
+  else if (status === 'packed') colorClasses = "bg-purple-50 border-purple-200 text-purple-700";
+  else if (status === 'paid') colorClasses = "bg-indigo-50 border-indigo-200 text-indigo-700";
+  else if (status === 'failed') colorClasses = "bg-red-50 border-red-200 text-red-700";
+  else if (status === 'cancelled') colorClasses = "bg-gray-100 border-gray-300 text-gray-500";
+  return <span className={`${baseClasses} ${colorClasses}`}>{status}</span>;
+};
+
 interface SalesManagerProps {
   orders: Order[];
   products?: Product[];
@@ -330,6 +342,8 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
   const [filterSource, setFilterSource] = useState<string>('all');
   const [filterCountry, setFilterCountry] = useState<string>('all');
   const [subTab, setSubTab] = useState<'orders' | 'customers'>('orders');
+  const [customerSortBy, setCustomerSortBy] = useState<'spend-desc' | 'spend-asc' | 'orders-desc' | 'name-asc' | 'date-desc'>('spend-desc');
+  const [expandedCustomerEmail, setExpandedCustomerEmail] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
@@ -438,7 +452,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterProduct, startDate, endDate, dateFilterType, filterSource, filterCountry, orderSortBy, subTab]);
+  }, [searchQuery, filterStatus, filterProduct, startDate, endDate, dateFilterType, filterSource, filterCountry, orderSortBy, subTab, customerSortBy]);
 
   interface CustomerData {
     email: string;
@@ -449,6 +463,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
     lastOrderDate: string;
     sources: Set<'pos' | 'online'>;
     countries: Set<'malaysia' | 'singapore'>;
+    orders: Order[];
   }
 
   const customersList = React.useMemo(() => {
@@ -473,6 +488,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
         }
         existing.sources.add(orderSource);
         existing.countries.add(orderCountry);
+        existing.orders.push(order);
       } else {
         const isPaid = ['paid', 'packed', 'shipped', 'delivered'].includes(order.status);
         customerMap.set(key, {
@@ -483,16 +499,21 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
           totalSpend: isPaid ? order.total : 0,
           lastOrderDate: order.date,
           sources: new Set([orderSource]),
-          countries: new Set([orderCountry])
+          countries: new Set([orderCountry]),
+          orders: [order]
         });
       }
+    });
+
+    customerMap.forEach(cust => {
+      cust.orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
     
     return Array.from(customerMap.values());
   }, [orders]);
 
   const filteredCustomers = React.useMemo(() => {
-    return customersList.filter(cust => {
+    const list = customersList.filter(cust => {
       const matchesSearch = 
         cust.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         cust.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -505,8 +526,22 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
       const matchesCountry = filterCountry === 'all' || cust.countries.has(filterCountry as any);
         
       return matchesSearch && matchesSource && matchesCountry;
-    }).sort((a, b) => b.totalSpend - a.totalSpend);
-  }, [customersList, searchQuery, filterSource, filterCountry]);
+    });
+
+    if (customerSortBy === 'spend-desc') {
+      list.sort((a, b) => b.totalSpend - a.totalSpend);
+    } else if (customerSortBy === 'spend-asc') {
+      list.sort((a, b) => a.totalSpend - b.totalSpend);
+    } else if (customerSortBy === 'orders-desc') {
+      list.sort((a, b) => b.totalOrders - a.totalOrders);
+    } else if (customerSortBy === 'name-asc') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (customerSortBy === 'date-desc') {
+      list.sort((a, b) => new Date(b.lastOrderDate).getTime() - new Date(a.lastOrderDate).getTime());
+    }
+
+    return list;
+  }, [customersList, searchQuery, filterSource, filterCountry, customerSortBy]);
 
   const customerAnalytics = React.useMemo(() => {
     let totalSpend = 0;
@@ -1459,6 +1494,19 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                 </>
               )}
 
+              {subTab === 'customers' && (
+                <div className="relative">
+                  <select value={customerSortBy} onChange={(e) => setCustomerSortBy(e.target.value as any)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full lg:w-56">
+                      <option value="spend-desc">Highest Spend (LTV)</option>
+                      <option value="spend-asc">Lowest Spend (LTV)</option>
+                      <option value="orders-desc">Most Orders</option>
+                      <option value="name-asc">Name (A - Z)</option>
+                      <option value="date-desc">Latest Activity</option>
+                  </select>
+                  <ArrowUpDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              )}
+
               {/* Country Selector - For Both Tabs */}
               <div className="relative">
                 <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="appearance-none bg-white border border-brand-latte/30 px-4 py-3 pr-10 rounded-[2px] text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-brand-flamingo text-gray-600 w-full lg:w-44">
@@ -1548,7 +1596,7 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
           </div>
         )}
 
-        {selectedOrders.size > 0 && (
+        {subTab === 'orders' && selectedOrders.size > 0 && (
         <div className="bg-brand-flamingo/5 border border-brand-flamingo/20 p-3 rounded-[2px] mb-4 flex items-center justify-between animate-fade-in">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-flamingo px-2">{selectedOrders.size} Selected</span>
             <button onClick={handleBulkCopy} className="bg-white border border-brand-flamingo/20 text-brand-flamingo px-4 py-2 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo hover:text-white transition-colors flex items-center gap-2">
@@ -1556,8 +1604,9 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
             </button>
         </div>
         )}
-        {filteredOrders.length === 0 ? (
-        <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
+        {subTab === 'orders' ? (
+          filteredOrders.length === 0 ? (
+          <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
             <Package size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
             <p className="text-gray-400 text-sm">No orders found matching filters.</p>
             {(searchQuery || filterStatus !== 'all' || filterProduct !== 'all' || startDate || endDate || filterCountry !== 'all') && (
@@ -1965,6 +2014,239 @@ export const SalesManager: React.FC<SalesManagerProps> = ({ orders, products }) 
                 </div>
             )}
         </div>
+        )) : (
+          filteredCustomers.length === 0 ? (
+            <div className="text-center py-24 bg-white border border-dashed border-brand-latte/30 rounded-[2px]">
+                <Users size={32} className="mx-auto text-brand-latte mb-3 opacity-50" />
+                <p className="text-gray-400 text-sm">No customers found matching filters.</p>
+                {(searchQuery || filterSource !== 'all' || filterCountry !== 'all') && (
+                  <button 
+                    onClick={() => {
+                      setSearchQuery(''); 
+                      setFilterSource('all');
+                      setFilterCountry('all');
+                      setCustomerSortBy('spend-desc');
+                    }} 
+                    className="text-brand-flamingo text-xs font-bold uppercase mt-2 hover:underline"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+            </div>
+          ) : (
+            <div className="bg-white border border-brand-latte/20 rounded-[2px] shadow-sm overflow-hidden animate-fade-in">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                    <tr className="bg-brand-grey/10 border-b border-brand-latte/20">
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-12"></th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Customer Details</th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Total Purchase (LTV)</th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Orders Count</th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Channels & Markets</th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">Last Active</th>
+                        <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-center w-36">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-brand-latte/10">
+                    {paginatedCustomers.map(cust => {
+                        const isExpanded = expandedCustomerEmail === cust.email;
+                        return (
+                        <React.Fragment key={cust.email || cust.name}>
+                        <tr 
+                            className={`transition-colors cursor-pointer group ${
+                              isExpanded ? 'bg-brand-grey/10' : 'hover:bg-brand-grey/5'
+                            }`}
+                            onClick={() => setExpandedCustomerEmail(isExpanded ? null : cust.email)}
+                        >
+                            <td className="p-4 text-center">
+                              <button className="text-gray-400 hover:text-brand-flamingo">
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-start gap-2">
+                                <div className="bg-brand-latte/20 p-2 rounded-full mt-0.5 text-brand-latte">
+                                  <User size={14} />
+                                </div>
+                                <div>
+                                  <div className="font-serif font-bold text-gray-900 text-sm">{cust.name}</div>
+                                  <div className="text-xs text-gray-400 font-mono mt-0.5">{cust.email || 'No email registered'}</div>
+                                  {cust.phone && (
+                                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                      <Phone size={10} /> {cust.phone}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="font-bold text-gray-900 text-sm">RM {cust.totalSpend.toFixed(2)}</div>
+                              <div className="text-[10px] font-bold text-brand-flamingo uppercase tracking-wider mt-0.5">All-time LTV</div>
+                            </td>
+                            <td className="p-4">
+                              <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-brand-grey/15 rounded text-xs font-bold text-gray-700">
+                                <Hash size={11} className="text-gray-400" /> {cust.totalOrders} {cust.totalOrders === 1 ? 'Order' : 'Orders'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-wrap gap-1">
+                                {Array.from(cust.sources).map(s => (
+                                  <span key={s} className="px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 rounded">
+                                    {s}
+                                  </span>
+                                ))}
+                                {Array.from(cust.countries).map(c => (
+                                  <span key={c} className="px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider bg-sky-50 text-sky-700 border border-sky-200 rounded">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-1 text-xs text-gray-500">
+                                <Calendar size={12} className="text-gray-400" /> {formatKLDate(cust.lastOrderDate)}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                <Clock size={12} className="text-gray-400" /> {formatKLTime(cust.lastOrderDate)}
+                              </div>
+                            </td>
+                            <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                              <button 
+                                onClick={() => setExpandedCustomerEmail(isExpanded ? null : cust.email)}
+                                className="bg-brand-flamingo/5 border border-brand-flamingo/20 text-brand-flamingo hover:bg-brand-flamingo hover:text-white px-3 py-1.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest transition-colors"
+                              >
+                                {isExpanded ? 'Hide History' : 'View History'}
+                              </button>
+                            </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="bg-brand-grey/5 p-6 border-t border-b border-brand-latte/10">
+                              <div className="max-w-4xl mx-auto text-left">
+                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-brand-latte/10">
+                                  <h4 className="font-serif text-sm font-bold uppercase tracking-widest text-brand-gold flex items-center gap-2">
+                                    <Clock size={14} /> Full Order History of All Time ({cust.totalOrders} {cust.totalOrders === 1 ? 'order' : 'orders'})
+                                  </h4>
+                                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">LTV: RM {cust.totalSpend.toFixed(2)}</span>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                  {cust.orders.map((histOrder, idx) => {
+                                    const oDate = formatKLDate(histOrder.date);
+                                    const oTime = formatKLTime(histOrder.date);
+                                    return (
+                                      <div key={histOrder.id} className="bg-white border border-brand-latte/20 p-4 rounded-[2px] shadow-sm relative overflow-hidden group hover:border-brand-flamingo/30 transition-all">
+                                        {/* Corner Line Indicator */}
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-flamingo/40"></div>
+                                        
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                                          <div className="flex items-center gap-2 flex-wrap pl-1">
+                                            <span className="font-mono text-xs font-bold text-gray-900">#{histOrder.id.substring(0, 8).toUpperCase()}</span>
+                                            <span className="text-[9px] font-bold uppercase bg-brand-grey/10 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">
+                                              {histOrder.source || 'online'}
+                                            </span>
+                                            {histOrder.paymentMethod && (
+                                              <span className="text-[9px] font-bold uppercase bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100">
+                                                {histOrder.paymentMethod.replace('_', ' ')}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <div className="text-right text-xs text-gray-500 flex items-center gap-1 mr-2">
+                                              <Calendar size={12} className="text-gray-400" /> {oDate}
+                                              <Clock size={12} className="text-gray-400 ml-1" /> {oTime}
+                                            </div>
+                                            {/* Status Badge */}
+                                            {renderStatusBadge(histOrder.status)}
+                                          </div>
+                                        </div>
+
+                                        {/* Items */}
+                                        <div className="bg-brand-grey/5 rounded-[2px] p-3 mb-3 border border-brand-latte/5 pl-4">
+                                          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Items Ordered</p>
+                                          <div className="divide-y divide-brand-latte/5 space-y-1.5">
+                                            {histOrder.items.map(item => (
+                                              <div key={item.id} className="flex justify-between text-xs text-gray-700 pt-1.5 first:pt-0">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="font-bold text-brand-flamingo">{item.quantity}x</span>
+                                                  <span>{item.name} {item.sizeOption ? `(${item.sizeOption})` : ''}</span>
+                                                  {item.isPreOrder && (
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-1 py-0.2 rounded border border-amber-200">Pre-Order</span>
+                                                  )}
+                                                </div>
+                                                <div className="font-mono text-gray-500">RM {((item.price || 0) * (item.quantity || 1)).toFixed(2)}</div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+
+                                        {/* Details & Total Footer */}
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 border-t border-brand-latte/10 pl-1">
+                                          <div className="text-xs text-gray-500 space-y-1">
+                                            {histOrder.shippingAddress && (
+                                              <div className="flex items-start gap-1">
+                                                <MapPin size={12} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                                <span className="truncate max-w-md" title={histOrder.shippingAddress}>Shipping: {histOrder.shippingAddress}</span>
+                                              </div>
+                                            )}
+                                            {histOrder.adminNotes && (
+                                              <div className="flex items-center gap-1 text-amber-700 bg-amber-50/50 px-1.5 py-0.5 rounded border border-amber-100/50 w-fit">
+                                                <AlertTriangle size={11} className="text-amber-500" />
+                                                <span>Note: {histOrder.adminNotes}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="text-right flex items-center gap-4 self-end sm:self-auto">
+                                            <button 
+                                              onClick={async () => {
+                                                try {
+                                                  await navigator.clipboard.writeText(histOrder.id);
+                                                  alert(`Order Number #${histOrder.id} copied to clipboard!`);
+                                                } catch (e) {
+                                                  alert("Failed to copy order ID");
+                                                }
+                                              }}
+                                              className="text-gray-400 hover:text-brand-flamingo text-xs flex items-center gap-1"
+                                              title="Copy Order ID"
+                                            >
+                                              <ClipboardCopy size={13} /> Copy ID
+                                            </button>
+                                            <div className="font-serif text-sm font-bold text-gray-900">
+                                              Total Paid: <span className="text-brand-flamingo text-base">RM {histOrder.total.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
+                        );
+                    })}
+                    </tbody>
+                </table>
+                </div>
+
+                {/* Pagination Controls */}
+                {filteredCustomers.length > itemsPerPage && (
+                    <div className="border-t border-brand-latte/20 bg-brand-grey/5 p-4 flex items-center justify-between">
+                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className="p-2 bg-white border border-brand-latte/20 rounded-[2px] text-gray-500 hover:text-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronLeft size={16} /></button>
+                            <span className="text-xs font-bold text-gray-700 px-2">Page {currentPage} of {totalPages}</span>
+                            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 bg-white border border-brand-latte/20 rounded-[2px] text-gray-500 hover:text-brand-flamingo disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><ChevronRight size={16} /></button>
+                        </div>
+                    </div>
+                )}
+            </div>
+          )
         )}
 
         {/* EDIT ORDER MODAL */}
