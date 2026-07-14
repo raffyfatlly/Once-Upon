@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Order } from '../../types';
 import { ClipboardCopy, Package, Search, CheckSquare, Square, Truck, Check, X, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { updateOrderAndRestock } from '../../firebase';
+import { updateOrderAndRestock, updateOrderInDb } from '../../firebase';
 
 interface PackingManagerProps {
   orders: Order[];
@@ -15,6 +15,11 @@ export const PackingManager: React.FC<PackingManagerProps> = ({ orders }) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // States for J&T Tracking Updates
+  const [trackingInput, setTrackingInput] = useState('');
+  const [isTrackingUpdating, setIsTrackingUpdating] = useState(false);
+  const [trackingFeedback, setTrackingFeedback] = useState<{ success: number; failed: string[] } | null>(null);
 
   const handleFindOrders = () => {
     setHasSearched(true);
@@ -119,6 +124,75 @@ Items: ${itemsList}
       setIsUpdating(false);
     }
   };
+
+  const handleUpdateTrackingNumbers = async () => {
+    if (!trackingInput.trim()) return;
+    setIsTrackingUpdating(true);
+    setTrackingFeedback(null);
+    
+    const lines = trackingInput.split('\n');
+    const updates: { orderId: string; trackingNumber: string }[] = [];
+    
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      
+      let orderId = '';
+      let trackingNumber = '';
+      
+      const dashOrColonMatch = line.match(/^(\d+)\s*[-:]\s*(.+)$/);
+      if (dashOrColonMatch) {
+        orderId = dashOrColonMatch[1].trim();
+        trackingNumber = dashOrColonMatch[2].trim();
+      } else {
+        const words = line.split(/\s+/);
+        if (words.length >= 2 && /^\d+$/.test(words[0])) {
+          orderId = words[0];
+          trackingNumber = words.slice(1).join(' ').trim();
+        }
+      }
+      
+      if (orderId && trackingNumber) {
+        // Strip any trailing dots or spaces from the tracking number
+        trackingNumber = trackingNumber.replace(/\.+$/, '').trim();
+        updates.push({ orderId, trackingNumber });
+      }
+    }
+    
+    if (updates.length === 0) {
+      alert("No valid Order ID and Tracking Number pairs found. Please format as:\nOrderNo - TrackingNo\ne.g., 2120 - JNT123456");
+      setIsTrackingUpdating(false);
+      return;
+    }
+    
+    let successCount = 0;
+    const failedIds: string[] = [];
+    
+    try {
+      const orderIdSet = new Set(orders.map(o => String(o.id).trim()));
+      
+      const updatePromises = updates.map(async (item) => {
+        const normId = String(item.orderId).trim();
+        if (orderIdSet.has(normId)) {
+          await updateOrderInDb(normId, { trackingNumber: item.trackingNumber });
+          successCount++;
+        } else {
+          failedIds.push(item.orderId);
+        }
+      });
+      
+      await Promise.all(updatePromises);
+      setTrackingFeedback({ success: successCount, failed: failedIds });
+      if (successCount > 0) {
+        setTrackingInput(''); // Clear input on success
+      }
+    } catch (err) {
+      console.error("Failed to update tracking numbers:", err);
+      alert("An error occurred while updating tracking numbers.");
+    } finally {
+      setIsTrackingUpdating(false);
+    }
+  };
   
   // Identify IDs that were pasted but not found in the database
   const getMissingIds = () => {
@@ -178,6 +252,56 @@ Items: ${itemsList}
                 className="w-full bg-gray-900 text-white py-4 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px] flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
               >
                 <Search size={14} /> Find Orders
+              </button>
+           </div>
+
+           {/* J&T Tracking Updates Input Card */}
+           <div className="bg-white p-5 border border-brand-latte/20 rounded-[2px] shadow-sm flex flex-col">
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 flex items-center gap-2">
+                 <Truck size={14} className="text-brand-flamingo" /> J&T Tracking Updates
+              </label>
+              <p className="text-[10px] text-gray-400 mb-3 leading-relaxed font-sans">
+                Input J&T tracking numbers for orders below. One order per line.
+              </p>
+              <textarea 
+                className="w-full h-32 p-3 text-xs bg-brand-grey/5 border border-brand-latte/20 focus:border-brand-flamingo outline-none resize-none font-mono text-gray-600 rounded-[2px] mb-3"
+                placeholder={`Example:\n2120 - JNT62012345678\n3221 - JNT62098765432`}
+                value={trackingInput}
+                onChange={(e) => {
+                  setTrackingInput(e.target.value);
+                  setTrackingFeedback(null);
+                }}
+              />
+              {trackingFeedback && (
+                <div className={`p-3 rounded-[2px] text-xs font-sans mb-3 border ${
+                  trackingFeedback.success > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+                }`}>
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    {trackingFeedback.success > 0 ? <Check size={14} /> : <AlertCircle size={14} />}
+                    {trackingFeedback.success > 0 ? 'Update Succeeded' : 'Update Failed'}
+                  </div>
+                  <p>Successfully updated {trackingFeedback.success} orders.</p>
+                  {trackingFeedback.failed.length > 0 && (
+                    <p className="mt-1 text-[10px] text-red-500">
+                      Orders not found: {trackingFeedback.failed.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+              <button 
+                onClick={handleUpdateTrackingNumbers}
+                disabled={!trackingInput.trim() || isTrackingUpdating}
+                className="w-full bg-gray-900 text-white py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-brand-flamingo transition-colors rounded-[2px] flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+              >
+                {isTrackingUpdating ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" /> Updating...
+                  </>
+                ) : (
+                  <>
+                    <Check size={12} /> Save Tracking Numbers
+                  </>
+                )}
               </button>
            </div>
            
@@ -324,6 +448,11 @@ Items: ${itemsList}
                                    <div className="text-[10px] text-gray-400 font-mono">
                                       {order.customerPhone}
                                    </div>
+                                   {order.trackingNumber && (
+                                     <div className="mt-2 text-xs font-bold text-brand-gold flex items-center gap-1.5 animate-fade-in">
+                                       <span className="bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded text-[10px]">J&T Tracking: {order.trackingNumber}</span>
+                                     </div>
+                                   )}
                                    {order.adminNotes && (
                                      <div className="mt-2 p-2 bg-yellow-50/50 border border-yellow-200/50 rounded flex items-start gap-2">
                                        <Package size={12} className="text-yellow-600 mt-0.5 flex-shrink-0" />

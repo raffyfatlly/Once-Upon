@@ -348,45 +348,72 @@ export const OrderLookup: React.FC = () => {
                                 <p className="text-xs text-gray-400">{order.customerPhone}</p>
                               </div>
 
-                              {/* Tracking Actions - ONLY FOR SHIPPED */}
-                              {order.status === 'shipped' && (
-                                <div className="border-t border-brand-latte/10 pt-4">
-                                   <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3">
-                                      Need Tracking?
-                                   </h4>
+                               {/* Tracking Actions - SHIPPED or HAS TRACKING */}
+                               {(order.status === 'shipped' || order.trackingNumber) && (
+                                 <div className="border-t border-brand-latte/10 pt-4">
+                                    <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-brand-gold mb-3 flex items-center justify-between">
+                                       <span>J&T Express Tracking</span>
+                                       {order.trackingNumber && <span className="bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded text-[8px] font-mono uppercase">Available</span>}
+                                    </h4>
 
-                                   {/* Explanatory Steps */}
-                                   <div className="bg-white border border-brand-latte/10 rounded-[2px] p-3 mb-4">
-                                     <p className="text-[10px] text-gray-500 leading-relaxed mb-1.5 flex items-start gap-2">
-                                       <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">1</span>
-                                       <span>Click "Get Tracking No." below to message us on WhatsApp.</span>
-                                     </p>
-                                     <p className="text-[10px] text-gray-500 leading-relaxed flex items-start gap-2">
-                                       <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">2</span>
-                                       <span>Copy the number and track it on the J&T website using the link below.</span>
-                                     </p>
-                                   </div>
+                                    {order.trackingNumber ? (
+                                      <div className="bg-white border border-brand-latte/20 rounded-[2px] p-4 mb-4 flex flex-col gap-2 shadow-sm animate-fade-in">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Tracking Number</p>
+                                        <div className="flex items-center justify-between bg-brand-grey/5 p-2 rounded border border-brand-latte/10 font-mono text-xs font-bold text-gray-800">
+                                          <span>{order.trackingNumber}</span>
+                                          <button 
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                await navigator.clipboard.writeText(order.trackingNumber || '');
+                                                alert("Tracking number copied to clipboard!");
+                                              } catch (err) {
+                                                alert("Failed to copy tracking number.");
+                                              }
+                                            }}
+                                            className="text-[9px] uppercase tracking-widest text-brand-flamingo hover:text-brand-gold font-sans font-bold"
+                                          >
+                                            Copy
+                                          </button>
+                                        </div>
+                                        <p className="text-[9px] text-gray-400 italic">Copy the tracking number above and click "Track on J&T" to search on their official portal.</p>
+                                      </div>
+                                    ) : (
+                                      /* Explanatory Steps */
+                                      <div className="bg-white border border-brand-latte/10 rounded-[2px] p-3 mb-4">
+                                        <p className="text-[10px] text-gray-500 leading-relaxed mb-1.5 flex items-start gap-2">
+                                          <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">1</span>
+                                          <span>Click "Get Tracking No." below to message us on WhatsApp.</span>
+                                        </p>
+                                        <p className="text-[10px] text-gray-500 leading-relaxed flex items-start gap-2">
+                                          <span className="bg-brand-grey/20 text-gray-500 w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] flex-shrink-0 mt-0.5">2</span>
+                                          <span>Copy the number and track it on the J&T website using the link below.</span>
+                                        </p>
+                                      </div>
+                                    )}
 
-                                   <div className="flex flex-col sm:flex-row gap-3">
-                                      <a 
-                                        href="https://wa.link/ad5hui" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex-1 bg-white border border-brand-green/30 text-brand-green px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-green hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
-                                      >
-                                        <MessageCircle size={14} /> Get Tracking No.
-                                      </a>
-                                      <a 
-                                        href="https://www.jtexpress.my/tracking" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex-1 bg-brand-flamingo text-white px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-gold transition-all flex items-center justify-center gap-2 shadow-sm"
-                                      >
-                                        <ExternalLink size={14} /> Track on J&T
-                                      </a>
-                                   </div>
-                                </div>
-                              )}
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                       {!order.trackingNumber && (
+                                         <a 
+                                           href="https://wa.link/ad5hui" 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           className="flex-1 bg-white border border-brand-green/30 text-brand-green px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-green hover:text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                                         >
+                                           <MessageCircle size={14} /> Get Tracking No.
+                                         </a>
+                                       )}
+                                       <a 
+                                         href="https://www.jtexpress.my/tracking" 
+                                         target="_blank" 
+                                         rel="noopener noreferrer"
+                                         className="flex-1 bg-brand-flamingo text-white px-4 py-2.5 rounded-[2px] text-[10px] font-bold uppercase tracking-widest hover:bg-brand-gold transition-all flex items-center justify-center gap-2 shadow-sm"
+                                       >
+                                         <ExternalLink size={14} /> Track on J&T
+                                       </a>
+                                    </div>
+                                 </div>
+                               )}
                            </div>
                         </div>
                     </div>

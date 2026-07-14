@@ -55,6 +55,7 @@ export interface Order {
   statusHistory?: { status: string; timestamp: string }[];
   source?: 'online' | 'pos';
   paymentMethod?: 'bank_transfer' | 'qr' | 'online';
+  trackingNumber?: string;
 }
 
 export interface Subscriber {
