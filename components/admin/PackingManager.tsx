@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Order } from '../../types';
 import { ClipboardCopy, Package, Search, CheckSquare, Square, Truck, Check, X, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { updateOrderAndRestock, updateOrderInDb } from '../../firebase';
+import { updateOrderAndRestock, updateOrderInDb, getOrderById } from '../../firebase';
 
 interface PackingManagerProps {
   orders: Order[];
@@ -24,10 +24,10 @@ export const PackingManager: React.FC<PackingManagerProps> = ({ orders }) => {
   const handleFindOrders = () => {
     setHasSearched(true);
     
-    // 1. Extract all sequences of digits from the input text
-    const matches = inputText.match(/\d+/g);
+    // 1. Extract all sequences of digits from the input text, ignoring long sequences (like 12-digit tracking numbers)
+    const matches = (inputText.match(/\d+/g) || []).filter(m => m.length < 7);
     
-    if (!matches) {
+    if (matches.length === 0) {
       setFoundOrders([]);
       setSelectedIds(new Set());
       return;
@@ -140,15 +140,21 @@ Items: ${itemsList}
       let orderId = '';
       let trackingNumber = '';
       
-      const dashOrColonMatch = line.match(/^(\d+)\s*[-:]\s*(.+)$/);
-      if (dashOrColonMatch) {
-        orderId = dashOrColonMatch[1].trim();
-        trackingNumber = dashOrColonMatch[2].trim();
+      const smartMatch = line.match(/^(?:Order\s*#?|#)?\s*(\d{3,6})\s*[-:\s]\s*(.+)$/i);
+      if (smartMatch) {
+        orderId = smartMatch[1].trim();
+        trackingNumber = smartMatch[2].trim();
       } else {
-        const words = line.split(/\s+/);
-        if (words.length >= 2 && /^\d+$/.test(words[0])) {
-          orderId = words[0];
-          trackingNumber = words.slice(1).join(' ').trim();
+        const dashOrColonMatch = line.match(/^(\d+)\s*[-:]\s*(.+)$/);
+        if (dashOrColonMatch) {
+          orderId = dashOrColonMatch[1].trim();
+          trackingNumber = dashOrColonMatch[2].trim();
+        } else {
+          const words = line.split(/\s+/);
+          if (words.length >= 2 && /^\d+$/.test(words[0])) {
+            orderId = words[0];
+            trackingNumber = words.slice(1).join(' ').trim();
+          }
         }
       }
       
@@ -160,7 +166,7 @@ Items: ${itemsList}
     }
     
     if (updates.length === 0) {
-      alert("No valid Order ID and Tracking Number pairs found. Please format as:\nOrderNo - TrackingNo\ne.g., 2120 - JNT123456");
+      alert("No valid Order ID and Tracking Number pairs found. Please format as:\nOrderNo - TrackingNo\ne.g., 1822 - 601714279255");
       setIsTrackingUpdating(false);
       return;
     }
@@ -173,7 +179,16 @@ Items: ${itemsList}
       
       const updatePromises = updates.map(async (item) => {
         const normId = String(item.orderId).trim();
-        if (orderIdSet.has(normId)) {
+        let exists = orderIdSet.has(normId);
+        
+        if (!exists) {
+          const dbOrder = await getOrderById(normId);
+          if (dbOrder) {
+            exists = true;
+          }
+        }
+        
+        if (exists) {
           await updateOrderInDb(normId, { trackingNumber: item.trackingNumber });
           successCount++;
         } else {
@@ -197,7 +212,7 @@ Items: ${itemsList}
   // Identify IDs that were pasted but not found in the database
   const getMissingIds = () => {
      if (!hasSearched) return [];
-     const matches = inputText.match(/\d+/g) || [];
+     const matches = (inputText.match(/\d+/g) || []).filter(m => m.length < 7);
      
      // Normalized Set of IDs found in DB
      const foundIdSet = new Set(foundOrders.map(o => String(o.id).trim()));
@@ -265,7 +280,7 @@ Items: ${itemsList}
               </p>
               <textarea 
                 className="w-full h-32 p-3 text-xs bg-brand-grey/5 border border-brand-latte/20 focus:border-brand-flamingo outline-none resize-none font-mono text-gray-600 rounded-[2px] mb-3"
-                placeholder={`Example:\n2120 - JNT62012345678\n3221 - JNT62098765432`}
+                placeholder={`Example:\n1822 - 601714279255\n2120 - JNT62012345678`}
                 value={trackingInput}
                 onChange={(e) => {
                   setTrackingInput(e.target.value);
