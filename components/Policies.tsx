@@ -115,11 +115,11 @@ export const ShippingPolicy: React.FC = () => (
            </ul>
          </div>
          <div>
-           <strong>Singapore <span className="text-[9px] font-sans font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-[2px] uppercase tracking-wider ml-1.5">Temporarily Disabled</span>:</strong><br/>
+           <strong>Singapore:</strong><br/>
            <ul className="list-disc pl-5 mt-1 space-y-1">
-             <li>1 item: RM 30.00</li>
-             <li>2-3 items: RM 45.00</li>
-             <li>4-6 items: RM 65.00</li>
+             <li>1 item: RM 40.00</li>
+             <li>2-3 items: RM 55.00</li>
+             <li>4-6 items: RM 75.00</li>
              <li className="text-gray-500 italic">Additional items: +RM 15.00 per every 3 items</li>
            </ul>
          </div>

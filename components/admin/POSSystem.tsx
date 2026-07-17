@@ -787,10 +787,10 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
     if (!isShippingPreOrder) return 0;
     const region = shippingDetails.region;
     if (region === 'sg') {
-      if (totalItems === 1) return 30;
-      if (totalItems <= 3) return 45;
-      if (totalItems <= 6) return 65;
-      return 65 + Math.ceil((totalItems - 6) / 3) * 15;
+      if (totalItems === 1) return 40;
+      if (totalItems <= 3) return 55;
+      if (totalItems <= 6) return 75;
+      return 75 + Math.ceil((totalItems - 6) / 3) * 15;
     } else if (region === 'east') {
       if (totalItems === 1) return 15;
       if (totalItems <= 3) return 18;
@@ -1206,7 +1206,7 @@ export const POSSystem: React.FC<POSSystemProps> = ({ products }) => {
                   >
                     <option value="west">West Malaysia</option>
                     <option value="east">East Malaysia</option>
-                    <option value="sg" disabled>Singapore (Temporarily Disabled)</option>
+                    <option value="sg">Singapore</option>
                   </select>
                 </div>
               </div>

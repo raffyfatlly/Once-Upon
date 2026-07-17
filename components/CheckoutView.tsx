@@ -98,10 +98,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
     if (isFreeShipping) return 0;
     
     if (region === 'sg') {
-      if (totalItems === 1) return 30;
-      if (totalItems <= 3) return 45;
-      if (totalItems <= 6) return 65;
-      return 65 + Math.ceil((totalItems - 6) / 3) * 15;
+      if (totalItems === 1) return 40;
+      if (totalItems <= 3) return 55;
+      if (totalItems <= 6) return 75;
+      return 75 + Math.ceil((totalItems - 6) / 3) * 15;
     } else if (region === 'east') {
       if (totalItems === 1) return 15;
       if (totalItems <= 3) return 18;
@@ -442,7 +442,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
                         >
                           <option value="west">West Malaysia (Peninsular)</option>
                           <option value="east">East Malaysia (Sabah & Sarawak)</option>
-                          <option value="sg" disabled>Singapore (Temporarily Disabled)</option>
+                          <option value="sg">Singapore</option>
                         </select>
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                           <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M5 6L0 0H10L5 6Z" /></svg>
