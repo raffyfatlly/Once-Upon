@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
-import { updateOrderStatusInDb, restoreStockForOrder } from '../firebase';
+import { updateOrderStatusInDb, restoreStockForOrder, getOrderById } from '../firebase';
+import { trackPurchase } from '../analytics';
 
 export const PaymentCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -28,6 +29,16 @@ export const PaymentCallback: React.FC = () => {
           // Just update status to Paid.
           await updateOrderStatusInDb(orderId, 'paid');
           setStatus('success');
+          
+          // Track purchase in self-hosted analytics
+          try {
+            const order = await getOrderById(orderId);
+            if (order) {
+              trackPurchase(orderId, order.total);
+            }
+          } catch (trackingErr) {
+            console.warn("Purchase tracking failed (silent):", trackingErr);
+          }
         } else if (result === 'failed') {
           // Payment Failed: Restore the stock quantity.
           await restoreStockForOrder(orderId, 'failed');

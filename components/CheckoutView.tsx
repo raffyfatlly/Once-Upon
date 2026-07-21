@@ -4,6 +4,7 @@ import { Product, CartItem } from '../types';
 import { Lock, CheckCircle, ArrowLeft, Loader2, CreditCard, AlertTriangle, Tag, X, Gift, PenTool, Sparkles, ChevronRight, Mail, Phone, MapPin, Clock, Plus } from 'lucide-react';
 import { createOrderInDb } from '../firebase';
 import { useNavigate } from 'react-router-dom';
+import { trackBeginCheckout } from '../analytics';
 
 interface CheckoutViewProps {
   cart: CartItem[];
@@ -90,6 +91,13 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ cart, onOrderSuccess
       navigate('/cart', { replace: true });
     }
   }, [cart, navigate]);
+
+  // Track self-hosted analytics begin_checkout event
+  useEffect(() => {
+    if (cart && cart.length > 0) {
+      trackBeginCheckout(subtotal, totalItems);
+    }
+  }, []);
 
   // --- LOGIC ---
 

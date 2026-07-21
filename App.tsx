@@ -17,9 +17,11 @@ import { CollectionView } from './components/CollectionView';
 import { IntroOverlay } from './components/IntroOverlay';
 import { OurStory } from './components/OurStory';
 import { RefundPolicy, ShippingPolicy, PrivacyPolicy, TermsPolicy, BusinessInfoPolicy } from './components/Policies';
+import { LinkRedirector } from './components/LinkRedirector';
 import { Product, SiteConfig, CartItem, Order } from './types';
 import { Star, Cloud, AlertCircle, ArrowRight, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { subscribeToProducts, subscribeToOrders } from './firebase';
+import { initializeAnalytics, trackAddToCart } from './analytics';
 
 const SectionDivider = () => (
   <div className="flex items-center justify-center gap-4 py-8 opacity-40">
@@ -526,6 +528,11 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  // Self-hosted Analytics session/pageview initialization
+  useEffect(() => {
+    initializeAnalytics();
+  }, [pathname]);
+
   // Cart Handlers
   const isAddonProduct = (p: Product | CartItem) => {
     if (!p) return false;
@@ -590,6 +597,9 @@ const App: React.FC = () => {
       }
       return [...prev, { ...product, quantity: quantity, isPreOrder }];
     });
+
+    // Track self-hosted analytics add_to_cart event
+    trackAddToCart(product.id, product.name, product.price, quantity);
   };
 
   const handleUpdateCartQuantity = (id: string, delta: number) => {
@@ -835,6 +845,9 @@ const App: React.FC = () => {
           )
         } />
 
+        {/* Short Link Redirector */}
+        <Route path="/l/:shortCode" element={<LinkRedirector />} />
+        
         {/* Catch-all Route: Redirect to Home if 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

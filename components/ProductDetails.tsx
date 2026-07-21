@@ -4,6 +4,7 @@ import { Product } from '../types';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Truck, Info, Leaf, Loader2, Check, AlertCircle, Ruler, Share2, Clock, ArrowRight } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProductCard } from './ProductCard';
+import { trackViewItem } from '../analytics';
 
 interface ProductDetailsProps {
   products: Product[];
@@ -56,6 +57,13 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ products, onAddT
         setLoading(false);
     }
   }, [slug, products]);
+
+  // Track product page view event
+  useEffect(() => {
+    if (product) {
+      trackViewItem(product.id, product.name, product.price);
+    }
+  }, [product]);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? '' : section);
