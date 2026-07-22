@@ -28,6 +28,9 @@ interface AnalyticsEventDoc {
   first_utm_medium: string;
   first_utm_campaign: string;
   first_referrer: string;
+  current_utm_source?: string;
+  current_utm_medium?: string;
+  current_utm_campaign?: string;
   productId?: string;
   productName?: string;
   price?: number;
@@ -152,39 +155,47 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
       ? earliestTrackedDate
       : startDate;
 
+    // Define valid paid sale statuses (aligned with SalesManager)
+    const isPaidOrder = (status: string) => ['paid', 'packed', 'shipped', 'delivered'].includes(status);
+
     // 1. FILTER EVENTS AND ORDERS BASED ON TIMEFRAME
     const filteredEvents = events.filter(evt => {
       const t = new Date(evt.timestamp);
       return t >= startDate && t <= endDate;
     });
 
-    // Orders are calibrated to align exactly with the active visitor tracking period
-    // to maintain a true and correct mathematical conversion rate.
-    const filteredOrders = orders.filter(o => {
-      const t = new Date(o.date);
-      return t >= effectiveStartDate && t <= endDate;
-    });
-
-    // Calculate uncalibrated totals for transparency banners
+    // Orders in the user's selected date range (startDate to endDate)
     const rawFilteredOrders = orders.filter(o => {
       const t = new Date(o.date);
       return t >= startDate && t <= endDate;
     });
 
-    const rawPaidOrders = rawFilteredOrders.filter(o => o.status !== 'failed' && o.status !== 'cancelled');
+    const rawPaidOrders = rawFilteredOrders.filter(o => isPaidOrder(o.status));
     const rawPaidOrdersCount = rawPaidOrders.length;
     const rawPaidRevenue = rawPaidOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    // Calibrated orders align with the active visitor tracking period for mathematical conversion accuracy
+    const calibratedOrders = orders.filter(o => {
+      const t = new Date(o.date);
+      return t >= effectiveStartDate && t <= endDate && isPaidOrder(o.status);
+    });
+    const calibratedPurchasesCount = calibratedOrders.length;
 
     // 2. BUILD VISITOR AND ORDER ATTRIBUTIONS
     // Build overall persistent visitor attribution mapping based on all fetched events
     const visitorUtmMap = new Map<string, { source: string; medium: string; campaign: string }>();
     events.forEach(evt => {
-      if (evt.visitorId && evt.first_utm_source) {
-        visitorUtmMap.set(evt.visitorId, {
-          source: evt.first_utm_source,
-          medium: evt.first_utm_medium || 'none',
-          campaign: evt.first_utm_campaign || 'none'
-        });
+      if (evt.visitorId) {
+        const src = evt.current_utm_source || evt.first_utm_source;
+        const med = evt.current_utm_medium || evt.first_utm_medium;
+        const camp = evt.current_utm_campaign || evt.first_utm_campaign;
+        if (src) {
+          visitorUtmMap.set(evt.visitorId, {
+            source: src,
+            medium: med || 'none',
+            campaign: camp || 'none'
+          });
+        }
       }
     });
 
@@ -203,8 +214,8 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
     // 3. INITIALIZE INTERMEDIATE AGGREGATORS
     const uniqueSessions = new Set<string>();
     const uniqueVisitors = new Set<string>();
-    const newVisitorSessions = new Set<string>();
-    const returningVisitorSessions = new Set<string>();
+    // Session-level visitor classification: maps sessionId -> 'new' | 'returning'
+    const sessionVisitorTypeMap = new Map<string, 'new' | 'returning'>();
 
     let sessionStarts = 0;
     const productViewSessions = new Set<string>();
@@ -237,16 +248,17 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
 
     // 4. PROCESS ANALYTICS EVENTS FOR OVERVIEW AND GRAPHS
     filteredEvents.forEach(evt => {
-      const { visitorId, sessionId, type, timestamp } = evt;
+      const { visitorId, sessionId, type, timestamp, isReturning } = evt;
       if (!sessionId || !visitorId) return;
 
       uniqueSessions.add(sessionId);
       uniqueVisitors.add(visitorId);
 
-      if (evt.isReturning) {
-        returningVisitorSessions.add(sessionId);
-      } else {
-        newVisitorSessions.add(sessionId);
+      // Classify session: If any event in the session has isReturning === false, this session belongs to a new visitor
+      if (!sessionVisitorTypeMap.has(sessionId)) {
+        sessionVisitorTypeMap.set(sessionId, isReturning ? 'returning' : 'new');
+      } else if (!isReturning) {
+        sessionVisitorTypeMap.set(sessionId, 'new');
       }
 
       // Trend mapping
@@ -351,9 +363,7 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
     });
 
     // Aggregate purchases and revenue FROM LIVE ORDERS for 100% financial consistency
-    filteredOrders.forEach(o => {
-      if (o.status === 'failed' || o.status === 'cancelled') return;
-
+    rawPaidOrders.forEach(o => {
       // Identify order attribution
       let utm = orderAttributionMap.get(o.id);
       if (!utm) {
@@ -487,9 +497,7 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
       }
     });
 
-    filteredOrders.forEach(o => {
-      if (o.status === 'failed' || o.status === 'cancelled') return;
-
+    rawPaidOrders.forEach(o => {
       let utm = orderAttributionMap.get(o.id);
       if (!utm) return;
 
@@ -532,8 +540,8 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
     }).sort((a, b) => b.revenue - a.revenue || b.visitors - a.visitors);
 
     // 6. COMPILE PRODUCT VIEWS VS SALES
-    filteredOrders.forEach(o => {
-      if (o.status !== 'failed' && o.status !== 'cancelled' && o.items) {
+    rawPaidOrders.forEach(o => {
+      if (o.items) {
         o.items.forEach(item => {
           const baseId = item.baseProductId || item.id;
           if (productViewsMap.has(baseId)) {
@@ -557,15 +565,11 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
 
     // 7. COMPUTE LOYALTY AND RETURNING SEGMENTS
     const emailOrderCounts: Record<string, number> = {};
-    let paidOrdersCount = 0;
-    let totalPaidRevenue = 0;
 
-    filteredOrders.forEach(o => {
-      if (o.status !== 'failed' && o.status !== 'cancelled' && o.customerEmail) {
+    rawPaidOrders.forEach(o => {
+      if (o.customerEmail) {
         const email = o.customerEmail.toLowerCase().trim();
         emailOrderCounts[email] = (emailOrderCounts[email] || 0) + 1;
-        paidOrdersCount++;
-        totalPaidRevenue += Number(o.total) || 0;
       }
     });
 
@@ -574,6 +578,21 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
     const repeatPurchaseRate = uniqueEmails.length > 0 
       ? (repeatBuyersCount / uniqueEmails.length) * 100 
       : 0;
+
+    // Direct store sales for daily trend graph (override/sync with actual live paid orders)
+    dailyTrendMap.forEach(v => {
+      v.purchases = 0;
+      v.revenue = 0;
+    });
+
+    rawPaidOrders.forEach(o => {
+      const orderDateKey = format(new Date(o.date), 'yyyy-MM-dd');
+      if (dailyTrendMap.has(orderDateKey)) {
+        const dayTrend = dailyTrendMap.get(orderDateKey)!;
+        dayTrend.purchases += 1;
+        dayTrend.revenue += Number(o.total) || 0;
+      }
+    });
 
     // Compile trend charts data chronologically
     const trendData = Array.from(dailyTrendMap.values()).map(item => ({
@@ -585,14 +604,28 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
     const funnelViews = productViewSessions.size;
     const funnelCarts = addToCartSessions.size;
     const funnelCheckouts = beginCheckoutSessions.size;
-    const funnelPurchases = paidOrdersCount;
+    const funnelPurchases = isCalibrated ? calibratedPurchasesCount : rawPaidOrdersCount;
 
     const conversionRate = funnelVisitors > 0 ? (funnelPurchases / funnelVisitors) * 100 : 0;
-    const averageOrderValue = paidOrdersCount > 0 ? totalPaidRevenue / paidOrdersCount : 0;
+    const averageOrderValue = rawPaidOrdersCount > 0 ? rawPaidRevenue / rawPaidOrdersCount : 0;
     const cartAbandonmentRate = funnelCarts > 0 ? ((funnelCarts - funnelPurchases) / funnelCarts) * 100 : 0;
 
-    const newVisitorsPercent = funnelVisitors > 0 
-      ? (newVisitorSessions.size / Math.max(uniqueSessions.size, 1)) * 100 
+    let newVisitorSessionsCount = 0;
+    let returningVisitorSessionsCount = 0;
+    sessionVisitorTypeMap.forEach(type => {
+      if (type === 'new') {
+        newVisitorSessionsCount++;
+      } else {
+        returningVisitorSessionsCount++;
+      }
+    });
+
+    const totalSessionsCount = uniqueSessions.size;
+    const newVisitorsPercent = totalSessionsCount > 0 
+      ? (newVisitorSessionsCount / totalSessionsCount) * 100 
+      : 0;
+    const returningPercent = totalSessionsCount > 0 
+      ? (returningVisitorSessionsCount / totalSessionsCount) * 100 
       : 0;
 
     return {
@@ -602,6 +635,8 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
       rawPaidRevenue,
       totalSessions: uniqueSessions.size,
       totalVisitorsCount: funnelVisitors,
+      newVisitorSessionsCount,
+      returningVisitorSessionsCount,
       funnel: {
         visitors: funnelVisitors,
         views: funnelViews,
@@ -614,7 +649,7 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
       cartAbandonmentRate,
       repeatPurchaseRate,
       newVisitorsPercent,
-      returningPercent: Math.max(100 - newVisitorsPercent, 0),
+      returningPercent,
       utmList,
       ambassadorsList,
       winnerKey,
@@ -756,8 +791,20 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
       )}
 
       {/* OVERVIEW KEY PERFORMANCE CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
         
+        <div className="bg-white p-6 rounded-[2px] shadow-sm border border-brand-latte/20 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Total Sales Revenue</p>
+            <h3 className="font-serif text-3xl text-emerald-700">
+              RM {stats.rawPaidRevenue.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="mt-4 pt-3 border-t border-brand-latte/10 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            <span>{stats.rawPaidOrdersCount} Paid Orders</span>
+          </div>
+        </div>
+
         <div className="bg-white p-6 rounded-[2px] shadow-sm border border-brand-latte/20 flex flex-col justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Unique Visitors</p>
@@ -781,10 +828,12 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
         <div className="bg-white p-6 rounded-[2px] shadow-sm border border-brand-latte/20 flex flex-col justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">Average Order Value</p>
-            <h3 className="font-serif text-3xl text-gray-900">RM {stats.averageOrderValue.toFixed(2)}</h3>
+            <h3 className="font-serif text-3xl text-gray-900">
+              RM {stats.averageOrderValue.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
           </div>
           <div className="mt-4 pt-3 border-t border-brand-latte/10 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            <span>Attributed store sales</span>
+            <span>Per Paid Order</span>
           </div>
         </div>
 
@@ -895,7 +944,9 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
               <div>
                 <div className="flex justify-between text-xs font-bold uppercase tracking-widest mb-1.5 text-gray-700">
                   <span>New Visitors</span>
-                  <span>{stats.newVisitorsPercent.toFixed(1)}%</span>
+                  <span>
+                    {stats.newVisitorsPercent.toFixed(1)}% <span className="text-gray-400 font-normal">({stats.newVisitorSessionsCount} sessions)</span>
+                  </span>
                 </div>
                 <div className="w-full h-2.5 bg-brand-grey/10 rounded-full overflow-hidden">
                   <div className="h-full bg-brand-flamingo rounded-full" style={{ width: `${stats.newVisitorsPercent}%` }} />
@@ -905,7 +956,9 @@ export const WebAnalyticsView: React.FC<WebAnalyticsViewProps> = ({ orders }) =>
               <div>
                 <div className="flex justify-between text-xs font-bold uppercase tracking-widest mb-1.5 text-gray-700">
                   <span>Returning Visitors</span>
-                  <span>{stats.returningPercent.toFixed(1)}%</span>
+                  <span>
+                    {stats.returningPercent.toFixed(1)}% <span className="text-gray-400 font-normal">({stats.returningVisitorSessionsCount} sessions)</span>
+                  </span>
                 </div>
                 <div className="w-full h-2.5 bg-brand-grey/10 rounded-full overflow-hidden">
                   <div className="h-full bg-brand-gold rounded-full" style={{ width: `${stats.returningPercent}%` }} />

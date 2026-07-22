@@ -83,16 +83,7 @@ export interface AnalyticsEvent {
 
 // Global interface for tracking module
 export const getAnalyticsSession = () => {
-  if (typeof window === 'undefined') return { visitorId: '', sessionId: '', isReturning: false };
-
-  // Visitor ID (Stored persistently in localStorage)
-  let visitorId = localStorage.getItem('ou_visitor_id');
-  let isReturning = true;
-  if (!visitorId) {
-    visitorId = generateId('v');
-    localStorage.setItem('ou_visitor_id', visitorId);
-    isReturning = false;
-  }
+  if (typeof window === 'undefined') return { visitorId: '', sessionId: '', isReturning: false, isNewSession: false };
 
   // Session ID (Stored in sessionStorage, expires on tab close)
   let sessionId = sessionStorage.getItem('ou_session_id');
@@ -102,6 +93,20 @@ export const getAnalyticsSession = () => {
     sessionStorage.setItem('ou_session_id', sessionId);
     isNewSession = true;
   }
+
+  // Visitor ID (Stored persistently in localStorage)
+  let visitorId = localStorage.getItem('ou_visitor_id');
+  if (!visitorId) {
+    visitorId = generateId('v');
+    localStorage.setItem('ou_visitor_id', visitorId);
+    // New visitor ID created during this session -> New visitor session
+    sessionStorage.setItem('ou_visitor_is_returning', 'false');
+  } else if (isNewSession) {
+    // Visitor ID existed prior to this new session starting -> Returning visitor session
+    sessionStorage.setItem('ou_visitor_is_returning', 'true');
+  }
+
+  const isReturning = sessionStorage.getItem('ou_visitor_is_returning') === 'true';
 
   return { visitorId, sessionId, isReturning, isNewSession };
 };
